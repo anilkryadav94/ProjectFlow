@@ -87,14 +87,32 @@ export async function updateUser(userToUpdate: User): Promise<{ success: boolean
     if (index === -1) {
         return { success: false };
     }
-    // Only update fields that are supposed to change
-    mockUsers[index].name = userToUpdate.name;
-    mockUsers[index].roles = userToUpdate.roles;
-    if (userToUpdate.password) { // only update password if a new one is provided
-        mockUsers[index].password = userToUpdate.password;
+
+    // Update the user in our mock data store
+    const updatedUser = { ...mockUsers[index], ...userToUpdate };
+    if (!userToUpdate.password) {
+        updatedUser.password = mockUsers[index].password;
     }
+    mockUsers[index] = updatedUser;
+
+    // Check if the updated user is the currently logged-in user
+    const session = await getSession();
+    if (session?.user?.id === userToUpdate.id) {
+        // If so, re-issue the session cookie with the new data
+        const expires = new Date(Date.now() + 60 * 60 * 1000); // 1 hour
+        const newSessionUser = { 
+            id: updatedUser.id, 
+            email: updatedUser.email, 
+            name: updatedUser.name, 
+            roles: updatedUser.roles 
+        };
+        const newSession = await encrypt({ user: newSessionUser, expires });
+        cookies().set('session', newSession, { expires, httpOnly: true });
+    }
+
     return { success: true, user: mockUsers[index] };
 }
+
 
 export async function addUser(newUser: Omit<User, 'id'>): Promise<{ success: boolean; user?: User }> {
     if (mockUsers.some(u => u.email === newUser.email)) {

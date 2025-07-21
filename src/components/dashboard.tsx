@@ -52,7 +52,7 @@ export default function Dashboard({
 
     if (existingProjectIndex > -1) {
         const newProjects = [...projects];
-        newProjects[existingProject-index] = updatedProject;
+        newProjects[existingProjectIndex] = updatedProject;
         setProjects(newProjects);
     } else {
         setProjects(prev => [updatedProject, ...prev]);
@@ -153,7 +153,7 @@ export default function Dashboard({
         />
         <div className="flex flex-col flex-grow overflow-hidden py-2 gap-2">
           {isAdminView ? (
-            <UserManagementTable />
+            <UserManagementTable sessionUser={user} />
           ) : isTaskView ? (
              <div className="flex flex-col h-full space-y-2">
                 <div className="flex-shrink-0" style={{ height: 'calc(70% - 0.5rem)' }}>

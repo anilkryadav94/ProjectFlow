@@ -21,14 +21,17 @@ import { ChevronsUpDown, Loader2, PlusCircle, Upload } from "lucide-react";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "./ui/card";
 import { AddUserDialog } from "./add-user-dialog";
 import { cn } from "@/lib/utils";
+import { useRouter } from "next/navigation";
 
-export function UserManagementTable() {
+export function UserManagementTable({ sessionUser }: { sessionUser: User }) {
     const [users, setUsers] = React.useState<User[]>([]);
     const [isLoading, setIsLoading] = React.useState(true);
     const [isSubmitting, setIsSubmitting] = React.useState<Record<string, boolean>>({});
     const [isAddUserDialogOpen, setIsAddUserDialogOpen] = React.useState(false);
     const fileInputRef = React.useRef<HTMLInputElement>(null);
     const { toast } = useToast();
+    const router = useRouter();
+
 
     React.useEffect(() => {
         async function fetchUsers() {
@@ -72,6 +75,11 @@ export function UserManagementTable() {
                     title: "Success",
                     description: `User ${user.name} has been updated.`,
                 });
+                
+                // If the admin updated their own roles, refresh the page to update the header
+                if (user.id === sessionUser.id) {
+                    router.refresh();
+                }
             }
         } catch (error) {
             toast({
