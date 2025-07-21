@@ -69,7 +69,7 @@ export function UserManagementTable({ sessionUser }: { sessionUser: User }) {
 
         setIsSubmitting(prev => ({ ...prev, [user.id]: true }));
         try {
-            const result = await updateUser(user);
+            const result = await updateUser(user, sessionUser.id);
             if (result.success) {
                 toast({
                     title: "Success",
@@ -183,17 +183,17 @@ export function UserManagementTable({ sessionUser }: { sessionUser: User }) {
                     <CardContent>
                         <div className="rounded-md border overflow-y-auto max-h-[calc(100vh-350px)]">
                             <Table>
-                                <TableHeader className="sticky top-0 bg-muted z-10">
+                                <TableHeader className="sticky top-0 bg-primary z-10">
                                     <TableRow>
-                                        <TableHead>Username</TableHead>
-                                        <TableHead>Email</TableHead>
-                                        <TableHead>Password</TableHead>
-                                        <TableHead>Roles</TableHead>
-                                        <TableHead className="w-[120px]">Actions</TableHead>
+                                        <TableHead className="text-primary-foreground/90">Username</TableHead>
+                                        <TableHead className="text-primary-foreground/90">Email</TableHead>
+                                        <TableHead className="text-primary-foreground/90">Password</TableHead>
+                                        <TableHead className="text-primary-foreground/90">Roles</TableHead>
+                                        <TableHead className="w-[120px] text-primary-foreground/90">Actions</TableHead>
                                     </TableRow>
                                 </TableHeader>
                                 <TableBody>
-                                    {isLoading ? (
+                                    {isLoading || !users ? (
                                         <TableRow>
                                             <TableCell colSpan={5} className="h-24 text-center">
                                                 <Loader2 className="mx-auto h-8 w-8 animate-spin text-primary" />
