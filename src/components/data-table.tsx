@@ -66,7 +66,7 @@ export function DataTable({ data, columns, sort, setSort, onRowClick, activeProj
     <div className={cn("animated-border shadow-xl", maxHeightClass)}>
       <div className={cn("rounded-md border bg-card overflow-y-auto relative h-full")}>
         <Table>
-          <TableHeader className="sticky top-0 z-10 bg-primary/20 backdrop-blur-sm">
+          <TableHeader className="sticky top-0 z-10 bg-primary/40 backdrop-blur-sm">
             <TableRow>
               {columns.map((column) => (
                 <TableHead key={column.key} className="text-primary-foreground/90">
