@@ -134,7 +134,7 @@ export default function Dashboard({
             <UserManagementTable users={allUsers} />
           ) : isTaskView ? (
              <div className="flex flex-col h-full space-y-4">
-                <div className="flex-shrink-0 h-[calc(50%-0.5rem)]">
+                <div className="flex-shrink-0" style={{ height: 'calc(60% - 0.5rem)' }}>
                     <ProjectForm 
                         project={activeProject} 
                         onFormSubmit={onProjectUpdate}
@@ -142,7 +142,7 @@ export default function Dashboard({
                         role={activeRole}
                     />
                 </div>
-                <div className="flex-grow flex-shrink min-h-0 h-[calc(50%-0.5rem)] overflow-y-auto">
+                <div className="flex-grow flex-shrink min-h-0" style={{ height: 'calc(40% - 0.5rem)' }}>
                     <DataTable 
                         data={filteredProjects}
                         columns={columns}
