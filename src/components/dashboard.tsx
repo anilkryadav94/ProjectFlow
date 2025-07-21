@@ -32,11 +32,17 @@ export default function Dashboard({
   
   React.useEffect(() => {
     if (user?.roles?.length > 0) {
-      for (const role of roleHierarchy) {
-          if (user.roles.includes(role)) {
-              setActiveRole(role);
-              break;
-          }
+      // If user is an admin and has other roles, default to Manager view.
+      if (user.roles.includes('Admin') && user.roles.includes('Manager')) {
+          setActiveRole('Manager');
+      } else {
+        // Otherwise, pick the highest role in the hierarchy.
+        for (const role of roleHierarchy) {
+            if (user.roles.includes(role)) {
+                setActiveRole(role);
+                break;
+            }
+        }
       }
     }
   }, [user.roles]);
@@ -46,7 +52,7 @@ export default function Dashboard({
 
     if (existingProjectIndex > -1) {
         const newProjects = [...projects];
-        newProjects[existingProjectIndex] = updatedProject;
+        newProjects[existingProject-index] = updatedProject;
         setProjects(newProjects);
     } else {
         setProjects(prev => [updatedProject, ...prev]);
