@@ -133,7 +133,7 @@ export default function Dashboard({
             <UserManagementTable users={allUsers} />
           ) : isTaskView ? (
              <div className="flex flex-col h-full gap-4">
-                <div className="flex-grow h-[80%] pr-4">
+                <div className="flex-grow h-[70%] pr-4">
                     <ScrollArea className="h-full">
                         <ProjectForm 
                             project={activeProject} 
