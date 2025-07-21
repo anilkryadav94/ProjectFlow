@@ -1,0 +1,83 @@
+"use client"
+
+import * as React from "react"
+import { ArrowDown, ArrowUp } from "lucide-react"
+import type { Project } from "@/lib/data"
+import {
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow,
+} from "@/components/ui/table"
+import { DataTableRowActions } from "./data-table-row-actions"
+
+interface DataTableProps {
+  data: Project[];
+  columns: {
+    key: keyof Project | 'actions';
+    header: string;
+    render?: (project: Project, onProjectUpdate: (project: Project) => void) => React.ReactNode;
+  }[];
+  sort: { key: keyof Project; direction: 'asc' | 'desc' } | null;
+  setSort: (sort: { key: keyof Project; direction: 'asc' | 'desc' } | null) => void;
+  onProjectUpdate: (project: Project) => void;
+}
+
+export function DataTable({ data, columns, sort, setSort, onProjectUpdate }: DataTableProps) {
+  const handleSort = (key: keyof Project) => {
+    if (sort && sort.key === key) {
+      setSort({ key, direction: sort.direction === 'asc' ? 'desc' : 'asc' });
+    } else {
+      setSort({ key, direction: 'asc' });
+    }
+  };
+
+  return (
+    <div className="rounded-md border bg-card">
+      <Table>
+        <TableHeader>
+          <TableRow>
+            {columns.map((column) => (
+              <TableHead key={column.key}>
+                {column.key !== 'actions' ? (
+                  <div
+                    className="flex items-center gap-2 cursor-pointer"
+                    onClick={() => handleSort(column.key as keyof Project)}
+                  >
+                    {column.header}
+                    {sort?.key === column.key && (
+                      sort.direction === 'asc' ? <ArrowUp className="h-4 w-4" /> : <ArrowDown className="h-4 w-4" />
+                    )}
+                  </div>
+                ) : (
+                  column.header
+                )}
+              </TableHead>
+            ))}
+          </TableRow>
+        </TableHeader>
+        <TableBody>
+          {data.length ? (
+            data.map((row) => (
+              <TableRow key={row.id}>
+                {columns.map((column) => (
+                  <TableCell key={column.key}>
+                    {column.render ? column.render(row, onProjectUpdate) : (row[column.key as keyof Project] ?? 'N/A')}
+                  </TableCell>
+                ))}
+              </TableRow>
+            ))
+          ) : (
+            <TableRow>
+              <TableCell colSpan={columns.length} className="h-24 text-center">
+                No results found.
+              </TableCell>
+            </TableRow>
+          )}
+        </TableBody>
+      </Table>
+    </div>
+  )
+}
