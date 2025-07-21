@@ -141,8 +141,29 @@ export function UserManagementTable({ users: initialUsers }: UserManagementTable
         <>
             <Card className="shadow-md">
                 <CardHeader>
-                    <CardTitle>User Management</CardTitle>
-                    <CardDescription>Manage user details, roles, and permissions for the application.</CardDescription>
+                    <div className="flex items-center justify-between">
+                        <div>
+                            <CardTitle>User Management</CardTitle>
+                            <CardDescription>Manage user details, roles, and permissions for the application.</CardDescription>
+                        </div>
+                         <div className="flex gap-2">
+                            <input
+                                type="file"
+                                ref={fileInputRef}
+                                onChange={handleFileUpload}
+                                className="hidden"
+                                accept=".csv"
+                            />
+                            <Button variant="outline" onClick={() => fileInputRef.current?.click()}>
+                                <Upload className="mr-2 h-4 w-4" />
+                                Bulk Upload
+                            </Button>
+                            <Button onClick={() => setIsAddUserDialogOpen(true)}>
+                                <PlusCircle className="mr-2 h-4 w-4" />
+                                Add User
+                            </Button>
+                        </div>
+                    </div>
                 </CardHeader>
                 <CardContent>
                     <div className="rounded-md border overflow-y-auto max-h-[calc(100vh-350px)]">
