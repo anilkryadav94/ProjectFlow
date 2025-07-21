@@ -93,7 +93,7 @@ export function Header({
   };
 
   return (
-    <div className="flex flex-col gap-2 bg-primary text-primary-foreground p-2 px-4 shadow-md rounded-lg">
+    <div className="flex flex-col gap-2 bg-primary text-primary-foreground p-2 px-4 shadow-md">
       <div className="flex items-center justify-between">
         <div className="flex items-center gap-2">
           <Workflow className="h-6 w-6" />
