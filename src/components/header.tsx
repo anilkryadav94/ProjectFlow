@@ -111,7 +111,7 @@ export function Header({
   }, [user.roles]);
 
   const dashboardName = getDashboardName();
-  const dashboardLink = activeRole ? `/?role=${activeRole}` : '/';
+  const dashboardLink = `/?role=${activeRole}`;
 
   return (
     <header className="flex items-center justify-between bg-primary text-primary-foreground p-2 px-4 shadow-md h-16 shrink-0 gap-4">
@@ -143,8 +143,8 @@ export function Header({
             )}
             
             {setSearch && setSearchColumn && (
-              <div className="flex w-full max-w-lg items-center space-x-2">
-                <div className="flex items-center space-x-0 w-1/2">
+              <div className="flex items-center space-x-2">
+                <div className="flex items-center space-x-0">
                     <Select value={searchColumn} onValueChange={(v) => setSearchColumn(v as SearchableColumn)}>
                     <SelectTrigger className="w-[180px] rounded-r-none focus:ring-0 text-foreground h-9">
                         <SelectValue placeholder="Select column" />
@@ -160,18 +160,18 @@ export function Header({
                     </SelectContent>
                     </Select>
                     <Input
-                    type="text"
-                    placeholder="Quick search..."
-                    value={search}
-                    onChange={(e) => setSearch(e.target.value)}
-                    className="rounded-l-none focus-visible:ring-0 h-9"
+                        type="text"
+                        placeholder="Quick search..."
+                        value={search}
+                        onChange={(e) => setSearch(e.target.value)}
+                        className="rounded-l-none focus-visible:ring-0 h-9 w-48"
                     />
                 </div>
                 
                 {!isManagerOrAdmin && setClientNameFilter && setProcessFilter && (
                   <>
                     <Select value={clientNameFilter} onValueChange={setClientNameFilter}>
-                      <SelectTrigger className="w-1/4 text-foreground h-9">
+                      <SelectTrigger className="w-[150px] text-foreground h-9">
                         <SelectValue placeholder="Filter by Client" />
                       </SelectTrigger>
                       <SelectContent>
@@ -183,7 +183,7 @@ export function Header({
                     </Select>
 
                     <Select value={processFilter} onValueChange={setProcessFilter}>
-                      <SelectTrigger className="w-1/4 text-foreground h-9">
+                      <SelectTrigger className="w-[150px] text-foreground h-9">
                         <SelectValue placeholder="Filter by Process" />
                       </SelectTrigger>
                       <SelectContent>
@@ -215,7 +215,7 @@ export function Header({
                     <DropdownMenuLabel>{user.name}</DropdownMenuLabel>
                     <DropdownMenuLabel className="text-xs font-normal text-muted-foreground">{user.email}</DropdownMenuLabel>
                     
-                    {sortedUserRoles.length > 1 && (
+                    {sortedUserRoles.length > 1 && setActiveRole && (
                         <>
                             <DropdownMenuSeparator />
                             <DropdownMenuLabel>Switch Role</DropdownMenuLabel>
