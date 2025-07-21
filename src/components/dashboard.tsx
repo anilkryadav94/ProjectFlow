@@ -115,7 +115,7 @@ export default function Dashboard({
 
 
   return (
-    <div className="flex flex-col h-screen p-4 md:p-8 pt-0">
+    <div className="flex flex-col h-screen px-4 md:px-8 py-2">
         <Header 
           search={search}
           setSearch={setSearch}
