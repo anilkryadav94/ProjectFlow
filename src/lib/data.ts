@@ -8,6 +8,7 @@ export type Project = {
   applicationNumber: string;
   patentNumber: string;
   refNumber: string;
+  from: string;
   subject: string;
   clientName: string;
   process: ProcessType;
@@ -36,6 +37,7 @@ export const projects: Project[] = [
     applicationNumber: 'US16/123,456',
     patentNumber: '10,123,456',
     refNumber: 'REF001',
+    from: 'client.a@example.com',
     subject: 'Invention Disclosure - AI in Healthcare',
     clientName: 'Client A',
     process: 'Patent',
@@ -54,6 +56,7 @@ export const projects: Project[] = [
     applicationNumber: 'US16/234,567',
     patentNumber: '10,234,567',
     refNumber: 'REF002',
+    from: 'client.b@example.com',
     subject: 'New Patent Application Filing',
     clientName: 'Client B',
     process: 'Patent',
@@ -72,6 +75,7 @@ export const projects: Project[] = [
     applicationNumber: '',
     patentNumber: '',
     refNumber: 'REF003',
+    from: 'client.c@example.com',
     subject: 'Follow-up on Application XYZ',
     clientName: 'Client C',
     process: 'TM',
@@ -90,6 +94,7 @@ export const projects: Project[] = [
     applicationNumber: '',
     patentNumber: '',
     refNumber: 'REF004',
+    from: 'client.a@example.com',
     subject: 'Urgent: Client Request',
     clientName: 'Client A',
     process: 'Project',
@@ -108,6 +113,7 @@ export const projects: Project[] = [
     applicationNumber: 'US17/567,890',
     patentNumber: '10,567,890',
     refNumber: 'REF005',
+    from: 'client.b@example.com',
     subject: 'Biotech Patent Documents',
     clientName: 'Client B',
     process: 'IDS',
@@ -126,6 +132,7 @@ export const projects: Project[] = [
     applicationNumber: '',
     patentNumber: '',
     refNumber: 'REF006',
+    from: 'client.c@example.com',
     subject: 'Query from Patent Office',
     clientName: 'Client C',
     process: 'Patent',
@@ -144,6 +151,7 @@ export const projects: Project[] = [
     applicationNumber: '',
     patentNumber: '',
     refNumber: 'REF007',
+    from: 'client.a@example.com',
     subject: 'New Submission for Review',
     clientName: 'Client A',
     process: 'Patent',
