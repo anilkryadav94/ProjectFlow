@@ -28,9 +28,10 @@ interface DataTableProps {
   onRowClick?: (project: Project) => void;
   activeProjectId?: string;
   projectsToDownload: Project[];
+  isRowClickable?: boolean;
 }
 
-export function DataTable({ data, columns, sort, setSort, onRowClick, activeProjectId, projectsToDownload }: DataTableProps) {
+export function DataTable({ data, columns, sort, setSort, onRowClick, activeProjectId, projectsToDownload, isRowClickable }: DataTableProps) {
   const handleSort = (key: keyof Project) => {
     if (sort && sort.key === key) {
       setSort({ key, direction: sort.direction === 'asc' ? 'desc' : 'asc' });
@@ -88,6 +89,7 @@ export function DataTable({ data, columns, sort, setSort, onRowClick, activeProj
                 <TableRow 
                   key={row.id}
                   onClick={() => onRowClick?.(row)}
+                  className={cn(isRowClickable && "cursor-pointer")}
                   data-state={activeProjectId === row.id ? 'selected' : undefined}
                 >
                   {columns.map((column) => (

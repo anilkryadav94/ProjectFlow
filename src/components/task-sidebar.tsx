@@ -4,7 +4,7 @@
 import * as React from 'react';
 import { useRouter } from 'next/navigation';
 import type { DateRange } from 'react-day-picker';
-import { LogOut, Search, Workflow } from 'lucide-react';
+import { LogOut, Search, Workflow, ChevronLeft, RotateCcw } from 'lucide-react';
 
 import type { Role, User, ProcessType, ProjectStatus } from '@/lib/data';
 import { logout } from '@/lib/auth';
@@ -13,8 +13,6 @@ import {
   Sidebar,
   SidebarContent,
   SidebarHeader,
-  SidebarMenu,
-  SidebarMenuItem,
   SidebarFooter,
   SidebarSeparator,
 } from "@/components/ui/sidebar";
@@ -27,9 +25,10 @@ import { ThemeToggle } from './theme-toggle';
 import { Avatar, AvatarFallback, AvatarImage } from './ui/avatar';
 
 
-interface DashboardSidebarProps {
+interface TaskSidebarProps {
   user: User;
   activeRole: Role;
+  onBack: () => void;
   search: string;
   setSearch: (search: string) => void;
   clientNameFilter: string;
@@ -45,11 +44,13 @@ interface DashboardSidebarProps {
   clientNames: string[];
   processes: ProcessType[];
   projectStatuses: ProjectStatus[];
+  onResetFilters: () => void;
 }
 
-export function DashboardSidebar({
+export function TaskSidebar({
   user,
   activeRole,
+  onBack,
   search,
   setSearch,
   clientNameFilter,
@@ -64,8 +65,9 @@ export function DashboardSidebar({
   setAllocationDateFilter,
   clientNames,
   processes,
-  projectStatuses
-}: DashboardSidebarProps) {
+  projectStatuses,
+  onResetFilters
+}: TaskSidebarProps) {
   const router = useRouter();
 
   const handleLogout = async () => {
@@ -76,11 +78,11 @@ export function DashboardSidebar({
   const getDashboardName = () => {
     switch (activeRole) {
       case 'Processor':
-        return 'Processor Dashboard';
+        return 'Processor View';
       case 'QA':
-        return 'QA Dashboard';
+        return 'QA View';
       default:
-        return 'Dashboard';
+        return 'Task View';
     }
   };
 
@@ -96,7 +98,21 @@ export function DashboardSidebar({
         </div>
       </SidebarHeader>
       <SidebarContent>
+        <div className="p-2 space-y-2">
+            <Button variant="ghost" onClick={onBack} className="justify-start w-full">
+                <ChevronLeft className="mr-2 h-4 w-4"/>
+                Back to Dashboard
+            </Button>
+            <SidebarSeparator/>
+        </div>
         <div className="p-2 space-y-4">
+            <div className="flex items-center justify-between">
+                <Label className="text-sm">Filters</Label>
+                <Button variant="ghost" size="sm" onClick={onResetFilters}>
+                    <RotateCcw className="mr-2 h-3 w-3" />
+                    Reset
+                </Button>
+            </div>
             <div className="relative">
                 <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground/80" />
                 <Input 

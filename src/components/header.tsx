@@ -28,21 +28,12 @@ interface HeaderProps {
     user: User;
     activeRole: Role;
     setActiveRole: (role: Role) => void;
-    search: string;
-    setSearch: (search: string) => void;
-    clientNameFilter: string;
-    setClientNameFilter: (client: string) => void;
-    processFilter: ProcessType | 'all';
-    setProcessFilter: (process: ProcessType | 'all') => void;
 }
 
 export function Header({ 
   user, 
   activeRole,
   setActiveRole,
-  search, setSearch, 
-  clientNameFilter, setClientNameFilter, 
-  processFilter, setProcessFilter
 }: HeaderProps) {
   const router = useRouter();
 
@@ -88,42 +79,6 @@ export function Header({
         </div>
         
         <div className="flex items-center space-x-2">
-            {(activeRole === 'Manager') && (
-              <div className="flex items-center space-x-2">
-                  <div className="relative">
-                      <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground/80" />
-                      <Input 
-                          placeholder="Quick search..."
-                          className="pl-9 h-9 w-40 bg-primary-foreground/10 placeholder:text-primary-foreground/80 border-primary-foreground/40 focus:bg-primary-foreground/20 focus:border-primary-foreground/80 text-xs"
-                          value={search}
-                          onChange={(e) => setSearch(e.target.value)}
-                      />
-                  </div>
-                  <Select value={clientNameFilter} onValueChange={setClientNameFilter}>
-                      <SelectTrigger className="w-[130px] h-9 text-foreground text-xs">
-                          <SelectValue placeholder="Filter by Client" />
-                      </SelectTrigger>
-                      <SelectContent>
-                          <SelectItem value="all">All Clients</SelectItem>
-                          {clientNames.map(name => (
-                              <SelectItem key={name} value={name}>{name}</SelectItem>
-                          ))}
-                      </SelectContent>
-                  </Select>
-                  <Select value={processFilter} onValueChange={(value) => setProcessFilter(value as ProcessType | 'all')}>
-                      <SelectTrigger className="w-[130px] h-9 text-foreground text-xs">
-                          <SelectValue placeholder="Filter by Process" />
-                      </SelectTrigger>
-                      <SelectContent>
-                          <SelectItem value="all">All Processes</SelectItem>
-                          {processes.map(p => (
-                              <SelectItem key={p} value={p}>{p}</SelectItem>
-                          ))}
-                      </SelectContent>
-                  </Select>
-              </div>
-            )}
-            
             <DropdownMenu>
                 <DropdownMenuTrigger asChild>
                     <Button variant="outline" className="w-auto h-9 text-foreground text-xs px-2">

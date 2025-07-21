@@ -9,17 +9,12 @@ import { Header } from '@/components/header';
 import { ProjectForm } from './project-form';
 import { UserManagementTable } from './user-management-table';
 import { useToast } from "@/hooks/use-toast";
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from './ui/dialog';
-import { Button } from './ui/button';
-import { PlusCircle } from 'lucide-react';
 import type { DateRange } from 'react-day-picker';
-import { addDays } from 'date-fns';
-import { DashboardSidebar } from './dashboard-sidebar';
+import { TaskSidebar } from './task-sidebar';
 import {
-  Sidebar,
-  SidebarContent,
-  SidebarInset,
   SidebarProvider,
+  Sidebar,
+  SidebarInset
 } from "@/components/ui/sidebar";
 
 interface DashboardProps {
@@ -38,9 +33,10 @@ export default function Dashboard({
   const [clientNameFilter, setClientNameFilter] = React.useState<string>('all');
   const [processFilter, setProcessFilter] = React.useState<ProcessType | 'all'>('all');
   const [statusFilter, setStatusFilter] = React.useState<ProjectStatus | 'all'>('all');
-  const [emailDateFilter, setEmailDateFilter] = React.useState<DateRange | undefined>({ from: addDays(new Date(), -90), to: new Date() });
+  const [emailDateFilter, setEmailDateFilter] = React.useState<DateRange | undefined>();
   const [allocationDateFilter, setAllocationDateFilter] = React.useState<DateRange | undefined>();
-  const [isNewProjectDialogOpen, setIsNewProjectDialogOpen] = React.useState(false);
+  const [selectedProject, setSelectedProject] = React.useState<Project | null>(null);
+
   const { toast } = useToast();
   
   React.useEffect(() => {
@@ -68,25 +64,48 @@ export default function Dashboard({
     } else {
         setProjects(prev => [updatedProject, ...prev]);
     }
+
+    // Also update the selected project if it's the one being edited
+    if (selectedProject?.id === updatedProject.id) {
+        setSelectedProject(updatedProject);
+    }
     
     toast({
         title: "Project Saved",
         description: `Project ${updatedProject.refNumber} has been updated.`,
     });
-    setIsNewProjectDialogOpen(false);
   };
+  
+  const handleRowClick = (project: Project) => {
+    if (activeRole === 'Processor' || activeRole === 'QA') {
+        setSelectedProject(project);
+    }
+  };
+
+  const handleBackToDashboard = () => {
+    setSelectedProject(null);
+  }
+  
+  const resetFilters = () => {
+    setSearch('');
+    setClientNameFilter('all');
+    setProcessFilter('all');
+    setStatusFilter('all');
+    setEmailDateFilter(undefined);
+    setAllocationDateFilter(undefined);
+  }
 
   const filteredProjects = React.useMemo(() => {
     let userProjects = [...projects];
 
-    if (activeRole === 'Manager' || activeRole === 'Admin') {
-        // Managers and Admins see all projects initially
-    } else if (activeRole === 'Processor') {
+    // Role-based filtering
+    if (activeRole === 'Processor') {
       userProjects = userProjects.filter(p => p.processor === user.name);
     } else if (activeRole === 'QA') {
       userProjects = userProjects.filter(p => p.qa === user.name);
     }
     
+    // Sidebar/Header filter application
     if (search) {
       userProjects = userProjects.filter(project =>
         (project.refNumber || '').toLowerCase().includes(search.toLowerCase()) ||
@@ -147,95 +166,68 @@ export default function Dashboard({
     return null;
   }
 
-  const isAdminView = activeRole === 'Admin';
-  const isManagerView = activeRole === 'Manager';
-  const isQATorProcessorView = activeRole === 'QA' || activeRole === 'Processor';
+  const isQATorProcessor = activeRole === 'QA' || activeRole === 'Processor';
 
-  const renderManagerOrAdminView = () => (
-     <div className="flex flex-col h-screen bg-background w-full">
-        <Header 
+  // If QA/Processor has selected a task, show the task view.
+  if (isQATorProcessor && selectedProject) {
+    return (
+      <SidebarProvider>
+        <TaskSidebar
             user={user}
             activeRole={activeRole}
-            setActiveRole={setActiveRole}
+            onBack={handleBackToDashboard}
             search={search}
             setSearch={setSearch}
             clientNameFilter={clientNameFilter}
             setClientNameFilter={setClientNameFilter}
             processFilter={processFilter}
             setProcessFilter={setProcessFilter}
+            statusFilter={statusFilter}
+            setStatusFilter={setStatusFilter}
+            emailDateFilter={emailDateFilter}
+            setEmailDateFilter={setEmailDateFilter}
+            allocationDateFilter={allocationDateFilter}
+            setAllocationDateFilter={setAllocationDateFilter}
+            clientNames={clientNames}
+            processes={processes}
+            projectStatuses={projectStatuses}
+            onResetFilters={resetFilters}
+        />
+        <SidebarInset className="p-4 flex-1">
+             <ProjectForm 
+                project={selectedProject}
+                onFormSubmit={handleProjectUpdate}
+                role={activeRole}
+             />
+        </SidebarInset>
+      </SidebarProvider>
+    )
+  }
+
+  // Default view for all roles (or when no task is selected for QA/Processor).
+  return (
+     <div className="flex flex-col h-screen bg-background w-full">
+        <Header 
+            user={user}
+            activeRole={activeRole}
+            setActiveRole={setActiveRole}
         />
         <div className="flex flex-col flex-grow overflow-hidden p-4 gap-4">
-          {isAdminView ? (
+          {activeRole === 'Admin' ? (
             <UserManagementTable sessionUser={user} />
           ) : (
-            <>
-              {isManagerView && (
-                 <div className="flex justify-end">
-                    <Dialog open={isNewProjectDialogOpen} onOpenChange={setIsNewProjectDialogOpen}>
-                      <DialogTrigger asChild>
-                        <Button>
-                          <PlusCircle className="mr-2 h-4 w-4" />
-                          New Project
-                        </Button>
-                      </DialogTrigger>
-                      <DialogContent className="sm:max-w-4xl">
-                        <DialogHeader>
-                          <DialogTitle>Create New Project</DialogTitle>
-                        </DialogHeader>
-                        <ProjectForm 
-                          onFormSubmit={handleProjectUpdate}
-                          role={activeRole}
-                          setOpen={setIsNewProjectDialogOpen}
-                        />
-                      </DialogContent>
-                    </Dialog>
-                 </div>
-              )}
-               <DataTable 
-                  data={filteredProjects}
-                  columns={columns}
-                  sort={sort}
-                  setSort={setSort}
-                  projectsToDownload={filteredProjects}
-                />
-            </>
+            <DataTable 
+                data={filteredProjects}
+                columns={columns}
+                sort={sort}
+                setSort={setSort}
+                onRowClick={handleRowClick}
+                activeProjectId={selectedProject?.id}
+                projectsToDownload={filteredProjects}
+                isRowClickable={isQATorProcessor}
+            />
           )}
         </div>
     </div>
   );
-
-  const renderQATorProcessorView = () => (
-     <SidebarProvider>
-      <DashboardSidebar 
-        user={user}
-        activeRole={activeRole}
-        search={search}
-        setSearch={setSearch}
-        clientNameFilter={clientNameFilter}
-        setClientNameFilter={setClientNameFilter}
-        processFilter={processFilter}
-        setProcessFilter={setProcessFilter}
-        statusFilter={statusFilter}
-        setStatusFilter={setStatusFilter}
-        emailDateFilter={emailDateFilter}
-        setEmailDateFilter={setEmailDateFilter}
-        allocationDateFilter={allocationDateFilter}
-        setAllocationDateFilter={setAllocationDateFilter}
-        clientNames={clientNames}
-        processes={processes}
-        projectStatuses={projectStatuses}
-      />
-      <SidebarInset className="p-4 flex-1">
-         <DataTable 
-            data={filteredProjects}
-            columns={columns}
-            sort={sort}
-            setSort={setSort}
-            projectsToDownload={filteredProjects}
-          />
-      </SidebarInset>
-     </SidebarProvider>
-  )
-
-  return isQATorProcessorView ? renderQATorProcessorView() : renderManagerOrAdminView();
 }
