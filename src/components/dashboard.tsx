@@ -10,19 +10,10 @@ import { ProjectForm } from './project-form';
 import { ScrollArea } from './ui/scroll-area';
 import { UserManagementTable } from './user-management-table';
 import { useToast } from "@/hooks/use-toast";
-import { collection, onSnapshot, query, orderBy, Timestamp } from 'firebase/firestore';
-import { db } from '@/lib/firebase';
 
 interface DashboardProps {
   user: User;
   initialProjects: Project[];
-}
-
-function toISOString(date: Date | string | Timestamp | null | undefined): string | null {
-    if (!date) return null;
-    if (typeof date === 'string') return date;
-    if (date instanceof Timestamp) return date.toDate().toISOString().split('T')[0];
-    return date.toISOString().split('T')[0];
 }
 
 export default function Dashboard({ 
@@ -50,27 +41,6 @@ export default function Dashboard({
     }
   }, [user.roles]);
 
-  React.useEffect(() => {
-    // Set up real-time listener for projects
-    const q = query(collection(db, "projects"), orderBy("allocationDate", "desc"));
-    const unsubscribe = onSnapshot(q, (querySnapshot) => {
-        const updatedProjects = querySnapshot.docs.map(doc => {
-            const data = doc.data();
-            return {
-                id: doc.id,
-                ...data,
-                emailDate: toISOString(data.emailDate)!,
-                allocationDate: toISOString(data.allocationDate)!,
-                processingDate: toISOString(data.processingDate),
-                qaDate: toISOString(data.qaDate),
-            } as Project;
-        });
-        setProjects(updatedProjects);
-    });
-
-    return () => unsubscribe();
-  }, []);
-
   const handleProjectUpdate = (updatedProject: Project) => {
     const existingProjectIndex = projects.findIndex(p => p.id === updatedProject.id);
 
@@ -80,6 +50,10 @@ export default function Dashboard({
         setProjects(newProjects);
     } else {
         setProjects(prev => [updatedProject, ...prev]);
+    }
+    
+    if (activeProject?.id === updatedProject.id) {
+        setActiveProject(updatedProject);
     }
     
     toast({

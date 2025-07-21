@@ -2,10 +2,8 @@
 "use server";
 
 import { z } from "zod";
-import { db } from "@/lib/firebase";
-import { collection, doc, addDoc, updateDoc, getDoc, serverTimestamp, Timestamp } from "firebase/firestore";
 import type { Project } from "@/lib/data";
-
+import { projects } from "@/lib/data";
 
 const formSchema = z.object({
   id: z.string().optional(),
@@ -37,20 +35,13 @@ function toISOString(date: Date | string | null | undefined): string | null {
 export async function saveProject(data: ProjectFormValues): Promise<Project> {
     const validatedData = formSchema.parse(data);
 
-    let projectToSave;
+    let projectToSave: Project;
     let existingProjectData: Partial<Project> = {};
 
     if (validatedData.id) {
-        const projectDoc = await getDoc(doc(db, "projects", validatedData.id));
-        if (projectDoc.exists()) {
-            const fetchedData = projectDoc.data();
-            existingProjectData = {
-                ...fetchedData,
-                emailDate: fetchedData.emailDate ? toISOString(new Timestamp(fetchedData.emailDate.seconds, fetchedData.emailDate.nanoseconds).toDate()) : new Date().toISOString().split('T')[0],
-                allocationDate: fetchedData.allocationDate ? toISOString(new Timestamp(fetchedData.allocationDate.seconds, fetchedData.allocationDate.nanoseconds).toDate()) : new Date().toISOString().split('T')[0],
-                processingDate: fetchedData.processingDate ? toISOString(new Timestamp(fetchedData.processingDate.seconds, fetchedData.processingDate.nanoseconds).toDate()) : null,
-                qaDate: fetchedData.qaDate ? toISOString(new Timestamp(fetchedData.qaDate.seconds, fetchedData.qaDate.nanoseconds).toDate()) : null,
-            };
+        const project = projects.find(p => p.id === validatedData.id);
+        if (project) {
+            existingProjectData = project;
         }
     }
 
@@ -73,10 +64,10 @@ export async function saveProject(data: ProjectFormValues): Promise<Project> {
         subject: validatedData.subject || '',
         actionTaken: validatedData.actionTaken || '',
         documentName: validatedData.documentName || '',
-        emailDate: Timestamp.fromDate(validatedData.emailDate),
-        allocationDate: Timestamp.fromDate(validatedData.allocationDate),
-        processingDate: processingDate ? Timestamp.fromDate(new Date(processingDate)) : null,
-        qaDate: qaDate ? Timestamp.fromDate(new Date(qaDate)) : null,
+        emailDate: toISOString(validatedData.emailDate)!,
+        allocationDate: toISOString(validatedData.allocationDate)!,
+        processingDate: processingDate,
+        qaDate: qaDate,
         status,
     };
     
@@ -84,23 +75,23 @@ export async function saveProject(data: ProjectFormValues): Promise<Project> {
 
 
     if (validatedData.id) {
-        const projectRef = doc(db, "projects", validatedData.id);
-        await updateDoc(projectRef, commonData);
-        projectToSave = { ...commonData, id: validatedData.id };
+        const projectIndex = projects.findIndex(p => p.id === validatedData.id);
+        if (projectIndex !== -1) {
+            projects[projectIndex] = { ...projects[projectIndex], ...commonData };
+            projectToSave = projects[projectIndex];
+        } else {
+            // This case should ideally not happen if an ID is present
+            throw new Error("Project not found for update");
+        }
     } else {
-        const docRef = await addDoc(collection(db, "projects"), {
+        const newId = (Math.max(...projects.map(p => parseInt(p.id, 10))) + 1).toString();
+        projectToSave = {
             ...commonData,
-            createdAt: serverTimestamp()
-        });
-        projectToSave = { ...commonData, id: docRef.id };
+            from: "new.user@example.com", // Dummy from
+            id: newId,
+        };
+        projects.unshift(projectToSave);
     }
     
-    // Return a serializable Project object
-    return {
-        ...projectToSave,
-        emailDate: toISOString(validatedData.emailDate)!,
-        allocationDate: toISOString(validatedData.allocationDate)!,
-        processingDate: processingDate,
-        qaDate: qaDate,
-    };
+    return projectToSave;
 }
