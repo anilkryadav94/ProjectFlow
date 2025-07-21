@@ -19,8 +19,9 @@ export const columns = [
   {
     key: "refNumber" as const,
     header: "Ref Number",
-    render: (project: Project) => (
-        <span className="font-medium text-primary">
+    isClickable: false,
+    render: (project: Project, isClickable?: boolean) => (
+        <span className={cn("font-medium text-primary", isClickable && "hover:underline")}>
           {project.refNumber}
         </span>
     )
@@ -71,3 +72,5 @@ export const columns = [
     )
   },
 ];
+
+  

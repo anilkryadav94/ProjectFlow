@@ -16,6 +16,7 @@ import {
   Sidebar,
   SidebarInset
 } from "@/components/ui/sidebar";
+import { DataTableRowActions } from './data-table-row-actions';
 
 interface DashboardProps {
   user: User;
@@ -65,7 +66,6 @@ export default function Dashboard({
         setProjects(prev => [updatedProject, ...prev]);
     }
 
-    // Also update the selected project if it's the one being edited
     if (selectedProject?.id === updatedProject.id) {
         setSelectedProject(updatedProject);
     }
@@ -84,6 +84,7 @@ export default function Dashboard({
 
   const handleBackToDashboard = () => {
     setSelectedProject(null);
+    resetFilters();
   }
   
   const resetFilters = () => {
@@ -95,7 +96,8 @@ export default function Dashboard({
     setAllocationDateFilter(undefined);
   }
 
-  const filteredProjects = React.useMemo(() => {
+  // Projects for the main dashboard view
+  const dashboardProjects = React.useMemo(() => {
     let userProjects = [...projects];
 
     // Role-based filtering
@@ -104,8 +106,43 @@ export default function Dashboard({
     } else if (activeRole === 'QA') {
       userProjects = userProjects.filter(p => p.qa === user.name);
     }
+
+    if (sort) {
+      userProjects.sort((a, b) => {
+        const valA = a[sort.key];
+        const valB = b[sort.key];
+
+        if (valA === null) return 1;
+        if (valB === null) return -1;
+
+        if (valA < valB) {
+          return sort.direction === 'asc' ? -1 : 1;
+        }
+        if (valA > valB) {
+          return sort.direction === 'asc' ? 1 : -1;
+        }
+        return 0;
+      });
+    }
+
+    return userProjects;
+  }, [sort, projects, activeRole, user.name]);
+
+
+  // Effect to update the selected project when filters change in task view
+  React.useEffect(() => {
+    if (!selectedProject || (activeRole !== 'Processor' && activeRole !== 'QA')) {
+      return;
+    }
+
+    let userProjects = [...projects];
+
+    if (activeRole === 'Processor') {
+      userProjects = userProjects.filter(p => p.processor === user.name);
+    } else if (activeRole === 'QA') {
+      userProjects = userProjects.filter(p => p.qa === user.name);
+    }
     
-    // Sidebar/Header filter application
     if (search) {
       userProjects = userProjects.filter(project =>
         (project.refNumber || '').toLowerCase().includes(search.toLowerCase()) ||
@@ -140,27 +177,31 @@ export default function Dashboard({
     if (allocationDateFilter?.to) {
         userProjects = userProjects.filter(p => new Date(p.allocationDate) <= allocationDateFilter.to!);
     }
-
+    
     if (sort) {
       userProjects.sort((a, b) => {
         const valA = a[sort.key];
         const valB = b[sort.key];
-
-        if (valA === null) return 1;
-        if (valB === null) return -1;
-
-        if (valA < valB) {
-          return sort.direction === 'asc' ? -1 : 1;
-        }
-        if (valA > valB) {
-          return sort.direction === 'asc' ? 1 : -1;
-        }
+        if (valA === null) return 1; if (valB === null) return -1;
+        if (valA < valB) return sort.direction === 'asc' ? -1 : 1;
+        if (valA > valB) return sort.direction === 'asc' ? 1 : -1;
         return 0;
       });
     }
 
-    return userProjects;
-  }, [search, sort, projects, activeRole, user.name, clientNameFilter, processFilter, statusFilter, emailDateFilter, allocationDateFilter]);
+    // If there are results, set the first one as selected. 
+    // If not, keep the current one (or maybe clear it? For now, keep).
+    if (userProjects.length > 0) {
+      // Only update if the current selected project is no longer in the filtered list
+      if (!userProjects.find(p => p.id === selectedProject.id)) {
+        setSelectedProject(userProjects[0]);
+      }
+    } else {
+        // Handle case with no results, maybe show a message in the form area
+    }
+
+  }, [search, clientNameFilter, processFilter, statusFilter, emailDateFilter, allocationDateFilter, activeRole, user.name, projects, selectedProject, sort]);
+
 
   if (!activeRole) {
     return null;
@@ -168,7 +209,6 @@ export default function Dashboard({
 
   const isQATorProcessor = activeRole === 'QA' || activeRole === 'Processor';
 
-  // If QA/Processor has selected a task, show the task view.
   if (isQATorProcessor && selectedProject) {
     return (
       <SidebarProvider>
@@ -204,26 +244,31 @@ export default function Dashboard({
     )
   }
 
-  // Default view for all roles (or when no task is selected for QA/Processor).
   return (
      <div className="flex flex-col h-screen bg-background w-full">
         <Header 
             user={user}
             activeRole={activeRole}
             setActiveRole={setActiveRole}
+            onNewProject={() => {/* Logic for new project */}}
         />
         <div className="flex flex-col flex-grow overflow-hidden p-4 gap-4">
           {activeRole === 'Admin' ? (
             <UserManagementTable sessionUser={user} />
           ) : (
             <DataTable 
-                data={filteredProjects}
-                columns={columns}
+                data={dashboardProjects}
+                columns={columns.map(col => {
+                    if (col.key === 'refNumber') {
+                        return { ...col, isClickable: isQATorProcessor };
+                    }
+                    return col;
+                })}
                 sort={sort}
                 setSort={setSort}
-                onRowClick={handleRowClick}
+                onRowClick={isQATorProcessor ? handleRowClick : undefined}
                 activeProjectId={selectedProject?.id}
-                projectsToDownload={filteredProjects}
+                projectsToDownload={dashboardProjects}
                 isRowClickable={isQATorProcessor}
             />
           )}
@@ -231,3 +276,5 @@ export default function Dashboard({
     </div>
   );
 }
+
+  

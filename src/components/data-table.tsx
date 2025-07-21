@@ -21,7 +21,8 @@ interface DataTableProps {
   columns: {
     key: keyof Project | 'subject' | 'clientName' | 'process';
     header: string;
-    render?: (project: Project) => React.ReactNode;
+    render?: (project: Project, isClickable?: boolean) => React.ReactNode;
+    isClickable?: boolean;
   }[];
   sort: { key: keyof Project; direction: 'asc' | 'desc' } | null;
   setSort: (sort: { key: keyof Project; direction: 'asc' | 'desc' } | null) => void;
@@ -94,7 +95,7 @@ export function DataTable({ data, columns, sort, setSort, onRowClick, activeProj
                 >
                   {columns.map((column) => (
                     <TableCell key={column.key}>
-                      {column.render ? column.render(row) : (row[column.key as keyof Project] ?? 'N/A')}
+                      {column.render ? column.render(row, column.isClickable) : (row[column.key as keyof Project] ?? 'N/A')}
                     </TableCell>
                   ))}
                   <TableCell></TableCell>
@@ -113,3 +114,5 @@ export function DataTable({ data, columns, sort, setSort, onRowClick, activeProj
     </div>
   )
 }
+
+  
