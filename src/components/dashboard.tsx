@@ -284,6 +284,7 @@ function Dashboard({
                         rowSelection={rowSelection}
                         setRowSelection={setRowSelection}
                         isManagerOrAdmin={isManagerOrAdmin}
+                        totalCount={dashboardProjects.length}
                     >
                          {Object.keys(rowSelection).length > 0 && (
                             <div className="flex items-center gap-4 p-4 border-t bg-muted/50">
@@ -332,6 +333,7 @@ function Dashboard({
                     rowSelection={{}}
                     setRowSelection={() => {}}
                     isManagerOrAdmin={false}
+                    totalCount={dashboardProjects.length}
                 />
             )}
         </div>

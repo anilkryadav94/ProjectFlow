@@ -28,9 +28,10 @@ interface DataTableProps {
   setRowSelection: (selection: Record<string, boolean>) => void;
   isManagerOrAdmin: boolean;
   children?: React.ReactNode;
+  totalCount: number;
 }
 
-export function DataTable({ data, columns, sort, setSort, rowSelection, setRowSelection, isManagerOrAdmin, children }: DataTableProps) {
+export function DataTable({ data, columns, sort, setSort, rowSelection, setRowSelection, isManagerOrAdmin, children, totalCount }: DataTableProps) {
   const handleSort = (key: string) => {
     if (key === 'select') return;
     const projectKey = key as keyof Project;
@@ -43,7 +44,7 @@ export function DataTable({ data, columns, sort, setSort, rowSelection, setRowSe
 
   return (
     <div className={cn("animated-border shadow-xl h-full flex flex-col")}>
-      <div className={cn("rounded-md border bg-card overflow-y-auto relative flex-grow")}>
+      <div className={cn("rounded-t-md border bg-card overflow-y-auto relative flex-grow")}>
         <Table>
           <TableHeader className="sticky top-0 z-10 bg-primary backdrop-blur-sm">
             <TableRow>
@@ -84,9 +85,18 @@ export function DataTable({ data, columns, sort, setSort, rowSelection, setRowSe
               </TableRow>
             )}
           </TableBody>
+          {data.length > 0 && (
+            <TableFooter>
+                <TableRow>
+                    <TableCell colSpan={columns.length} className="text-right font-medium text-muted-foreground">
+                        Total Projects: {totalCount}
+                    </TableCell>
+                </TableRow>
+            </TableFooter>
+          )}
         </Table>
       </div>
-       {children && <div className="flex-shrink-0">{children}</div>}
+       {children && <div className="flex-shrink-0 rounded-b-md border border-t-0">{children}</div>}
     </div>
   )
 }
