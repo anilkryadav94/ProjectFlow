@@ -3,7 +3,7 @@
 
 import * as React from "react"
 import { ChevronsUpDown, LogOut, PlusCircle, Search, UserCircle, Workflow, Settings } from "lucide-react"
-import type { Project, ProcessType, User } from "@/lib/data"
+import type { Project, ProcessType, User, Role } from "@/lib/data"
 import { clientNames, processes } from "@/lib/data"
 import { Button } from "@/components/ui/button"
 import {
@@ -18,6 +18,8 @@ import { Input } from "@/components/ui/input"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "./ui/select"
 import { logout } from "@/lib/auth"
 import { useRouter } from "next/navigation"
+
+const roleHierarchy: Role[] = ['Admin', 'Manager', 'QA', 'Processor'];
 
 interface HeaderProps {
     search: string;
@@ -44,8 +46,17 @@ export function Header({
     router.push('/login');
   };
 
+  const primaryRole = React.useMemo(() => {
+    for (const role of roleHierarchy) {
+      if (user.roles.includes(role)) {
+        return role;
+      }
+    }
+    return user.roles[0] || 'Processor'; // Fallback
+  }, [user.roles]);
+
   const getDashboardName = () => {
-    switch(user.role) {
+    switch(primaryRole) {
       case 'Processor':
         return 'Processor Dashboard';
       case 'QA':
@@ -76,7 +87,7 @@ export function Header({
                     </Button>
                 </DropdownMenuTrigger>
                 <DropdownMenuContent className="w-48">
-                    <DropdownMenuLabel>{user.role}</DropdownMenuLabel>
+                    <DropdownMenuLabel>{user.roles.join(', ')}</DropdownMenuLabel>
                     <DropdownMenuSeparator />
                     <DropdownMenuItem onSelect={handleLogout}>
                         <LogOut className="mr-2 h-4 w-4" />
@@ -90,7 +101,7 @@ export function Header({
          <h3 className="text-lg font-medium">{getDashboardName()}</h3>
         
         {/* Hide filters for Admin */}
-        {user.role !== 'Admin' && (
+        {primaryRole !== 'Admin' && (
           <div className="flex items-center space-x-2">
               <div className="relative">
                   <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />

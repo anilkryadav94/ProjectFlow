@@ -7,21 +7,21 @@ export type User = {
     email: string;
     password?: string; // Should be hashed in a real app
     name: string;
-    role: Role;
+    roles: Role[];
 };
 
 // In a real application, this would come from a database.
 export const users: User[] = [
-    { id: '1', email: 'admin@example.com', password: 'password', name: 'Admin User', role: 'Admin' },
-    { id: '2', email: 'manager@example.com', password: 'password', name: 'Manager User', role: 'Manager' },
-    { id: '3', email: 'alice@example.com', password: 'password', name: 'Alice', role: 'Processor' },
-    { id: '4', email: 'bob@example.com', password: 'password', name: 'Bob', role: 'Processor' },
-    { id: '5', email: 'charlie@example.com', password: 'password', name: 'Charlie', role: 'Processor' },
-    { id: '6', email: 'david@example.com', password: 'password', name: 'David', role: 'QA' },
-    { id: '7', email: 'eve@example.com', password: 'password', name: 'Eve', role: 'QA' },
-    { id: '8', email: 'anil@example.com', password: 'password', name: 'Anil', role: 'QA' },
-    { id: '9', email: 'ankit@example.com', password: 'password', name: 'Ankit', role: 'QA' },
-    { id: '10', email: 'rahul@example.com', password: 'password', name: 'Rahul', role: 'QA' },
+    { id: '1', email: 'admin@example.com', password: 'password', name: 'Admin User', roles: ['Admin'] },
+    { id: '2', email: 'manager@example.com', password: 'password', name: 'Manager User', roles: ['Manager'] },
+    { id: '3', email: 'alice@example.com', password: 'password', name: 'Alice', roles: ['Processor'] },
+    { id: '4', email: 'bob@example.com', password: 'password', name: 'Bob', roles: ['Processor', 'QA'] },
+    { id: '5', email: 'charlie@example.com', password: 'password', name: 'Charlie', roles: ['Processor'] },
+    { id: '6', email: 'david@example.com', password: 'password', name: 'David', roles: ['QA'] },
+    { id: '7', email: 'eve@example.com', password: 'password', name: 'Eve', roles: ['QA'] },
+    { id: '8', email: 'anil@example.com', password: 'password', name: 'Anil', roles: ['QA'] },
+    { id: '9', email: 'ankit@example.com', password: 'password', name: 'Ankit', roles: ['QA'] },
+    { id: '10', email: 'rahul@example.com', password: 'password', name: 'Rahul', roles: ['QA'] },
 ];
 
 

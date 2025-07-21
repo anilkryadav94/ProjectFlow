@@ -3,14 +3,22 @@
 
 import * as React from "react";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { 
+    DropdownMenu, 
+    DropdownMenuTrigger, 
+    DropdownMenuContent, 
+    DropdownMenuCheckboxItem,
+    DropdownMenuLabel,
+    DropdownMenuSeparator
+} from "@/components/ui/dropdown-menu";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { type User, roles, type Role } from "@/lib/data";
 import { useToast } from "@/hooks/use-toast";
 import { updateUser } from "@/lib/auth";
-import { Loader2 } from "lucide-react";
+import { ChevronsUpDown, Loader2 } from "lucide-react";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "./ui/card";
+import { Checkbox } from "./ui/checkbox";
 
 interface UserManagementTableProps {
     users: User[];
@@ -21,11 +29,25 @@ export function UserManagementTable({ users: initialUsers }: UserManagementTable
     const [isSubmitting, setIsSubmitting] = React.useState<Record<string, boolean>>({});
     const { toast } = useToast();
 
-    const handleInputChange = (userId: string, field: keyof User, value: string) => {
+    const handleInputChange = (userId: string, field: keyof User, value: any) => {
         setUsers(prevUsers => 
             prevUsers.map(u => u.id === userId ? { ...u, [field]: value } : u)
         );
     };
+
+    const handleRoleChange = (userId: string, role: Role, checked: boolean) => {
+         setUsers(prevUsers =>
+            prevUsers.map(user => {
+                if (user.id === userId) {
+                    const newRoles = checked
+                        ? [...user.roles, role]
+                        : user.roles.filter(r => r !== role);
+                    return { ...user, roles: newRoles };
+                }
+                return user;
+            })
+        );
+    }
 
     const handleUpdateUser = async (user: User) => {
         setIsSubmitting(prev => ({ ...prev, [user.id]: true }));
@@ -61,7 +83,7 @@ export function UserManagementTable({ users: initialUsers }: UserManagementTable
                                 <TableHead>Username</TableHead>
                                 <TableHead>Email</TableHead>
                                 <TableHead>Password</TableHead>
-                                <TableHead>Role</TableHead>
+                                <TableHead>Roles</TableHead>
                                 <TableHead className="w-[120px]">Actions</TableHead>
                             </TableRow>
                         </TableHeader>
@@ -91,20 +113,28 @@ export function UserManagementTable({ users: initialUsers }: UserManagementTable
                                         />
                                     </TableCell>
                                     <TableCell>
-                                        <Select
-                                            value={user.role}
-                                            onValueChange={(value) => handleInputChange(user.id, 'role', value as Role)}
-                                            disabled={isSubmitting[user.id]}
-                                        >
-                                            <SelectTrigger>
-                                                <SelectValue placeholder="Select a role" />
-                                            </SelectTrigger>
-                                            <SelectContent>
+                                        <DropdownMenu>
+                                            <DropdownMenuTrigger asChild>
+                                                <Button variant="outline" className="w-full justify-between" disabled={isSubmitting[user.id]}>
+                                                    <span className="truncate">{user.roles.join(', ') || 'Select roles'}</span>
+                                                    <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
+                                                </Button>
+                                            </DropdownMenuTrigger>
+                                            <DropdownMenuContent className="w-56">
+                                                <DropdownMenuLabel>Assign Roles</DropdownMenuLabel>
+                                                <DropdownMenuSeparator />
                                                 {roles.map((role) => (
-                                                    <SelectItem key={role} value={role}>{role}</SelectItem>
+                                                    <DropdownMenuCheckboxItem
+                                                        key={role}
+                                                        checked={user.roles.includes(role)}
+                                                        onCheckedChange={(checked) => handleRoleChange(user.id, role, !!checked)}
+                                                        onSelect={(e) => e.preventDefault()}
+                                                    >
+                                                        {role}
+                                                    </DropdownMenuCheckboxItem>
                                                 ))}
-                                            </SelectContent>
-                                        </Select>
+                                            </DropdownMenuContent>
+                                        </DropdownMenu>
                                     </TableCell>
                                     <TableCell>
                                         <Button 

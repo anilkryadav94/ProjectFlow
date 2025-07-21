@@ -43,7 +43,7 @@ export async function login(prevState: { error: string } | undefined, formData: 
   }
   
   const expires = new Date(Date.now() + 60 * 60 * 1000); // 1 hour
-  const sessionUser = { id: user.id, email: user.email, name: user.name, role: user.role };
+  const sessionUser = { id: user.id, email: user.email, name: user.name, roles: user.roles };
   const session = await encrypt({ user: sessionUser, expires });
 
   cookies().set('session', session, { expires, httpOnly: true });
@@ -78,7 +78,7 @@ export async function updateUser(updatedUser: User) {
         if (session && session.user.id === updatedUser.id) {
             const user = users[userIndex];
             const expires = new Date(Date.now() + 60 * 60 * 1000); // 1 hour
-            const sessionUser = { id: user.id, email: user.email, name: user.name, role: user.role };
+            const sessionUser = { id: user.id, email: user.email, name: user.name, roles: user.roles };
             const newSession = await encrypt({ user: sessionUser, expires });
             cookies().set('session', newSession, { expires, httpOnly: true });
         }
