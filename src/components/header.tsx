@@ -21,6 +21,7 @@ import { Input } from "@/components/ui/input"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "./ui/select"
 import { logout } from "@/lib/auth"
 import { useRouter } from "next/navigation"
+import { ThemeToggle } from "./theme-toggle";
 
 interface HeaderProps {
     search: string;
@@ -99,6 +100,7 @@ export function Header({
           <h2 className="text-2xl font-bold tracking-tight">ProjectFlow</h2>
         </div>
         <div className="flex items-center space-x-2">
+            <ThemeToggle />
             <DropdownMenu>
                 <DropdownMenuTrigger asChild>
                     <Button variant="outline" className="w-48 justify-between">
