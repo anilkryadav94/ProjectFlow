@@ -178,7 +178,7 @@ export function ProjectForm({ project, onFormSubmit, onCancel, role, setOpen }: 
         <form onSubmit={(e) => e.preventDefault()} className="h-full flex flex-col">
             <Card className="border-0 shadow-none flex flex-col flex-grow h-full">
               <CardHeader>
-                <CardTitle className="text-xl">{project ? `Task: ${project.refNumber}`: 'New Project'}</CardTitle>
+                <CardTitle className="text-lg">{project ? `Task: ${project.refNumber}`: 'New Project'}</CardTitle>
                 {project && <CardDescription>Subject: {project.subject}</CardDescription>}
               </CardHeader>
               <ScrollArea className="flex-grow">
