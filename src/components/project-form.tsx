@@ -134,10 +134,10 @@ export function ProjectForm({ project, onFormSubmit, role, setOpen }: ProjectFor
       onFormSubmit(result);
       if(setOpen) {
         setOpen(false);
-      } else {
-        router.push(`/?role=${role}`);
-        router.refresh();
       }
+      // The redirect is now handled in the server action for 'submit_for_qa'
+      // so no router.push is needed here for that case.
+      // We can add logic for other redirects if needed.
     } catch (error) {
       console.error("Failed to save project", error);
     } finally {

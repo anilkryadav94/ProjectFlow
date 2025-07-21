@@ -4,6 +4,7 @@
 import { z } from "zod";
 import type { Project } from "@/lib/data";
 import { projects } from "@/lib/data";
+import { redirect } from "next/navigation";
 
 const formSchema = z.object({
   id: z.string().optional(),
@@ -59,11 +60,14 @@ export async function saveProject(data: ProjectFormValues): Promise<Project> {
     let qaStatus = validatedData.qaStatus;
     let reworkReason = validatedData.reworkReason || '';
 
+    let shouldRedirect = false;
+
     switch(validatedData.submitAction) {
         case 'submit_for_qa':
             workflowStatus = 'With QA';
             processingDate = new Date().toISOString().split('T')[0];
             qaStatus = 'Pending';
+            shouldRedirect = true;
             break;
         case 'submit_qa':
             workflowStatus = 'Completed';
@@ -113,6 +117,10 @@ export async function saveProject(data: ProjectFormValues): Promise<Project> {
         projects.unshift(projectToSave);
     }
     
+    if (shouldRedirect) {
+        redirect('/');
+    }
+
     return projectToSave;
 }
 
