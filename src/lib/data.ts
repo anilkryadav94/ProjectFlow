@@ -2,6 +2,10 @@
 export type Role = 'Admin' | 'Manager' | 'Processor' | 'QA';
 export const roles: Role[] = ['Admin', 'Manager', 'Processor', 'QA'];
 
+// This defines the hierarchy for display and logic purposes.
+export const roleHierarchy: Role[] = ['Admin', 'Manager', 'QA', 'Processor'];
+
+
 export type User = {
     id: string;
     email: string;
@@ -21,7 +25,7 @@ export const users: User[] = [
     { id: '7', email: 'eve@example.com', password: 'password', name: 'Eve', roles: ['QA'] },
     { id: '8', email: 'anil@example.com', password: 'password', name: 'Anil', roles: ['QA'] },
     { id: '9', email: 'ankit@example.com', password: 'password', name: 'Ankit', roles: ['QA'] },
-    { id: '10', email: 'rahul@example.com', password: 'password', name: 'Rahul', roles: ['QA'] },
+    { id: '10', email: 'rahul@example.com', password: 'password', name: 'Rahul', roles: ['QA', 'Manager', 'Processor'] },
 ];
 
 
@@ -49,8 +53,8 @@ export type Project = {
 };
 
 
-export const processors = ['Alice', 'Bob', 'Charlie'];
-export const qas = ['David', 'Eve', 'Anil', 'Ankit', 'Rahul'];
+export const processors = ['Alice', 'Bob', 'Charlie', 'Rahul'];
+export const qas = ['David', 'Eve', 'Anil', 'Ankit', 'Rahul', 'Bob'];
 export const clientNames = ['Client A', 'Client B', 'Client C'];
 export const processes: ProcessType[] = ['Patent', 'TM', 'IDS', 'Project'];
 

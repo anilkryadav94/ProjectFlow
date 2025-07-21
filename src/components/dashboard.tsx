@@ -10,9 +10,6 @@ import { ProjectForm } from './project-form';
 import { ScrollArea } from './ui/scroll-area';
 import { UserManagementTable } from './user-management-table';
 
-// Role hierarchy for determining dashboard view
-const roleHierarchy: Role[] = ['Admin', 'Manager', 'QA', 'Processor'];
-
 interface DashboardProps {
   user: User;
   projects: Project[];
@@ -25,6 +22,8 @@ interface DashboardProps {
   processFilter: ProcessType | 'all';
   setProcessFilter: (process: ProcessType | 'all') => void;
   onProjectUpdate: (project: Project) => void;
+  activeRole: Role;
+  setActiveRole: (role: Role) => void;
 }
 
 export default function Dashboard({ 
@@ -38,31 +37,20 @@ export default function Dashboard({
   setClientNameFilter,
   processFilter,
   setProcessFilter,
-  onProjectUpdate 
+  onProjectUpdate,
+  activeRole,
+  setActiveRole
 }: DashboardProps) {
   const [activeProject, setActiveProject] = React.useState<Project | null>(null);
-
-  // Determine the primary role for the user based on the hierarchy
-  const primaryRole = React.useMemo(() => {
-    if (!user || !user.roles) {
-      return 'Processor'; // Default fallback
-    }
-    for (const role of roleHierarchy) {
-      if (user.roles.includes(role)) {
-        return role;
-      }
-    }
-    return user.roles[0] || 'Processor'; // Fallback
-  }, [user]);
 
   const filteredProjects = React.useMemo(() => {
     let userProjects = [...projects];
     // Role-based filtering
-    if (primaryRole === 'Processor') {
+    if (activeRole === 'Processor') {
       userProjects = userProjects.filter(p => p.processor === user.name && (p.status === 'Processing' || p.status === 'Pending' || p.status === 'On Hold'));
-    } else if (primaryRole === 'QA') {
+    } else if (activeRole === 'QA') {
         userProjects = userProjects.filter(p => p.qa === user.name && p.status === 'QA');
-    } else if (primaryRole === 'Manager' || primaryRole === 'Admin') {
+    } else if (activeRole === 'Manager' || activeRole === 'Admin') {
       // No filter, show all
     }
 
@@ -106,7 +94,7 @@ export default function Dashboard({
     }
 
     return userProjects;
-  }, [search, sort, projects, primaryRole, user.name, clientNameFilter, processFilter]);
+  }, [search, sort, projects, activeRole, user.name, clientNameFilter, processFilter]);
 
   React.useEffect(() => {
     if (filteredProjects.length > 0) {
@@ -122,8 +110,8 @@ export default function Dashboard({
     setActiveProject(project);
   }
 
-  const isTaskView = primaryRole === 'Processor' || primaryRole === 'QA';
-  const isAdminView = primaryRole === 'Admin';
+  const isTaskView = activeRole === 'Processor' || activeRole === 'QA';
+  const isAdminView = activeRole === 'Admin';
 
 
   return (
@@ -137,6 +125,8 @@ export default function Dashboard({
           processFilter={processFilter}
           setProcessFilter={setProcessFilter}
           onProjectUpdate={onProjectUpdate}
+          activeRole={activeRole}
+          setActiveRole={setActiveRole}
         />
         <div className="flex-grow mt-4 overflow-hidden">
           {isAdminView ? (
@@ -148,7 +138,7 @@ export default function Dashboard({
                         project={activeProject} 
                         onFormSubmit={onProjectUpdate}
                         onCancel={() => setActiveProject(null)}
-                        role={primaryRole}
+                        role={activeRole}
                     />
                 </ScrollArea>
                 <div className="flex-shrink-0 h-[300px]">

@@ -2,9 +2,9 @@
 "use client"
 
 import * as React from "react"
-import { ChevronsUpDown, LogOut, PlusCircle, Search, UserCircle, Workflow, Settings } from "lucide-react"
+import { Check, ChevronsUpDown, LogOut, PlusCircle, Search, UserCircle, Workflow, Settings } from "lucide-react"
 import type { Project, ProcessType, User, Role } from "@/lib/data"
-import { clientNames, processes } from "@/lib/data"
+import { clientNames, processes, roleHierarchy } from "@/lib/data"
 import { Button } from "@/components/ui/button"
 import {
   DropdownMenu,
@@ -13,13 +13,13 @@ import {
   DropdownMenuLabel,
   DropdownMenuSeparator,
   DropdownMenuTrigger,
+  DropdownMenuRadioGroup,
+  DropdownMenuRadioItem,
 } from "@/components/ui/dropdown-menu"
 import { Input } from "@/components/ui/input"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "./ui/select"
 import { logout } from "@/lib/auth"
 import { useRouter } from "next/navigation"
-
-const roleHierarchy: Role[] = ['Admin', 'Manager', 'QA', 'Processor'];
 
 interface HeaderProps {
     search: string;
@@ -30,6 +30,8 @@ interface HeaderProps {
     processFilter: ProcessType | 'all';
     setProcessFilter: (process: ProcessType | 'all') => void;
     onProjectUpdate: (project: Project) => void;
+    activeRole: Role;
+    setActiveRole: (role: Role) => void;
 }
 
 export function Header({ 
@@ -37,7 +39,9 @@ export function Header({
   user, 
   clientNameFilter, setClientNameFilter, 
   processFilter, setProcessFilter,
-  onProjectUpdate
+  onProjectUpdate,
+  activeRole,
+  setActiveRole
 }: HeaderProps) {
   const router = useRouter();
 
@@ -46,20 +50,9 @@ export function Header({
     router.push('/login');
   };
 
-  const primaryRole = React.useMemo(() => {
-    if (!user || !user.roles) {
-      return 'Processor'; // Default fallback
-    }
-    for (const role of roleHierarchy) {
-      if (user.roles.includes(role)) {
-        return role;
-      }
-    }
-    return user.roles[0] || 'Processor'; // Fallback
-  }, [user]);
-
   const getDashboardName = () => {
-    switch(primaryRole) {
+    if (!activeRole) return 'Dashboard';
+    switch(activeRole) {
       case 'Processor':
         return 'Processor Dashboard';
       case 'QA':
@@ -73,12 +66,18 @@ export function Header({
     }
   }
 
+  // Sort user roles based on the hierarchy for consistent display
+  const sortedUserRoles = React.useMemo(() => {
+    if (!user.roles) return [];
+    return user.roles.sort((a, b) => roleHierarchy.indexOf(a) - roleHierarchy.indexOf(b));
+  }, [user.roles]);
+
   return (
     <div className="flex flex-col gap-1">
       <div className="flex items-center justify-between">
         <div className="flex items-center gap-2">
           <Workflow className="h-6 w-6 text-primary" />
-          <h2 className="text-2xl font-bold tracking-tight">SmartFlow</h2>
+          <h2 className="text-2xl font-bold tracking-tight">ProjectFlow</h2>
         </div>
         <div className="flex items-center space-x-2">
             <DropdownMenu>
@@ -89,8 +88,24 @@ export function Header({
                        <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
                     </Button>
                 </DropdownMenuTrigger>
-                <DropdownMenuContent className="w-48">
-                    <DropdownMenuLabel>{user.roles ? user.roles.join(', ') : 'Loading...'}</DropdownMenuLabel>
+                <DropdownMenuContent className="w-56">
+                    <DropdownMenuLabel>{user.name}</DropdownMenuLabel>
+                    <DropdownMenuLabel className="text-xs font-normal text-muted-foreground">{user.email}</DropdownMenuLabel>
+                    
+                    {sortedUserRoles.length > 1 && (
+                        <>
+                            <DropdownMenuSeparator />
+                            <DropdownMenuLabel>Switch Role</DropdownMenuLabel>
+                            <DropdownMenuRadioGroup value={activeRole} onValueChange={(value) => setActiveRole(value as Role)}>
+                                {sortedUserRoles.map(role => (
+                                    <DropdownMenuRadioItem key={role} value={role}>
+                                        {role}
+                                    </DropdownMenuRadioItem>
+                                ))}
+                            </DropdownMenuRadioGroup>
+                        </>
+                    )}
+
                     <DropdownMenuSeparator />
                     <DropdownMenuItem onSelect={handleLogout}>
                         <LogOut className="mr-2 h-4 w-4" />
@@ -104,7 +119,7 @@ export function Header({
          <h3 className="text-lg font-medium">{getDashboardName()}</h3>
         
         {/* Hide filters for Admin */}
-        {primaryRole !== 'Admin' && (
+        {activeRole !== 'Admin' && (
           <div className="flex items-center space-x-2">
               <div className="relative">
                   <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />

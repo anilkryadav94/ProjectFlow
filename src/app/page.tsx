@@ -10,9 +10,12 @@ import { projects as initialProjects } from '@/lib/data';
 import { useToast } from "@/hooks/use-toast";
 import { Loader2 } from 'lucide-react';
 
+const roleHierarchy: Role[] = ['Admin', 'Manager', 'QA', 'Processor'];
+
 export default function Home() {
   const [session, setSession] = React.useState<{ user: User } | null>(null);
   const [isLoading, setIsLoading] = React.useState(true);
+  const [activeRole, setActiveRole] = React.useState<Role | null>(null);
 
   const [projects, setProjects] = React.useState<Project[]>(initialProjects);
   const [search, setSearch] = React.useState('');
@@ -28,6 +31,15 @@ export default function Home() {
         redirect('/login');
       } else {
         setSession(sessionData);
+        // Set the initial active role
+        if (sessionData.user?.roles?.length > 0) {
+            for (const role of roleHierarchy) {
+                if (sessionData.user.roles.includes(role)) {
+                    setActiveRole(role);
+                    break;
+                }
+            }
+        }
       }
       setIsLoading(false);
     }
@@ -53,7 +65,7 @@ export default function Home() {
     })
   };
 
-  if (isLoading) {
+  if (isLoading || !activeRole) {
     return (
       <div className="flex items-center justify-center min-h-screen">
         <Loader2 className="h-8 w-8 animate-spin" />
@@ -79,6 +91,8 @@ export default function Home() {
         processFilter={processFilter}
         setProcessFilter={setProcessFilter}
         onProjectUpdate={handleProjectUpdate}
+        activeRole={activeRole}
+        setActiveRole={setActiveRole}
       />
     </main>
   );
