@@ -59,9 +59,10 @@ interface ProjectFormProps {
   onFormSubmit: (project: Project) => void;
   onCancel?: () => void;
   role: 'Processor' | 'QA' | 'Admin' | 'Manager';
+  setOpen?: (open: boolean) => void;
 }
 
-export function ProjectForm({ project, onFormSubmit, onCancel, role }: ProjectFormProps) {
+export function ProjectForm({ project, onFormSubmit, onCancel, role, setOpen }: ProjectFormProps) {
   const [isSubmitting, setIsSubmitting] = React.useState(false);
   
   const form = useForm<ProjectFormValues>({
@@ -87,16 +88,19 @@ export function ProjectForm({ project, onFormSubmit, onCancel, role }: ProjectFo
             documentName: project.documentName || "",
         });
     } else {
-        form.reset({});
+        form.reset({
+            emailDate: new Date(),
+            allocationDate: new Date(),
+        });
     }
   }, [project, form]);
   
-  if (!project) {
+  if (!project && (role === 'Processor' || role === 'QA')) {
     return (
         <Card>
             <CardHeader>
                 <CardTitle>No Task Selected</CardTitle>
-                <CardDescription>Select a task from the list below to begin.</CardDescription>
+                <CardDescription>Select a task from the list below to begin, or you will be assigned one automatically.</CardDescription>
             </CardHeader>
         </Card>
     )
@@ -107,6 +111,7 @@ export function ProjectForm({ project, onFormSubmit, onCancel, role }: ProjectFo
     try {
       const result = await saveProject(data);
       onFormSubmit(result);
+      if(setOpen) setOpen(false);
     } catch (error) {
       console.error("Failed to save project", error);
     } finally {
@@ -116,16 +121,47 @@ export function ProjectForm({ project, onFormSubmit, onCancel, role }: ProjectFo
 
   const isProcessor = role === 'Processor';
   const isQA = role === 'QA';
+  const isManager = role === 'Manager' || role === 'Admin';
+
+  const readOnly = isQA || (isManager && !form.getValues('id')) || (isManager && !!project);
 
   return (
     <Card>
       <CardHeader>
-        <CardTitle>Processing Task: {project.refNumber}</CardTitle>
-        <CardDescription>Subject: {project.subject}</CardDescription>
+        <CardTitle>{project ? `Task: ${project.refNumber}`: 'New Project'}</CardTitle>
+        {project && <CardDescription>Subject: {project.subject}</CardDescription>}
       </CardHeader>
       <CardContent>
         <Form {...form}>
           <form onSubmit={(e) => e.preventDefault()} className="space-y-4">
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                 <FormField
+                    control={form.control}
+                    name="refNumber"
+                    render={({ field }) => (
+                        <FormItem>
+                        <FormLabel>Reference Number</FormLabel>
+                        <FormControl>
+                            <Input placeholder="REF..." {...field} disabled={!isManager || !!project}/>
+                        </FormControl>
+                        <FormMessage />
+                        </FormItem>
+                    )}
+                />
+                 <FormField
+                    control={form.control}
+                    name="subject"
+                    render={({ field }) => (
+                        <FormItem>
+                        <FormLabel>Subject</FormLabel>
+                        <FormControl>
+                            <Input placeholder="Invention disclosure..." {...field} disabled={!isManager || !!project}/>
+                        </FormControl>
+                        <FormMessage />
+                        </FormItem>
+                    )}
+                />
+            </div>
              <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
                 <FormField
                     control={form.control}
@@ -134,7 +170,7 @@ export function ProjectForm({ project, onFormSubmit, onCancel, role }: ProjectFo
                         <FormItem>
                         <FormLabel>Application Number</FormLabel>
                         <FormControl>
-                            <Input placeholder="US16/123,456" {...field} disabled={!isProcessor} />
+                            <Input placeholder="US16/123,456" {...field} value={field.value || ''} disabled={!isProcessor} />
                         </FormControl>
                         <FormMessage />
                         </FormItem>
@@ -147,7 +183,7 @@ export function ProjectForm({ project, onFormSubmit, onCancel, role }: ProjectFo
                         <FormItem>
                         <FormLabel>Patent Number</FormLabel>
                         <FormControl>
-                            <Input placeholder="10,123,456" {...field} disabled={!isProcessor} />
+                            <Input placeholder="10,123,456" {...field} value={field.value || ''} disabled={!isProcessor} />
                         </FormControl>
                         <FormMessage />
                         </FormItem>
@@ -160,7 +196,7 @@ export function ProjectForm({ project, onFormSubmit, onCancel, role }: ProjectFo
                         <FormItem>
                         <FormLabel>Document Name</FormLabel>
                         <FormControl>
-                            <Input placeholder="Response_To_OA.pdf" {...field} disabled={!isProcessor} />
+                            <Input placeholder="Response_To_OA.pdf" {...field} value={field.value || ''} disabled={!isProcessor} />
                         </FormControl>
                         <FormMessage />
                         </FormItem>
@@ -174,7 +210,7 @@ export function ProjectForm({ project, onFormSubmit, onCancel, role }: ProjectFo
                     <FormItem>
                     <FormLabel>Action Taken</FormLabel>
                     <FormControl>
-                        <Textarea placeholder="Describe the action taken..." {...field} disabled={!isProcessor} />
+                        <Textarea placeholder="Describe the action taken..." {...field} value={field.value || ''} disabled={!isProcessor} />
                     </FormControl>
                     <FormMessage />
                     </FormItem>
@@ -188,7 +224,41 @@ export function ProjectForm({ project, onFormSubmit, onCancel, role }: ProjectFo
                     render={({ field }) => (
                         <FormItem className="flex flex-col">
                         <FormLabel>Email Date</FormLabel>
-                        <Input value={format(field.value, "PPP")} disabled />
+                        {isManager ? (
+                             <Popover>
+                                <PopoverTrigger asChild>
+                                <FormControl>
+                                    <Button
+                                    variant={"outline"}
+                                    className={cn(
+                                        "pl-3 text-left font-normal",
+                                        !field.value && "text-muted-foreground"
+                                    )}
+                                    >
+                                    {field.value ? (
+                                        format(field.value, "PPP")
+                                    ) : (
+                                        <span>Pick a date</span>
+                                    )}
+                                    <CalendarIcon className="ml-auto h-4 w-4 opacity-50" />
+                                    </Button>
+                                </FormControl>
+                                </PopoverTrigger>
+                                <PopoverContent className="w-auto p-0" align="start">
+                                <Calendar
+                                    mode="single"
+                                    selected={field.value}
+                                    onSelect={field.onChange}
+                                    disabled={(date) =>
+                                    date > new Date() || date < new Date("1900-01-01")
+                                    }
+                                    initialFocus
+                                />
+                                </PopoverContent>
+                            </Popover>
+                        ) : (
+                           <Input value={field.value ? format(field.value, "PPP") : 'N/A'} disabled />
+                        )}
                         </FormItem>
                 )}
                 />
@@ -198,7 +268,41 @@ export function ProjectForm({ project, onFormSubmit, onCancel, role }: ProjectFo
                     render={({ field }) => (
                         <FormItem className="flex flex-col">
                         <FormLabel>Allocation Date</FormLabel>
-                        <Input value={format(field.value, "PPP")} disabled />
+                          {isManager ? (
+                             <Popover>
+                                <PopoverTrigger asChild>
+                                <FormControl>
+                                    <Button
+                                    variant={"outline"}
+                                    className={cn(
+                                        "pl-3 text-left font-normal",
+                                        !field.value && "text-muted-foreground"
+                                    )}
+                                    >
+                                    {field.value ? (
+                                        format(field.value, "PPP")
+                                    ) : (
+                                        <span>Pick a date</span>
+                                    )}
+                                    <CalendarIcon className="ml-auto h-4 w-4 opacity-50" />
+                                    </Button>
+                                </FormControl>
+                                </PopoverTrigger>
+                                <PopoverContent className="w-auto p-0" align="start">
+                                <Calendar
+                                    mode="single"
+                                    selected={field.value}
+                                    onSelect={field.onChange}
+                                    disabled={(date) =>
+                                    date > new Date() || date < new Date("1900-01-01")
+                                    }
+                                    initialFocus
+                                />
+                                </PopoverContent>
+                            </Popover>
+                        ) : (
+                           <Input value={field.value ? format(field.value, "PPP") : 'N/A'} disabled />
+                        )}
                         </FormItem>
                 )}
                 />
@@ -207,8 +311,21 @@ export function ProjectForm({ project, onFormSubmit, onCancel, role }: ProjectFo
                 name="processor"
                 render={({ field }) => (
                     <FormItem>
-                    <FormLabel>Processor</FormLabel>
-                    <Input {...field} disabled />
+                        <FormLabel>Processor</FormLabel>
+                         {isManager ? (
+                            <Select onValueChange={field.onChange} defaultValue={field.value}>
+                                <FormControl>
+                                <SelectTrigger>
+                                    <SelectValue placeholder="Select a processor" />
+                                </SelectTrigger>
+                                </FormControl>
+                                <SelectContent>
+                                    {processors.map(p => <SelectItem key={p} value={p}>{p}</SelectItem>)}
+                                </SelectContent>
+                            </Select>
+                         ) : (
+                            <Input {...field} disabled />
+                         )}
                     </FormItem>
                 )}
                 />
@@ -216,55 +333,69 @@ export function ProjectForm({ project, onFormSubmit, onCancel, role }: ProjectFo
                 control={form.control}
                 name="qa"
                 render={({ field }) => (
-                    <FormItem>
-                    <FormLabel>QA</FormLabel>
-                    <Input {...field} disabled />
+                     <FormItem>
+                        <FormLabel>QA</FormLabel>
+                         {isManager ? (
+                            <Select onValueChange={field.onChange} defaultValue={field.value}>
+                                <FormControl>
+                                <SelectTrigger>
+                                    <SelectValue placeholder="Select a QA" />
+                                </SelectTrigger>
+                                </FormControl>
+                                <SelectContent>
+                                    {qas.map(q => <SelectItem key={q} value={q}>{q}</SelectItem>)}
+                                </SelectContent>
+                            </Select>
+                         ) : (
+                            <Input {...field} disabled />
+                         )}
                     </FormItem>
                 )}
                 />
             </div>
 
-            <FormField
+            {project && <FormField
                 control={form.control}
                 name="status"
                 render={({ field }) => (
                     <FormItem>
                     <FormLabel>Status</FormLabel>
-                    <Select onValueChange={field.onChange} value={field.value} disabled={!isProcessor && !isQA}>
+                    <Select onValueChange={field.onChange} value={field.value} disabled={isManager}>
                         <FormControl>
                         <SelectTrigger>
                             <SelectValue placeholder="Select status" />
                         </SelectTrigger>
                         </FormControl>
                         <SelectContent>
-                            {isProcessor && <SelectItem value="Processing">Done</SelectItem>}
-                            {isQA && <SelectItem value="QA">QA Complete</SelectItem>}
-                            <SelectItem value="On Hold">On Hold</SelectItem>
+                            {isProcessor && <SelectItem value="Processing">Processing</SelectItem>}
+                            {isProcessor && <SelectItem value="On Hold">On Hold</SelectItem>}
+                            {isQA && <SelectItem value="QA">QA</SelectItem>}
+                             {isQA && <SelectItem value="On Hold">On Hold</SelectItem>}
                         </SelectContent>
                     </Select>
                     <FormMessage />
                     </FormItem>
                 )}
-                />
+                />}
             
             <div className="flex justify-end space-x-2 pt-4">
                 {onCancel && <Button variant="outline" onClick={onCancel} disabled={isSubmitting}>Cancel</Button>}
                 
-                {isProcessor && project.status === "Processing" && (
+                {isProcessor && project?.status === "Processing" && (
                     <Button type="submit" onClick={form.handleSubmit(d => onSubmit({...d, status: 'QA', submitAction: 'process'}))} disabled={isSubmitting}>
                         {isSubmitting && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
                         Submit for QA
                     </Button>
                 )}
-                {isQA && project.status === "QA" && (
+                {isQA && project?.status === "QA" && (
                      <Button type="submit" onClick={form.handleSubmit(d => onSubmit({...d, status: 'Complete', submitAction: 'qa_complete'}))} disabled={isSubmitting}>
                         {isSubmitting && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
                         QA Complete
                     </Button>
                 )}
-                 <Button type="submit" onClick={form.handleSubmit(d => onSubmit({...d, submitAction: 'save'}))} disabled={isSubmitting}>
+                 <Button type="submit" onClick={form.handleSubmit(d => onSubmit({...d, submitAction: 'save'}))} disabled={isSubmitting || (isQA && project?.status !== 'QA')}>
                     {isSubmitting && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
-                    Save Changes
+                    {isManager ? 'Create Project' : 'Save Changes'}
                 </Button>
             </div>
           </form>
