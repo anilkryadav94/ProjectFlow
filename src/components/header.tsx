@@ -2,7 +2,8 @@
 "use client"
 
 import * as React from "react"
-import { Check, ChevronsUpDown, LogOut, PlusCircle, Search, UserCircle, Workflow, Settings } from "lucide-react"
+import Papa from "papaparse";
+import { Check, ChevronsUpDown, LogOut, PlusCircle, Search, UserCircle, Workflow, Settings, Download } from "lucide-react"
 import type { Project, ProcessType, User, Role } from "@/lib/data"
 import { clientNames, processes, roleHierarchy } from "@/lib/data"
 import { Button } from "@/components/ui/button"
@@ -32,6 +33,7 @@ interface HeaderProps {
     onProjectUpdate: (project: Project) => void;
     activeRole: Role;
     setActiveRole: (role: Role) => void;
+    projectsToDownload: Project[];
 }
 
 export function Header({ 
@@ -41,7 +43,8 @@ export function Header({
   processFilter, setProcessFilter,
   onProjectUpdate,
   activeRole,
-  setActiveRole
+  setActiveRole,
+  projectsToDownload
 }: HeaderProps) {
   const router = useRouter();
 
@@ -71,6 +74,22 @@ export function Header({
     if (!user.roles) return [];
     return user.roles.sort((a, b) => roleHierarchy.indexOf(a) - roleHierarchy.indexOf(b));
   }, [user.roles]);
+
+  const handleDownload = () => {
+    if (!projectsToDownload || projectsToDownload.length === 0) {
+      return;
+    }
+    const csv = Papa.unparse(projectsToDownload);
+    const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
+    const link = document.createElement("a");
+    const url = URL.createObjectURL(blob);
+    link.setAttribute("href", url);
+    link.setAttribute("download", `projects_export_${new Date().toISOString().split('T')[0]}.csv`);
+    link.style.visibility = 'hidden';
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+  };
 
   return (
     <div className="flex flex-col gap-1">
@@ -152,6 +171,10 @@ export function Header({
                       ))}
                   </SelectContent>
               </Select>
+              <Button variant="outline" size="icon" onClick={handleDownload} disabled={projectsToDownload.length === 0}>
+                <Download className="h-4 w-4" />
+                <span className="sr-only">Download CSV</span>
+              </Button>
           </div>
         )}
       </div>

@@ -127,6 +127,7 @@ export default function Dashboard({
           onProjectUpdate={onProjectUpdate}
           activeRole={activeRole}
           setActiveRole={setActiveRole}
+          projectsToDownload={filteredProjects}
         />
         <div className="flex-grow mt-4 overflow-hidden">
           {isAdminView ? (
