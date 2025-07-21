@@ -15,7 +15,6 @@ import {
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu"
 import { Input } from "@/components/ui/input"
-import { TabsList, TabsTrigger } from "./ui/tabs"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "./ui/select"
 import { logout } from "@/lib/auth"
 import { useRouter } from "next/navigation"
@@ -88,45 +87,44 @@ export function Header({
         </div>
       </div>
       <div className="flex items-center justify-between">
-        <TabsList>
-            <TabsTrigger value="projects">{getDashboardName()}</TabsTrigger>
-            {(user.role === 'Admin') && (
-              <TabsTrigger value="users">User Management</TabsTrigger>
-            )}
-        </TabsList>
-        <div className="flex items-center space-x-2">
-            <div className="relative">
-                <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-                <Input 
-                    placeholder="Quick search..."
-                    className="pl-9"
-                    value={search}
-                    onChange={(e) => setSearch(e.target.value)}
-                />
-            </div>
-            <Select value={clientNameFilter} onValueChange={setClientNameFilter}>
-                <SelectTrigger className="w-[180px]">
-                    <SelectValue placeholder="Filter by Client" />
-                </SelectTrigger>
-                <SelectContent>
-                    <SelectItem value="all">All Clients</SelectItem>
-                    {clientNames.map(name => (
-                        <SelectItem key={name} value={name}>{name}</SelectItem>
-                    ))}
-                </SelectContent>
-            </Select>
-            <Select value={processFilter} onValueChange={(value) => setProcessFilter(value as ProcessType | 'all')}>
-                <SelectTrigger className="w-[180px]">
-                    <SelectValue placeholder="Filter by Process" />
-                </SelectTrigger>
-                <SelectContent>
-                    <SelectItem value="all">All Processes</SelectItem>
-                     {processes.map(p => (
-                        <SelectItem key={p} value={p}>{p}</SelectItem>
-                    ))}
-                </SelectContent>
-            </Select>
-        </div>
+         <h3 className="text-lg font-medium">{getDashboardName()}</h3>
+        
+        {/* Hide filters for Admin */}
+        {user.role !== 'Admin' && (
+          <div className="flex items-center space-x-2">
+              <div className="relative">
+                  <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+                  <Input 
+                      placeholder="Quick search..."
+                      className="pl-9"
+                      value={search}
+                      onChange={(e) => setSearch(e.target.value)}
+                  />
+              </div>
+              <Select value={clientNameFilter} onValueChange={setClientNameFilter}>
+                  <SelectTrigger className="w-[180px]">
+                      <SelectValue placeholder="Filter by Client" />
+                  </SelectTrigger>
+                  <SelectContent>
+                      <SelectItem value="all">All Clients</SelectItem>
+                      {clientNames.map(name => (
+                          <SelectItem key={name} value={name}>{name}</SelectItem>
+                      ))}
+                  </SelectContent>
+              </Select>
+              <Select value={processFilter} onValueChange={(value) => setProcessFilter(value as ProcessType | 'all')}>
+                  <SelectTrigger className="w-[180px]">
+                      <SelectValue placeholder="Filter by Process" />
+                  </SelectTrigger>
+                  <SelectContent>
+                      <SelectItem value="all">All Processes</SelectItem>
+                      {processes.map(p => (
+                          <SelectItem key={p} value={p}>{p}</SelectItem>
+                      ))}
+                  </SelectContent>
+              </Select>
+          </div>
+        )}
       </div>
     </div>
   )

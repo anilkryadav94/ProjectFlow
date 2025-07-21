@@ -6,7 +6,6 @@ import { type Project, type Role, ProcessType, type User, users as allUsers } fr
 import { DataTable } from '@/components/data-table';
 import { columns } from '@/components/columns';
 import { Header } from '@/components/header';
-import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { ProjectForm } from './project-form';
 import { ScrollArea } from './ui/scroll-area';
 import { UserManagementTable } from './user-management-table';
@@ -112,7 +111,6 @@ export default function Dashboard({
 
   return (
     <div className="flex flex-col h-screen p-4 md:p-8 pt-6">
-       <Tabs defaultValue="projects" className="flex flex-col h-full">
         <Header 
           search={search}
           setSearch={setSearch}
@@ -123,8 +121,10 @@ export default function Dashboard({
           setProcessFilter={setProcessFilter}
           onProjectUpdate={onProjectUpdate}
         />
-        <TabsContent value="projects" className="flex-grow mt-4 overflow-hidden">
-          {isTaskView ? (
+        <div className="flex-grow mt-4 overflow-hidden">
+          {user.role === 'Admin' ? (
+            <UserManagementTable users={allUsers} />
+          ) : isTaskView ? (
              <div className="flex flex-col h-full gap-4">
                 <ScrollArea className="flex-grow pr-4 h-[calc(100%-320px)]">
                     <ProjectForm 
@@ -147,7 +147,7 @@ export default function Dashboard({
                     />
                 </div>
             </div>
-          ) : (
+          ) : ( // Manager view
              <DataTable 
                 data={filteredProjects}
                 columns={columns}
@@ -157,13 +157,7 @@ export default function Dashboard({
                 isTaskView={false}
               />
           )}
-        </TabsContent>
-        {(user.role === 'Admin') && (
-            <TabsContent value="users" className="space-y-4">
-                <UserManagementTable users={allUsers} />
-            </TabsContent>
-        )}
-       </Tabs>
+        </div>
     </div>
   );
 }
