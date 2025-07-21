@@ -66,10 +66,10 @@ export function DataTable({ data, columns, sort, setSort, onRowClick, activeProj
     <div className={cn("animated-border shadow-xl", maxHeightClass)}>
       <div className={cn("rounded-md border bg-card overflow-y-auto relative h-full")}>
         <Table>
-          <TableHeader className="sticky top-0 z-10 bg-muted backdrop-blur-sm">
+          <TableHeader className="sticky top-0 z-10 bg-primary/20 backdrop-blur-sm">
             <TableRow>
               {columns.map((column) => (
-                <TableHead key={column.key}>
+                <TableHead key={column.key} className="text-primary-foreground/90">
                     <div
                       className="flex items-center gap-2 cursor-pointer"
                       onClick={() => handleSort(column.key as keyof Project)}
@@ -82,8 +82,8 @@ export function DataTable({ data, columns, sort, setSort, onRowClick, activeProj
                 </TableHead>
               ))}
               <TableHead className="text-right">
-                  <Button variant="ghost" size="icon" onClick={handleDownload} disabled={projectsToDownload.length === 0} className="h-8 w-8">
-                    <FileSpreadsheet className="h-4 w-4 text-muted-foreground" />
+                  <Button variant="ghost" size="icon" onClick={handleDownload} disabled={projectsToDownload.length === 0} className="h-8 w-8 text-primary-foreground/90 hover:text-primary-foreground hover:bg-primary/40">
+                    <FileSpreadsheet className="h-4 w-4" />
                     <span className="sr-only">Download CSV</span>
                   </Button>
               </TableHead>
