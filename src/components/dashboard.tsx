@@ -47,9 +47,9 @@ export default function Dashboard({
     let userProjects = [...projects];
     // Role-based filtering
     if (activeRole === 'Processor') {
-      userProjects = userProjects.filter(p => p.processor === user.name && (p.status === 'Processing' || p.status === 'Pending' || p.status === 'On Hold'));
+      userProjects = userProjects.filter(p => p.processor === user.name);
     } else if (activeRole === 'QA') {
-        userProjects = userProjects.filter(p => p.qa === user.name && p.status === 'QA');
+        userProjects = userProjects.filter(p => p.qa === user.name);
     } else if (activeRole === 'Manager' || activeRole === 'Admin') {
       // No filter, show all
     }
