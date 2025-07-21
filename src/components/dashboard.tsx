@@ -3,15 +3,19 @@
 
 import * as React from 'react';
 import Papa from "papaparse";
-import { type Project, type Role, type User, roleHierarchy } from '@/lib/data';
+import { type Project, type Role, type User, roleHierarchy, processors, qas, projectStatuses } from '@/lib/data';
 import { DataTable } from '@/components/data-table';
-import { columns } from '@/components/columns';
+import { getColumns } from '@/components/columns';
 import { Header } from '@/components/header';
 import { UserManagementTable } from './user-management-table';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { ProjectForm } from './project-form';
 import { Button } from './ui/button';
-import { PlusCircle } from 'lucide-react';
+import { bulkUpdateProjects } from '@/app/actions';
+import { useToast } from '@/hooks/use-toast';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from './ui/select';
+import { Input } from './ui/input';
+import { Loader2 } from 'lucide-react';
 
 interface DashboardProps {
   user: User;
@@ -20,6 +24,11 @@ interface DashboardProps {
 
 export type SearchableColumn = 'refNumber' | 'applicationNumber' | 'patentNumber' | 'subject';
 
+const bulkUpdateFields = [
+    { value: 'processor', label: 'Processor', options: processors },
+    { value: 'qa', label: 'QA', options: qas },
+    { value: 'status', label: 'Status', options: projectStatuses },
+] as const;
 
 export default function Dashboard({ 
   user, 
@@ -32,6 +41,13 @@ export default function Dashboard({
   const [sort, setSort] = React.useState<{ key: keyof Project; direction: 'asc' | 'desc' } | null>({ key: 'allocationDate', direction: 'desc' });
   const [isNewProjectFormOpen, setIsNewProjectFormOpen] = React.useState(false);
   
+  // State for bulk updates
+  const [rowSelection, setRowSelection] = React.useState<Record<string, boolean>>({});
+  const [bulkUpdateField, setBulkUpdateField] = React.useState<(typeof bulkUpdateFields)[number]['value']>('processor');
+  const [bulkUpdateValue, setBulkUpdateValue] = React.useState('');
+  const [isBulkUpdating, setIsBulkUpdating] = React.useState(false);
+  const { toast } = useToast();
+
   React.useEffect(() => {
     if (user?.roles?.length > 0) {
       if (user.roles.includes('Admin') && user.roles.includes('Manager')) {
@@ -72,6 +88,36 @@ export default function Dashboard({
     document.body.removeChild(link);
   };
 
+  const handleBulkUpdate = async () => {
+    const projectIds = Object.keys(rowSelection).filter(id => rowSelection[id]);
+    if (projectIds.length === 0 || !bulkUpdateField || !bulkUpdateValue) {
+        toast({ title: "Bulk Update Error", description: "Please select rows, a field, and a value.", variant: "destructive" });
+        return;
+    }
+    
+    setIsBulkUpdating(true);
+    try {
+        const result = await bulkUpdateProjects({ projectIds, field: bulkUpdateField, value: bulkUpdateValue });
+        if (result.success) {
+            // Update local state to reflect changes
+            setProjects(prevProjects => {
+                return prevProjects.map(p => {
+                    const updated = result.updatedProjects.find(up => up.id === p.id);
+                    return updated || p;
+                });
+            });
+            toast({ title: "Success", description: `${result.updatedProjects.length} projects have been updated.` });
+            setRowSelection({}); // Clear selection
+            setBulkUpdateValue(''); // Clear value
+        }
+    } catch (error) {
+        toast({ title: "Bulk Update Failed", description: "An error occurred.", variant: "destructive" });
+    } finally {
+        setIsBulkUpdating(false);
+    }
+  };
+
+
   const dashboardProjects = React.useMemo(() => {
     let filteredProjects = [...projects];
 
@@ -109,9 +155,11 @@ export default function Dashboard({
   if (!activeRole) {
     return null;
   }
-
-  const showNewProjectButton = activeRole === 'Manager' || activeRole === 'Admin';
+  
+  const isManagerOrAdmin = activeRole === 'Manager' || activeRole === 'Admin';
   const showFilters = activeRole === 'Manager' || activeRole === 'Processor' || activeRole === 'QA' || activeRole === 'Admin';
+  const columns = getColumns(isManagerOrAdmin, rowSelection, setRowSelection, dashboardProjects);
+  const selectedBulkUpdateField = bulkUpdateFields.find(f => f.value === bulkUpdateField);
 
   return (
      <div className="flex flex-col h-screen bg-background w-full">
@@ -132,20 +180,51 @@ export default function Dashboard({
                 <UserManagementTable sessionUser={user} />
             ) : (
                 <>
-                    {showNewProjectButton && (
-                        <div className="flex justify-end">
-                            <Button onClick={() => setIsNewProjectFormOpen(true)}>
-                                <PlusCircle className="mr-2 h-4 w-4" />
-                                New Project
-                            </Button>
-                        </div>
-                    )}
                     <DataTable 
                         data={dashboardProjects}
                         columns={columns}
                         sort={sort}
                         setSort={setSort}
-                    />
+                        rowSelection={rowSelection}
+                        setRowSelection={setRowSelection}
+                        isManagerOrAdmin={isManagerOrAdmin}
+                    >
+                         {isManagerOrAdmin && Object.keys(rowSelection).length > 0 && (
+                            <div className="flex items-center gap-4 p-4 border-t bg-muted/50">
+                                <span className="text-sm font-semibold">{Object.keys(rowSelection).length} selected</span>
+                                <div className="flex items-center gap-2">
+                                    <Select value={bulkUpdateField} onValueChange={(v) => {
+                                        setBulkUpdateField(v as typeof bulkUpdateField);
+                                        setBulkUpdateValue('');
+                                    }}>
+                                        <SelectTrigger className="w-[180px] h-9">
+                                            <SelectValue placeholder="Select field" />
+                                        </SelectTrigger>
+                                        <SelectContent>
+                                            {bulkUpdateFields.map(f => (
+                                                <SelectItem key={f.value} value={f.value}>{f.label}</SelectItem>
+                                            ))}
+                                        </SelectContent>
+                                    </Select>
+                                    
+                                    <Select value={bulkUpdateValue} onValueChange={setBulkUpdateValue}>
+                                        <SelectTrigger className="w-[180px] h-9">
+                                            <SelectValue placeholder="Select new value" />
+                                        </SelectTrigger>
+                                        <SelectContent>
+                                            {selectedBulkUpdateField?.options.map(opt => (
+                                                 <SelectItem key={opt} value={opt}>{opt}</SelectItem>
+                                            ))}
+                                        </SelectContent>
+                                    </Select>
+                                </div>
+                                <Button size="sm" onClick={handleBulkUpdate} disabled={isBulkUpdating}>
+                                     {isBulkUpdating && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
+                                    Apply Update
+                                </Button>
+                            </div>
+                        )}
+                    </DataTable>
                 </>
             )}
         </div>

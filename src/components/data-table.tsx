@@ -11,41 +11,47 @@ import {
   TableHead,
   TableHeader,
   TableRow,
+  TableFooter
 } from "@/components/ui/table"
 import { cn } from "@/lib/utils"
 
 interface DataTableProps {
   data: Project[];
   columns: {
-    key: keyof Project | 'subject' | 'clientName' | 'process' | 'actions';
-    header: string;
-    render?: (project: Project, isClickable?: boolean) => React.ReactNode;
-    isClickable?: boolean;
+    key: string;
+    header: React.ReactNode;
+    render?: (project: Project) => React.ReactNode;
   }[];
   sort: { key: keyof Project; direction: 'asc' | 'desc' } | null;
   setSort: (sort: { key: keyof Project; direction: 'asc' | 'desc' } | null) => void;
+  rowSelection: Record<string, boolean>;
+  setRowSelection: (selection: Record<string, boolean>) => void;
+  isManagerOrAdmin: boolean;
+  children?: React.ReactNode;
 }
 
-export function DataTable({ data, columns, sort, setSort }: DataTableProps) {
-  const handleSort = (key: keyof Project) => {
-    if (sort && sort.key === key) {
-      setSort({ key, direction: sort.direction === 'asc' ? 'desc' : 'asc' });
+export function DataTable({ data, columns, sort, setSort, rowSelection, setRowSelection, isManagerOrAdmin, children }: DataTableProps) {
+  const handleSort = (key: string) => {
+    if (key === 'select') return;
+    const projectKey = key as keyof Project;
+    if (sort && sort.key === projectKey) {
+      setSort({ key: projectKey, direction: sort.direction === 'asc' ? 'desc' : 'asc' });
     } else {
-      setSort({ key, direction: 'asc' });
+      setSort({ key: projectKey, direction: 'asc' });
     }
   };
 
   return (
-    <div className={cn("animated-border shadow-xl h-full")}>
-      <div className={cn("rounded-md border bg-card overflow-y-auto relative h-full")}>
+    <div className={cn("animated-border shadow-xl h-full flex flex-col")}>
+      <div className={cn("rounded-md border bg-card overflow-y-auto relative flex-grow")}>
         <Table>
           <TableHeader className="sticky top-0 z-10 bg-primary backdrop-blur-sm">
             <TableRow>
               {columns.map((column) => (
                 <TableHead key={column.key} className="text-primary-foreground/90">
                     <div
-                      className={cn("flex items-center gap-2", column.key !== 'actions' && "cursor-pointer")}
-                      onClick={() => column.key !== 'actions' && handleSort(column.key as keyof Project)}
+                      className={cn("flex items-center gap-2", column.key !== 'select' && "cursor-pointer")}
+                      onClick={() => handleSort(column.key)}
                     >
                       {column.header}
                       {sort?.key === column.key && (
@@ -61,18 +67,18 @@ export function DataTable({ data, columns, sort, setSort }: DataTableProps) {
               data.map((row) => (
                 <TableRow 
                   key={row.id}
-                  data-state={undefined}
+                  data-state={rowSelection[row.id] ? "selected" : undefined}
                 >
                   {columns.map((column) => (
-                    <TableCell key={column.key}>
-                      {column.render ? column.render(row, column.isClickable) : (row[column.key as keyof Project] ?? 'N/A')}
+                    <TableCell key={column.key} className={cn(column.key === 'select' && 'pr-0')}>
+                      {column.render ? column.render(row) : (row[column.key as keyof Project] ?? 'N/A')}
                     </TableCell>
                   ))}
                 </TableRow>
               ))
             ) : (
               <TableRow>
-                <TableCell colSpan={columns.length + 1} className="h-24 text-center">
+                <TableCell colSpan={columns.length} className="h-24 text-center">
                   No results found.
                 </TableCell>
               </TableRow>
@@ -80,6 +86,7 @@ export function DataTable({ data, columns, sort, setSort }: DataTableProps) {
           </TableBody>
         </Table>
       </div>
+       {children && <div className="flex-shrink-0">{children}</div>}
     </div>
   )
 }
