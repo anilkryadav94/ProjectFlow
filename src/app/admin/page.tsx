@@ -1,4 +1,4 @@
-import { getSession, getUsers } from "@/lib/auth";
+import { getSession } from "@/lib/auth";
 import { redirect } from "next/navigation";
 import { UserManagementTable } from "./user-management-table";
 import { Header } from "@/components/header";
