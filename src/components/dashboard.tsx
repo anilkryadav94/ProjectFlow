@@ -133,8 +133,8 @@ export default function Dashboard({
           {isAdminView ? (
             <UserManagementTable users={allUsers} />
           ) : isTaskView ? (
-             <div className="flex flex-col h-full gap-4">
-                <div className="flex-grow pr-4">
+             <div className="h-full space-y-4">
+                <div className="h-[60%] pr-4">
                     <ScrollArea className="h-full">
                         <ProjectForm 
                             project={activeProject} 
@@ -144,7 +144,7 @@ export default function Dashboard({
                         />
                     </ScrollArea>
                 </div>
-                <div className="flex-grow-[2]">
+                <div className="h-[calc(30%-1rem)]">
                     <DataTable 
                         data={filteredProjects}
                         columns={columns}
