@@ -115,8 +115,6 @@ export default async function TaskPage({ params, searchParams }: { params: { id:
             activeRole={activeRole}
             isManagerOrAdmin={false}
             hasSearchResults={false}
-            clientNameFilter=""
-            processFilter="all"
             clientNames={clientNames}
             processes={processes}
          >

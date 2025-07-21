@@ -40,9 +40,9 @@ interface HeaderProps {
     hasSearchResults: boolean;
     onAmendSearch?: () => void;
     onResetSearch?: () => void;
-    clientNameFilter: string;
+    clientNameFilter?: string;
     setClientNameFilter?: (value: string) => void;
-    processFilter: string | 'all';
+    processFilter?: string | 'all';
     setProcessFilter?: (value: string | 'all') => void;
     clientNames: string[];
     processes: ProcessType[];
@@ -78,6 +78,17 @@ export function Header({
     router.push('/login');
   };
 
+  const handleRoleChange = (role: Role) => {
+    if (setActiveRole) {
+      setActiveRole(role);
+    } else {
+      // If on a page without setActiveRole (like task page), redirect to home
+      // This will effectively switch the role for the whole dashboard context.
+      router.push('/');
+      router.refresh();
+    }
+  }
+
   const getDashboardName = () => {
     if (!activeRole) return 'Dashboard';
     switch(activeRole) {
@@ -111,19 +122,15 @@ export function Header({
             <h2 className="text-xl font-bold tracking-tight">ProjectFlow</h2>
           </div>
           <Separator orientation="vertical" className="h-6 bg-primary-foreground/50" />
-            {setActiveRole ? (
-                 <Link href="/" className="text-md font-semibold hover:underline">
-                    {dashboardName}
-                </Link>
-            ) : (
-                 <h3 className="text-md font-semibold">{dashboardName}</h3>
-            )}
+            <Link href="/" className="text-md font-semibold hover:underline">
+                {dashboardName}
+            </Link>
         </div>
         
         <div className="flex-grow flex items-center justify-center px-8">
             {children ? (
                 children
-            ) : !isManagerOrAdmin && setSearch && setSearchColumn && setClientNameFilter && setProcessFilter && (
+            ) : !isManagerOrAdmin && setSearch && setSearchColumn && setClientNameFilter && setProcessFilter && clientNameFilter && processFilter && (
               <div className="flex w-full max-w-2xl items-center space-x-2">
                 <div className="flex items-center space-x-0 w-1/2">
                     <Select value={searchColumn} onValueChange={(v) => setSearchColumn(v as SearchableColumn)}>
@@ -205,11 +212,11 @@ export function Header({
                     <DropdownMenuLabel>{user.name}</DropdownMenuLabel>
                     <DropdownMenuLabel className="text-xs font-normal text-muted-foreground">{user.email}</DropdownMenuLabel>
                     
-                    {sortedUserRoles.length > 1 && setActiveRole && (
+                    {sortedUserRoles.length > 1 && (
                         <>
                             <DropdownMenuSeparator />
                             <DropdownMenuLabel>Switch Role</DropdownMenuLabel>
-                            <DropdownMenuRadioGroup value={activeRole} onValueChange={(value) => setActiveRole(value as Role)}>
+                            <DropdownMenuRadioGroup value={activeRole} onValueChange={(value) => handleRoleChange(value as Role)}>
                                 {sortedUserRoles.map(role => (
                                     <DropdownMenuRadioItem key={role} value={role}>
                                         {role}
