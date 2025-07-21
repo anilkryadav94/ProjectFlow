@@ -39,7 +39,7 @@ export function DataTable({ data, columns, sort, setSort, onProjectUpdate, onRow
   };
 
   const maxHeightClass = isTaskView
-    ? "max-h-[30vh]"
+    ? "h-full"
     : "max-h-[calc(100vh-280px)]";
 
 
