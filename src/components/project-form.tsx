@@ -177,7 +177,7 @@ export function ProjectForm({ project, onFormSubmit, onCancel, role, setOpen }: 
       <Form {...form}>
         <form onSubmit={(e) => e.preventDefault()} className="flex flex-col h-full">
            <Card className="flex flex-col flex-grow overflow-hidden">
-            <CardHeader>
+            <CardHeader className="flex-shrink-0">
               <CardTitle className="text-xl">{project ? `Task: ${project.refNumber}`: 'New Project'}</CardTitle>
               {project && <CardDescription>Subject: {project.subject}</CardDescription>}
             </CardHeader>
@@ -481,7 +481,7 @@ export function ProjectForm({ project, onFormSubmit, onCancel, role, setOpen }: 
                   </div>
                 </div>
             </CardContent>
-            <CardFooter>
+            <CardFooter className="flex-shrink-0">
               <div className="flex justify-end space-x-2 w-full">
                   {onCancel && <Button variant="outline" onClick={onCancel} disabled={isSubmitting}>Cancel</Button>}
 
@@ -526,5 +526,3 @@ export function ProjectForm({ project, onFormSubmit, onCancel, role, setOpen }: 
     </div>
   )
 }
-
-    
