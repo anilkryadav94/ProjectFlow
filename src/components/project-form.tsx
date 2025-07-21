@@ -35,9 +35,10 @@ import {
 import { saveProject } from "@/app/actions"
 import { type Project, processors, qas, clientNames, processes, type Role } from "@/lib/data"
 import { Textarea } from "./ui/textarea"
-import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "./ui/card"
+import { Card, CardContent, CardHeader, CardTitle, CardDescription, CardFooter } from "./ui/card"
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "./ui/dialog"
 import { MultiMattersForm } from "./multi-matters-form"
+import { ScrollArea } from "./ui/scroll-area"
 
 const formSchema = z.object({
   id: z.string().optional(),
@@ -132,12 +133,14 @@ export function ProjectForm({ project, onFormSubmit, onCancel, role, setOpen }: 
   
   if (!project && (role === 'Processor' || role === 'QA')) {
     return (
-        <Card className="shadow-md">
-            <CardHeader>
-                <CardTitle>No Task in Queue</CardTitle>
-                <CardDescription>You have no pending tasks. New tasks will appear here when assigned.</CardDescription>
-            </CardHeader>
-        </Card>
+        <div className="animated-border shadow-md h-full">
+            <Card className="h-full">
+                <CardHeader>
+                    <CardTitle>No Task in Queue</CardTitle>
+                    <CardDescription>You have no pending tasks. New tasks will appear here when assigned.</CardDescription>
+                </CardHeader>
+            </Card>
+        </div>
     )
   }
 
@@ -170,24 +173,153 @@ export function ProjectForm({ project, onFormSubmit, onCancel, role, setOpen }: 
   }
 
   return (
-    <div className="animated-border shadow-md">
-      <Card>
-        <CardHeader>
-          <CardTitle className="text-xl">{project ? `Task: ${project.refNumber}`: 'New Project'}</CardTitle>
-          {project && <CardDescription>Subject: {project.subject}</CardDescription>}
-        </CardHeader>
-        <CardContent>
-          <Form {...form}>
-            <form onSubmit={(e) => e.preventDefault()} className="space-y-4">
-              <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
-                  <FormField
+    <div className="animated-border shadow-md h-full">
+      <Form {...form}>
+        <form onSubmit={(e) => e.preventDefault()} className="flex flex-col h-full">
+           <Card className="flex flex-col flex-grow overflow-hidden">
+            <CardHeader>
+              <CardTitle className="text-xl">{project ? `Task: ${project.refNumber}`: 'New Project'}</CardTitle>
+              {project && <CardDescription>Subject: {project.subject}</CardDescription>}
+            </CardHeader>
+            <CardContent className="flex-grow overflow-y-auto pr-2">
+                <div className="space-y-4">
+                  <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
+                      <FormField
+                          control={form.control}
+                          name="refNumber"
+                          render={({ field }) => (
+                              <FormItem>
+                              <FormLabel>Reference Number</FormLabel>
+                              <FormControl>
+                                  <Input placeholder="REF..." {...field} disabled={!isFieldEditable('refNumber')}/>
+                              </FormControl>
+                              <FormMessage />
+                              </FormItem>
+                          )}
+                      />
+                      <FormField
+                          control={form.control}
+                          name="clientName"
+                          render={({ field }) => (
+                              <FormItem>
+                              <FormLabel>Client Name</FormLabel>
+                                {isManager ? (
+                                  <Select onValueChange={field.onChange} value={field.value} disabled={!isFieldEditable('clientName')}>
+                                      <FormControl>
+                                      <SelectTrigger>
+                                          <SelectValue placeholder="Select a client" />
+                                      </SelectTrigger>
+                                      </FormControl>
+                                      <SelectContent>
+                                          {clientNames.map(c => <SelectItem key={c} value={c}>{c}</SelectItem>)}
+                                      </SelectContent>
+                                  </Select>
+                                ) : (
+                                  <Input {...field} disabled />
+                                )}
+                              <FormMessage />
+                              </FormItem>
+                          )}
+                      />
+                      <FormField
+                          control={form.control}
+                          name="process"
+                          render={({ field }) => (
+                              <FormItem>
+                              <FormLabel>Process</FormLabel>
+                              {isManager ? (
+                                  <Select onValueChange={field.onChange} value={field.value} disabled={!isFieldEditable('process')}>
+                                      <FormControl>
+                                      <SelectTrigger>
+                                          <SelectValue placeholder="Select a process" />
+                                      </SelectTrigger>
+                                      </FormControl>
+                                      <SelectContent>
+                                          {processes.map(p => <SelectItem key={p} value={p}>{p}</SelectItem>)}
+                                      </SelectContent>
+                                  </Select>
+                              ) : (
+                                  <Input {...field} disabled />
+                              )}
+                              <FormMessage />
+                              </FormItem>
+                          )}
+                      />
+                      {project && <FormField
                       control={form.control}
-                      name="refNumber"
+                      name="status"
                       render={({ field }) => (
                           <FormItem>
-                          <FormLabel>Reference Number</FormLabel>
+                          <FormLabel>Status</FormLabel>
+                          <Select onValueChange={field.onChange} value={field.value} disabled={!isFieldEditable('status')}>
+                              <FormControl>
+                              <SelectTrigger>
+                                  <SelectValue placeholder="Select status" />
+                              </SelectTrigger>
+                              </FormControl>
+                              <SelectContent>
+                                  <SelectItem value="Pending" disabled={!isManager}>Pending</SelectItem>
+                                  <SelectItem value="Processing" disabled={!isManager}>Processing</SelectItem>
+                                  <SelectItem value="QA" disabled={!isManager}>QA</SelectItem>
+                                  <SelectItem value="Complete" disabled={!isManager}>Complete</SelectItem>
+                                  
+                                  <SelectItem value="On Hold" disabled={!isProcessor && !isQA && !isManager}>On Hold</SelectItem>
+                              </SelectContent>
+                          </Select>
+                          <FormMessage />
+                          </FormItem>
+                      )}
+                      />}
+                  </div>
+                  <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                      <FormField
+                          control={form.control}
+                          name="applicationNumber"
+                          render={({ field }) => (
+                              <FormItem>
+                              <FormLabel>Application Number</FormLabel>
+                              <FormControl>
+                                  <Input placeholder="US16/123,456" {...field} value={field.value || ''} disabled={!isFieldEditable('applicationNumber')} />
+                              </FormControl>
+                              <FormMessage />
+                              </FormItem>
+                          )}
+                      />
+                      <FormField
+                          control={form.control}
+                          name="patentNumber"
+                          render={({ field }) => (
+                              <FormItem>
+                              <FormLabel>Patent Number</FormLabel>
+                              <FormControl>
+                                  <Input placeholder="10,123,456" {...field} value={field.value || ''} disabled={!isFieldEditable('patentNumber')} />
+                              </FormControl>
+                              <FormMessage />
+                              </FormItem>
+                          )}
+                      />
+                      <FormField
+                          control={form.control}
+                          name="documentName"
+                          render={({ field }) => (
+                              <FormItem>
+                              <FormLabel>Document Name</FormLabel>
+                              <FormControl>
+                                  <Input placeholder="Response_To_OA.pdf" {...field} value={field.value || ''} disabled={!isFieldEditable('documentName')} />
+                              </FormControl>
+                              <FormMessage />
+                              </FormItem>
+                          )}
+                      />
+                  </div>
+                  <FormField
+                      control={form.control}
+                      name="subject"
+                      render={({ field }) => (
+                          <FormItem>
+                          <FormLabel>Subject</FormLabel>
                           <FormControl>
-                              <Input placeholder="REF..." {...field} disabled={!isFieldEditable('refNumber')}/>
+                              <Input placeholder="Invention disclosure..." {...field} disabled={!isFieldEditable('subject')}/>
                           </FormControl>
                           <FormMessage />
                           </FormItem>
@@ -195,288 +327,162 @@ export function ProjectForm({ project, onFormSubmit, onCancel, role, setOpen }: 
                   />
                   <FormField
                       control={form.control}
-                      name="clientName"
+                      name="actionTaken"
                       render={({ field }) => (
                           <FormItem>
-                          <FormLabel>Client Name</FormLabel>
-                            {isManager ? (
-                              <Select onValueChange={field.onChange} value={field.value} disabled={!isFieldEditable('clientName')}>
-                                  <FormControl>
-                                  <SelectTrigger>
-                                      <SelectValue placeholder="Select a client" />
-                                  </SelectTrigger>
-                                  </FormControl>
-                                  <SelectContent>
-                                      {clientNames.map(c => <SelectItem key={c} value={c}>{c}</SelectItem>)}
-                                  </SelectContent>
-                              </Select>
-                            ) : (
-                              <Input {...field} disabled />
-                            )}
-                          <FormMessage />
-                          </FormItem>
-                      )}
-                  />
-                  <FormField
-                      control={form.control}
-                      name="process"
-                      render={({ field }) => (
-                          <FormItem>
-                          <FormLabel>Process</FormLabel>
-                          {isManager ? (
-                              <Select onValueChange={field.onChange} value={field.value} disabled={!isFieldEditable('process')}>
-                                  <FormControl>
-                                  <SelectTrigger>
-                                      <SelectValue placeholder="Select a process" />
-                                  </SelectTrigger>
-                                  </FormControl>
-                                  <SelectContent>
-                                      {processes.map(p => <SelectItem key={p} value={p}>{p}</SelectItem>)}
-                                  </SelectContent>
-                              </Select>
-                          ) : (
-                              <Input {...field} disabled />
-                          )}
-                          <FormMessage />
-                          </FormItem>
-                      )}
-                  />
-                  {project && <FormField
-                  control={form.control}
-                  name="status"
-                  render={({ field }) => (
-                      <FormItem>
-                      <FormLabel>Status</FormLabel>
-                      <Select onValueChange={field.onChange} value={field.value} disabled={!isFieldEditable('status')}>
+                          <FormLabel>Action Taken</FormLabel>
                           <FormControl>
-                          <SelectTrigger>
-                              <SelectValue placeholder="Select status" />
-                          </SelectTrigger>
-                          </FormControl>
-                          <SelectContent>
-                              <SelectItem value="Pending" disabled={!isManager}>Pending</SelectItem>
-                              <SelectItem value="Processing" disabled={!isManager}>Processing</SelectItem>
-                              <SelectItem value="QA" disabled={!isManager}>QA</SelectItem>
-                              <SelectItem value="Complete" disabled={!isManager}>Complete</SelectItem>
-                              
-                              <SelectItem value="On Hold" disabled={!isProcessor && !isQA && !isManager}>On Hold</SelectItem>
-                          </SelectContent>
-                      </Select>
-                      <FormMessage />
-                      </FormItem>
-                  )}
-                  />}
-              </div>
-              <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-                  <FormField
-                      control={form.control}
-                      name="applicationNumber"
-                      render={({ field }) => (
-                          <FormItem>
-                          <FormLabel>Application Number</FormLabel>
-                          <FormControl>
-                              <Input placeholder="US16/123,456" {...field} value={field.value || ''} disabled={!isFieldEditable('applicationNumber')} />
+                              <Textarea placeholder="Describe the action taken..." {...field} value={field.value || ''} disabled={!isFieldEditable('actionTaken')} />
                           </FormControl>
                           <FormMessage />
                           </FormItem>
                       )}
                   />
-                  <FormField
+                  
+                  <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
+                      <FormField
+                          control={form.control}
+                          name="emailDate"
+                          render={({ field }) => (
+                              <FormItem className="flex flex-col">
+                              <FormLabel>Email Date</FormLabel>
+                              {isManager ? (
+                                  <Popover>
+                                      <PopoverTrigger asChild>
+                                      <FormControl>
+                                          <Button
+                                          variant={"outline"}
+                                          className={cn(
+                                              "pl-3 text-left font-normal",
+                                              !field.value && "text-muted-foreground",
+                                              !isFieldEditable('emailDate') && "disabled:opacity-100 disabled:cursor-default"
+                                          )}
+                                          disabled={!isFieldEditable('emailDate')}
+                                          >
+                                          {field.value ? (
+                                              format(field.value, "PPP")
+                                          ) : (
+                                              <span>Pick a date</span>
+                                          )}
+                                          <CalendarIcon className="ml-auto h-4 w-4 opacity-50" />
+                                          </Button>
+                                      </FormControl>
+                                      </PopoverTrigger>
+                                      <PopoverContent className="w-auto p-0" align="start">
+                                      <Calendar
+                                          mode="single"
+                                          selected={field.value}
+                                          onSelect={field.onChange}
+                                          disabled={(date) =>
+                                          date > new Date() || date < new Date("1900-01-01")
+                                          }
+                                          initialFocus
+                                      />
+                                      </PopoverContent>
+                                  </Popover>
+                              ) : (
+                                <Input value={field.value ? format(field.value, "PPP") : ''} disabled />
+                              )}
+                              </FormItem>
+                      )}
+                      />
+                      <FormField
+                          control={form.control}
+                          name="allocationDate"
+                          render={({ field }) => (
+                              <FormItem className="flex flex-col">
+                              <FormLabel>Allocation Date</FormLabel>
+                                {isManager ? (
+                                  <Popover>
+                                      <PopoverTrigger asChild>
+                                      <FormControl>
+                                          <Button
+                                          variant={"outline"}
+                                          className={cn(
+                                              "pl-3 text-left font-normal",
+                                              !field.value && "text-muted-foreground",
+                                              !isFieldEditable('allocationDate') && "disabled:opacity-100 disabled:cursor-default"
+                                          )}
+                                          disabled={!isFieldEditable('allocationDate')}
+                                          >
+                                          {field.value ? (
+                                              format(field.value, "PPP")
+                                          ) : (
+                                              <span>Pick a date</span>
+                                          )}
+                                          <CalendarIcon className="ml-auto h-4 w-4 opacity-50" />
+                                          </Button>
+                                      </FormControl>
+                                      </PopoverTrigger>
+                                      <PopoverContent className="w-auto p-0" align="start">
+                                      <Calendar
+                                          mode="single"
+                                          selected={field.value}
+                                          onSelect={field.onChange}
+                                          disabled={(date) =>
+                                          date > new Date() || date < new Date("1900-01-01")
+                                          }
+                                          initialFocus
+                                      />
+                                      </PopoverContent>
+                                  </Popover>
+                              ) : (
+                                <Input value={field.value ? format(field.value, "PPP") : ''} disabled />
+                              )}
+                              </FormItem>
+                      )}
+                      />
+                      <FormField
                       control={form.control}
-                      name="patentNumber"
+                      name="processor"
                       render={({ field }) => (
                           <FormItem>
-                          <FormLabel>Patent Number</FormLabel>
-                          <FormControl>
-                              <Input placeholder="10,123,456" {...field} value={field.value || ''} disabled={!isFieldEditable('patentNumber')} />
-                          </FormControl>
-                          <FormMessage />
+                              <FormLabel>Processor</FormLabel>
+                              {isManager ? (
+                                  <Select onValueChange={field.onChange} value={field.value} disabled={!isFieldEditable('processor')}>
+                                      <FormControl>
+                                      <SelectTrigger>
+                                          <SelectValue placeholder="Select a processor" />
+                                      </SelectTrigger>
+                                      </FormControl>
+                                      <SelectContent>
+                                          {processors.map(p => <SelectItem key={p} value={p}>{p}</SelectItem>)}
+                                      </SelectContent>
+                                  </Select>
+                              ) : (
+                                  <Input {...field} disabled />
+                              )}
                           </FormItem>
                       )}
-                  />
-                  <FormField
+                      />
+                      <FormField
                       control={form.control}
-                      name="documentName"
+                      name="qa"
                       render={({ field }) => (
                           <FormItem>
-                          <FormLabel>Document Name</FormLabel>
-                          <FormControl>
-                              <Input placeholder="Response_To_OA.pdf" {...field} value={field.value || ''} disabled={!isFieldEditable('documentName')} />
-                          </FormControl>
-                          <FormMessage />
+                              <FormLabel>QA</FormLabel>
+                              {isManager ? (
+                                  <Select onValueChange={field.onChange} value={field.value} disabled={!isFieldEditable('qa')}>
+                                      <FormControl>
+                                      <SelectTrigger>
+                                          <SelectValue placeholder="Select a QA" />
+                                      </SelectTrigger>
+                                      </FormControl>
+                                      <SelectContent>
+                                          {qas.map(q => <SelectItem key={q} value={q}>{q}</SelectItem>)}
+                                      </SelectContent>
+                                  </Select>
+                              ) : (
+                                  <Input {...field} disabled />
+                              )}
                           </FormItem>
                       )}
-                  />
-              </div>
-              <FormField
-                  control={form.control}
-                  name="subject"
-                  render={({ field }) => (
-                      <FormItem>
-                      <FormLabel>Subject</FormLabel>
-                      <FormControl>
-                          <Input placeholder="Invention disclosure..." {...field} disabled={!isFieldEditable('subject')}/>
-                      </FormControl>
-                      <FormMessage />
-                      </FormItem>
-                  )}
-              />
-              <FormField
-                  control={form.control}
-                  name="actionTaken"
-                  render={({ field }) => (
-                      <FormItem>
-                      <FormLabel>Action Taken</FormLabel>
-                      <FormControl>
-                          <Textarea placeholder="Describe the action taken..." {...field} value={field.value || ''} disabled={!isFieldEditable('actionTaken')} />
-                      </FormControl>
-                      <FormMessage />
-                      </FormItem>
-                  )}
-              />
-              
-              <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
-                  <FormField
-                      control={form.control}
-                      name="emailDate"
-                      render={({ field }) => (
-                          <FormItem className="flex flex-col">
-                          <FormLabel>Email Date</FormLabel>
-                          {isManager ? (
-                              <Popover>
-                                  <PopoverTrigger asChild>
-                                  <FormControl>
-                                      <Button
-                                      variant={"outline"}
-                                      className={cn(
-                                          "pl-3 text-left font-normal",
-                                          !field.value && "text-muted-foreground",
-                                          !isFieldEditable('emailDate') && "disabled:opacity-100 disabled:cursor-default"
-                                      )}
-                                      disabled={!isFieldEditable('emailDate')}
-                                      >
-                                      {field.value ? (
-                                          format(field.value, "PPP")
-                                      ) : (
-                                          <span>Pick a date</span>
-                                      )}
-                                      <CalendarIcon className="ml-auto h-4 w-4 opacity-50" />
-                                      </Button>
-                                  </FormControl>
-                                  </PopoverTrigger>
-                                  <PopoverContent className="w-auto p-0" align="start">
-                                  <Calendar
-                                      mode="single"
-                                      selected={field.value}
-                                      onSelect={field.onChange}
-                                      disabled={(date) =>
-                                      date > new Date() || date < new Date("1900-01-01")
-                                      }
-                                      initialFocus
-                                  />
-                                  </PopoverContent>
-                              </Popover>
-                          ) : (
-                            <Input value={field.value ? format(field.value, "PPP") : ''} disabled />
-                          )}
-                          </FormItem>
-                  )}
-                  />
-                  <FormField
-                      control={form.control}
-                      name="allocationDate"
-                      render={({ field }) => (
-                          <FormItem className="flex flex-col">
-                          <FormLabel>Allocation Date</FormLabel>
-                            {isManager ? (
-                              <Popover>
-                                  <PopoverTrigger asChild>
-                                  <FormControl>
-                                      <Button
-                                      variant={"outline"}
-                                      className={cn(
-                                          "pl-3 text-left font-normal",
-                                          !field.value && "text-muted-foreground",
-                                          !isFieldEditable('allocationDate') && "disabled:opacity-100 disabled:cursor-default"
-                                      )}
-                                      disabled={!isFieldEditable('allocationDate')}
-                                      >
-                                      {field.value ? (
-                                          format(field.value, "PPP")
-                                      ) : (
-                                          <span>Pick a date</span>
-                                      )}
-                                      <CalendarIcon className="ml-auto h-4 w-4 opacity-50" />
-                                      </Button>
-                                  </FormControl>
-                                  </PopoverTrigger>
-                                  <PopoverContent className="w-auto p-0" align="start">
-                                  <Calendar
-                                      mode="single"
-                                      selected={field.value}
-                                      onSelect={field.onChange}
-                                      disabled={(date) =>
-                                      date > new Date() || date < new Date("1900-01-01")
-                                      }
-                                      initialFocus
-                                  />
-                                  </PopoverContent>
-                              </Popover>
-                          ) : (
-                            <Input value={field.value ? format(field.value, "PPP") : ''} disabled />
-                          )}
-                          </FormItem>
-                  )}
-                  />
-                  <FormField
-                  control={form.control}
-                  name="processor"
-                  render={({ field }) => (
-                      <FormItem>
-                          <FormLabel>Processor</FormLabel>
-                          {isManager ? (
-                              <Select onValueChange={field.onChange} value={field.value} disabled={!isFieldEditable('processor')}>
-                                  <FormControl>
-                                  <SelectTrigger>
-                                      <SelectValue placeholder="Select a processor" />
-                                  </SelectTrigger>
-                                  </FormControl>
-                                  <SelectContent>
-                                      {processors.map(p => <SelectItem key={p} value={p}>{p}</SelectItem>)}
-                                  </SelectContent>
-                              </Select>
-                          ) : (
-                              <Input {...field} disabled />
-                          )}
-                      </FormItem>
-                  )}
-                  />
-                  <FormField
-                  control={form.control}
-                  name="qa"
-                  render={({ field }) => (
-                      <FormItem>
-                          <FormLabel>QA</FormLabel>
-                          {isManager ? (
-                              <Select onValueChange={field.onChange} value={field.value} disabled={!isFieldEditable('qa')}>
-                                  <FormControl>
-                                  <SelectTrigger>
-                                      <SelectValue placeholder="Select a QA" />
-                                  </SelectTrigger>
-                                  </FormControl>
-                                  <SelectContent>
-                                      {qas.map(q => <SelectItem key={q} value={q}>{q}</SelectItem>)}
-                                  </SelectContent>
-                              </Select>
-                          ) : (
-                              <Input {...field} disabled />
-                          )}
-                      </FormItem>
-                  )}
-                  />
-              </div>
-
-              <div className="flex justify-end space-x-2 pt-4">
+                      />
+                  </div>
+                </div>
+            </CardContent>
+            <CardFooter>
+              <div className="flex justify-end space-x-2 w-full">
                   {onCancel && <Button variant="outline" onClick={onCancel} disabled={isSubmitting}>Cancel</Button>}
 
                   {project && (
@@ -513,10 +519,12 @@ export function ProjectForm({ project, onFormSubmit, onCancel, role, setOpen }: 
                       {isManager && !project ? 'Create Project' : 'Save Changes'}
                   </Button>
               </div>
-            </form>
-          </Form>
-        </CardContent>
-      </Card>
+            </CardFooter>
+           </Card>
+        </form>
+      </Form>
     </div>
   )
 }
+
+    
