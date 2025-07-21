@@ -136,7 +136,7 @@ export function ProjectForm({ project, onFormSubmit, onCancel, role, setOpen }: 
         <div className="animated-border shadow-xl h-full">
             <Card className="h-full">
                 <CardHeader>
-                    <CardTitle>No Task in Queue</CardTitle>
+                    <CardTitle className="text-xl">No Task in Queue</CardTitle>
                     <CardDescription>You have no pending tasks. New tasks will appear here when assigned.</CardDescription>
                 </CardHeader>
             </Card>
