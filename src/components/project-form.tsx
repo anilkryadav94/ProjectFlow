@@ -183,8 +183,7 @@ export function ProjectForm({ project, onFormSubmit, onCancel, role, setOpen }: 
                     {project && <CardDescription className="text-xs">Subject: {project.subject}</CardDescription>}
                 </div>
                 <div className="flex items-center space-x-2">
-                    {onCancel && <Button size="sm" variant="outline" onClick={onCancel} disabled={isSubmitting}>Cancel</Button>}
-
+                    
                     {project && (
                         <Dialog open={isMMFormOpen} onOpenChange={setIsMMFormOpen}>
                             <DialogTrigger asChild>
