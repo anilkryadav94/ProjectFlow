@@ -172,7 +172,7 @@ export function ProjectForm({ project, onFormSubmit, onCancel, role, setOpen }: 
   return (
     <Card>
       <CardHeader>
-        <CardTitle>{project ? `Task: ${project.refNumber}`: 'New Project'}</CardTitle>
+        <CardTitle className="text-xl">{project ? `Task: ${project.refNumber}`: 'New Project'}</CardTitle>
         {project && <CardDescription>Subject: {project.subject}</CardDescription>}
       </CardHeader>
       <CardContent>
@@ -521,5 +521,3 @@ export function ProjectForm({ project, onFormSubmit, onCancel, role, setOpen }: 
     </Card>
   )
 }
-
-    
