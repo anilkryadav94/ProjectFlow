@@ -47,13 +47,16 @@ export function Header({
   };
 
   const primaryRole = React.useMemo(() => {
+    if (!user || !user.roles) {
+      return 'Processor'; // Default fallback
+    }
     for (const role of roleHierarchy) {
       if (user.roles.includes(role)) {
         return role;
       }
     }
     return user.roles[0] || 'Processor'; // Fallback
-  }, [user.roles]);
+  }, [user]);
 
   const getDashboardName = () => {
     switch(primaryRole) {
