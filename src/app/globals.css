@@ -86,3 +86,32 @@ body {
     @apply bg-background text-foreground;
   }
 }
+
+@layer utilities {
+  .animated-border {
+      @apply relative p-[2px] overflow-hidden rounded-lg;
+  }
+
+  .animated-border::before {
+      content: '';
+      position: absolute;
+      top: 50%;
+      left: 50%;
+      width: 200%;
+      height: 200%;
+      background: conic-gradient(
+          hsl(var(--primary)) 0deg,
+          hsl(var(--accent)) 90deg,
+          hsl(var(--primary)) 180deg,
+          hsl(var(--accent)) 270deg,
+          hsl(var(--primary)) 360deg
+      );
+      transform-origin: center;
+      animation: border-spin 5s linear infinite;
+      transform: translate(-50%, -50%);
+  }
+
+  .animated-border > * {
+    @apply relative z-10;
+  }
+}

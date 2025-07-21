@@ -18,8 +18,9 @@ import { type User, roles, type Role } from "@/lib/data";
 import { useToast } from "@/hooks/use-toast";
 import { updateUser, addUser, addBulkUsers } from "@/lib/auth";
 import { ChevronsUpDown, Loader2, PlusCircle, Upload } from "lucide-react";
-import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "./ui/card";
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "./ui/card";
 import { AddUserDialog } from "./add-user-dialog";
+import { cn } from "@/lib/utils";
 
 interface UserManagementTableProps {
     users: User[];
@@ -139,111 +140,113 @@ export function UserManagementTable({ users: initialUsers }: UserManagementTable
 
     return (
         <>
-            <Card className="shadow-md">
-                <CardHeader>
-                    <div className="flex items-center justify-between">
-                        <div>
-                            <CardTitle>User Management</CardTitle>
-                            <CardDescription>Manage user details, roles, and permissions for the application.</CardDescription>
+            <div className="animated-border shadow-md">
+                <Card>
+                    <CardHeader>
+                        <div className="flex items-center justify-between">
+                            <div>
+                                <CardTitle>User Management</CardTitle>
+                                <CardDescription>Manage user details, roles, and permissions for the application.</CardDescription>
+                            </div>
+                            <div className="flex gap-2">
+                                <input
+                                    type="file"
+                                    ref={fileInputRef}
+                                    onChange={handleFileUpload}
+                                    className="hidden"
+                                    accept=".csv"
+                                />
+                                <Button variant="outline" onClick={() => fileInputRef.current?.click()}>
+                                    <Upload className="mr-2 h-4 w-4" />
+                                    Bulk Upload
+                                </Button>
+                                <Button onClick={() => setIsAddUserDialogOpen(true)}>
+                                    <PlusCircle className="mr-2 h-4 w-4" />
+                                    Add User
+                                </Button>
+                            </div>
                         </div>
-                         <div className="flex gap-2">
-                            <input
-                                type="file"
-                                ref={fileInputRef}
-                                onChange={handleFileUpload}
-                                className="hidden"
-                                accept=".csv"
-                            />
-                            <Button variant="outline" onClick={() => fileInputRef.current?.click()}>
-                                <Upload className="mr-2 h-4 w-4" />
-                                Bulk Upload
-                            </Button>
-                            <Button onClick={() => setIsAddUserDialogOpen(true)}>
-                                <PlusCircle className="mr-2 h-4 w-4" />
-                                Add User
-                            </Button>
-                        </div>
-                    </div>
-                </CardHeader>
-                <CardContent>
-                    <div className="rounded-md border overflow-y-auto max-h-[calc(100vh-350px)]">
-                        <Table>
-                            <TableHeader className="sticky top-0 bg-muted z-10">
-                                <TableRow>
-                                    <TableHead>Username</TableHead>
-                                    <TableHead>Email</TableHead>
-                                    <TableHead>Password</TableHead>
-                                    <TableHead>Roles</TableHead>
-                                    <TableHead className="w-[120px]">Actions</TableHead>
-                                </TableRow>
-                            </TableHeader>
-                            <TableBody>
-                                {users.map((user) => (
-                                    <TableRow key={user.id}>
-                                        <TableCell>
-                                            <Input
-                                                value={user.name}
-                                                onChange={(e) => handleInputChange(user.id, 'name', e.target.value)}
-                                                disabled={isSubmitting[user.id]}
-                                            />
-                                        </TableCell>
-                                        <TableCell>
-                                            <Input
-                                                type="email"
-                                                value={user.email}
-                                                onChange={(e) => handleInputChange(user.id, 'email', e.target.value)}
-                                                disabled={isSubmitting[user.id]}
-                                            />
-                                        </TableCell>
-                                        <TableCell>
-                                            <Input
-                                                value={user.password || ''}
-                                                onChange={(e) => handleInputChange(user.id, 'password', e.target.value)}
-                                                disabled={isSubmitting[user.id]}
-                                                placeholder="Set new password"
-                                            />
-                                        </TableCell>
-                                        <TableCell>
-                                            <DropdownMenu>
-                                                <DropdownMenuTrigger asChild>
-                                                    <Button variant="outline" className="w-full justify-between" disabled={isSubmitting[user.id]}>
-                                                        <span className="truncate">{user.roles?.join(', ') || 'Select roles'}</span>
-                                                        <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
-                                                    </Button>
-                                                </DropdownMenuTrigger>
-                                                <DropdownMenuContent className="w-56">
-                                                    <DropdownMenuLabel>Assign Roles</DropdownMenuLabel>
-                                                    <DropdownMenuSeparator />
-                                                    {roles.map((role) => (
-                                                        <DropdownMenuCheckboxItem
-                                                            key={role}
-                                                            checked={user.roles?.includes(role)}
-                                                            onCheckedChange={(checked) => handleRoleChange(user.id, role, !!checked)}
-                                                            onSelect={(e) => e.preventDefault()}
-                                                        >
-                                                            {role}
-                                                        </DropdownMenuCheckboxItem>
-                                                    ))}
-                                                </DropdownMenuContent>
-                                            </DropdownMenu>
-                                        </TableCell>
-                                        <TableCell>
-                                            <Button 
-                                                onClick={() => handleUpdateUser(user.id)} 
-                                                disabled={isSubmitting[user.id]}
-                                                size="sm"
-                                            >
-                                                {isSubmitting[user.id] && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
-                                                Update
-                                            </Button>
-                                        </TableCell>
+                    </CardHeader>
+                    <CardContent>
+                        <div className="rounded-md border overflow-y-auto max-h-[calc(100vh-350px)]">
+                            <Table>
+                                <TableHeader className="sticky top-0 bg-muted z-10">
+                                    <TableRow>
+                                        <TableHead>Username</TableHead>
+                                        <TableHead>Email</TableHead>
+                                        <TableHead>Password</TableHead>
+                                        <TableHead>Roles</TableHead>
+                                        <TableHead className="w-[120px]">Actions</TableHead>
                                     </TableRow>
-                                ))}
-                            </TableBody>
-                        </Table>
-                    </div>
-                </CardContent>
-            </Card>
+                                </TableHeader>
+                                <TableBody>
+                                    {users.map((user) => (
+                                        <TableRow key={user.id}>
+                                            <TableCell>
+                                                <Input
+                                                    value={user.name}
+                                                    onChange={(e) => handleInputChange(user.id, 'name', e.target.value)}
+                                                    disabled={isSubmitting[user.id]}
+                                                />
+                                            </TableCell>
+                                            <TableCell>
+                                                <Input
+                                                    type="email"
+                                                    value={user.email}
+                                                    onChange={(e) => handleInputChange(user.id, 'email', e.target.value)}
+                                                    disabled={isSubmitting[user.id]}
+                                                />
+                                            </TableCell>
+                                            <TableCell>
+                                                <Input
+                                                    value={user.password || ''}
+                                                    onChange={(e) => handleInputChange(user.id, 'password', e.target.value)}
+                                                    disabled={isSubmitting[user.id]}
+                                                    placeholder="Set new password"
+                                                />
+                                            </TableCell>
+                                            <TableCell>
+                                                <DropdownMenu>
+                                                    <DropdownMenuTrigger asChild>
+                                                        <Button variant="outline" className="w-full justify-between" disabled={isSubmitting[user.id]}>
+                                                            <span className="truncate">{user.roles?.join(', ') || 'Select roles'}</span>
+                                                            <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
+                                                        </Button>
+                                                    </DropdownMenuTrigger>
+                                                    <DropdownMenuContent className="w-56">
+                                                        <DropdownMenuLabel>Assign Roles</DropdownMenuLabel>
+                                                        <DropdownMenuSeparator />
+                                                        {roles.map((role) => (
+                                                            <DropdownMenuCheckboxItem
+                                                                key={role}
+                                                                checked={user.roles?.includes(role)}
+                                                                onCheckedChange={(checked) => handleRoleChange(user.id, role, !!checked)}
+                                                                onSelect={(e) => e.preventDefault()}
+                                                            >
+                                                                {role}
+                                                            </DropdownMenuCheckboxItem>
+                                                        ))}
+                                                    </DropdownMenuContent>
+                                                </DropdownMenu>
+                                            </TableCell>
+                                            <TableCell>
+                                                <Button 
+                                                    onClick={() => handleUpdateUser(user.id)} 
+                                                    disabled={isSubmitting[user.id]}
+                                                    size="sm"
+                                                >
+                                                    {isSubmitting[user.id] && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
+                                                    Update
+                                                </Button>
+                                            </TableCell>
+                                        </TableRow>
+                                    ))}
+                                </TableBody>
+                            </Table>
+                        </div>
+                    </CardContent>
+                </Card>
+            </div>
             <AddUserDialog 
                 isOpen={isAddUserDialogOpen}
                 onOpenChange={setIsAddUserDialogOpen}

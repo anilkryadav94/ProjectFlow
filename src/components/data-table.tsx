@@ -44,56 +44,58 @@ export function DataTable({ data, columns, sort, setSort, onProjectUpdate, onRow
 
 
   return (
-    <div className={cn("rounded-md border bg-card overflow-y-auto relative shadow-md", maxHeightClass)}>
-      <Table>
-        <TableHeader className="sticky top-0 z-10 bg-muted/95 backdrop-blur-sm">
-          <TableRow>
-            {columns.map((column) => (
-              <TableHead key={column.key}>
-                {column.key !== 'actions' ? (
-                  <div
-                    className="flex items-center gap-2 cursor-pointer"
-                    onClick={() => handleSort(column.key as keyof Project)}
-                  >
-                    {column.header}
-                    {sort?.key === column.key && (
-                      sort.direction === 'asc' ? <ArrowUp className="h-4 w-4" /> : <ArrowDown className="h-4 w-4" />
-                    )}
-                  </div>
-                ) : (
-                  column.header
-                )}
-              </TableHead>
-            ))}
-          </TableRow>
-        </TableHeader>
-        <TableBody>
-          {data.length ? (
-            data.map((row) => (
-              <TableRow 
-                key={row.id}
-                onClick={() => onRowClick?.(row)}
-                className={cn(
-                    onRowClick && 'cursor-pointer',
-                    activeProjectId === row.id && 'bg-muted/80'
-                )}
-              >
-                {columns.map((column) => (
-                  <TableCell key={column.key}>
-                    {column.render ? column.render(row, onProjectUpdate) : (row[column.key as keyof Project] ?? 'N/A')}
-                  </TableCell>
-                ))}
-              </TableRow>
-            ))
-          ) : (
+    <div className={cn("animated-border shadow-md", maxHeightClass)}>
+      <div className={cn("rounded-md border bg-card overflow-y-auto relative h-full")}>
+        <Table>
+          <TableHeader className="sticky top-0 z-10 bg-muted/95 backdrop-blur-sm">
             <TableRow>
-              <TableCell colSpan={columns.length} className="h-24 text-center">
-                No results found.
-              </TableCell>
+              {columns.map((column) => (
+                <TableHead key={column.key}>
+                  {column.key !== 'actions' ? (
+                    <div
+                      className="flex items-center gap-2 cursor-pointer"
+                      onClick={() => handleSort(column.key as keyof Project)}
+                    >
+                      {column.header}
+                      {sort?.key === column.key && (
+                        sort.direction === 'asc' ? <ArrowUp className="h-4 w-4" /> : <ArrowDown className="h-4 w-4" />
+                      )}
+                    </div>
+                  ) : (
+                    column.header
+                  )}
+                </TableHead>
+              ))}
             </TableRow>
-          )}
-        </TableBody>
-      </Table>
+          </TableHeader>
+          <TableBody>
+            {data.length ? (
+              data.map((row) => (
+                <TableRow 
+                  key={row.id}
+                  onClick={() => onRowClick?.(row)}
+                  className={cn(
+                      onRowClick && 'cursor-pointer',
+                      activeProjectId === row.id && 'bg-muted/80'
+                  )}
+                >
+                  {columns.map((column) => (
+                    <TableCell key={column.key}>
+                      {column.render ? column.render(row, onProjectUpdate) : (row[column.key as keyof Project] ?? 'N/A')}
+                    </TableCell>
+                  ))}
+                </TableRow>
+              ))
+            ) : (
+              <TableRow>
+                <TableCell colSpan={columns.length} className="h-24 text-center">
+                  No results found.
+                </TableCell>
+              </TableRow>
+            )}
+          </TableBody>
+        </Table>
+      </div>
     </div>
   )
 }
