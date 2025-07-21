@@ -129,7 +129,7 @@ export default function Dashboard({
           setActiveRole={setActiveRole}
           projectsToDownload={filteredProjects}
         />
-        <div className="flex-grow mt-2 overflow-hidden">
+        <div className="flex-grow overflow-hidden">
           {isAdminView ? (
             <UserManagementTable users={allUsers} />
           ) : isTaskView ? (
