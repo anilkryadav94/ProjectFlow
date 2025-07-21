@@ -115,7 +115,7 @@ export default function Dashboard({
 
 
   return (
-    <div className="flex flex-col h-screen px-4 md:px-8 py-2">
+    <div className="flex flex-col h-screen">
         <Header 
           search={search}
           setSearch={setSearch}
@@ -129,7 +129,7 @@ export default function Dashboard({
           setActiveRole={setActiveRole}
           projectsToDownload={filteredProjects}
         />
-        <div className="flex-grow overflow-hidden">
+        <div className="flex-grow overflow-hidden px-4 md:px-8 py-2">
           {isAdminView ? (
             <UserManagementTable users={allUsers} />
           ) : isTaskView ? (
