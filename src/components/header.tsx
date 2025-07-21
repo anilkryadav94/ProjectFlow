@@ -109,7 +109,7 @@ export function Header({
     return user.roles.sort((a, b) => roleHierarchy.indexOf(a) - roleHierarchy.indexOf(b));
   }, [user.roles]);
   
-  const showFilters = activeRole === 'Manager' || activeRole === 'Processor' || activeRole === 'QA';
+  const showFilters = activeRole === 'Manager' || activeRole === 'Processor' || activeRole === 'QA' || activeRole === 'Admin';
 
   return (
     <>
