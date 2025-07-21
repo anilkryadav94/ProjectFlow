@@ -2,7 +2,7 @@
 "use client"
 
 import * as React from "react"
-import { LogOut, Search, Settings, FileSpreadsheet, Workflow, Edit, RotateCcw } from "lucide-react"
+import { LogOut, Settings, FileSpreadsheet, Workflow, Edit, RotateCcw } from "lucide-react"
 import type { Role, User } from "@/lib/data"
 import { roleHierarchy } from "@/lib/data"
 import { Button } from "@/components/ui/button"
@@ -16,55 +16,38 @@ import {
   DropdownMenuRadioGroup,
   DropdownMenuRadioItem,
 } from "@/components/ui/dropdown-menu"
-import { Input } from "@/components/ui/input"
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "./ui/select"
 import { logout } from "@/lib/auth"
 import { useRouter } from "next/navigation"
 import { ThemeToggle } from "./theme-toggle";
 import { Separator } from "./ui/separator";
 import { Label } from "@/components/ui/label";
-import type { SearchableColumn } from "./dashboard"
-import { cn } from "@/lib/utils"
+import { SidebarTrigger } from "./ui/sidebar"
+
 
 interface HeaderProps {
     user: User;
     activeRole: Role;
     setActiveRole?: (role: Role) => void;
-    search?: string;
-    setSearch?: (search: string) => void;
-    searchColumn?: SearchableColumn;
-    setSearchColumn?: (column: SearchableColumn) => void;
     handleDownload?: () => void;
     isDownloadDisabled?: boolean;
-    showQuickSearch: boolean;
     isManagerOrAdmin: boolean;
     hasSearchResults: boolean;
     onAmendSearch: () => void;
     onResetSearch: () => void;
+    showSidebarToggle: boolean;
 }
-
-const searchColumns: { value: SearchableColumn; label: string }[] = [
-    { value: 'refNumber', label: 'Ref No.' },
-    { value: 'applicationNumber', label: 'App No.' },
-    { value: 'patentNumber', label: 'Patent No.' },
-    { value: 'subject', label: 'Subject' },
-];
 
 export function Header({ 
   user, 
   activeRole,
   setActiveRole,
-  search,
-  setSearch,
-  searchColumn,
-  setSearchColumn,
   handleDownload,
   isDownloadDisabled,
-  showQuickSearch,
   isManagerOrAdmin,
   hasSearchResults,
   onAmendSearch,
-  onResetSearch
+  onResetSearch,
+  showSidebarToggle
 }: HeaderProps) {
   const router = useRouter();
 
@@ -98,7 +81,8 @@ export function Header({
   return (
     <>
     <div className="flex items-center justify-between bg-primary text-primary-foreground p-2 px-4 shadow-md h-16 shrink-0 gap-4">
-        <div className="flex items-center gap-4 flex-shrink-0">
+        <div className="flex items-center gap-2 flex-shrink-0">
+          {showSidebarToggle && <SidebarTrigger />}
           <div className="flex items-center gap-2">
             <Workflow className="h-6 w-6" />
             <h2 className="text-xl font-bold tracking-tight">ProjectFlow</h2>
@@ -107,31 +91,7 @@ export function Header({
           <h3 className="text-md font-semibold">{getDashboardName()}</h3>
         </div>
         
-        {showQuickSearch && setSearch && (
-             <div className="flex-grow flex items-center justify-center">
-                 <div className="w-full max-w-xl">
-                    <div className="relative flex items-center">
-                        <div className="absolute left-0 z-10">
-                             <Select value={searchColumn} onValueChange={(value) => setSearchColumn?.(value as SearchableColumn)}>
-                                <SelectTrigger className="h-9 w-[110px] rounded-r-none border-r-0 focus:ring-0 bg-background text-foreground">
-                                    <SelectValue placeholder="Search by" />
-                                </SelectTrigger>
-                                <SelectContent>
-                                    {searchColumns.map(col => <SelectItem key={col.value} value={col.value}>{col.label}</SelectItem>)}
-                                </SelectContent>
-                            </Select>
-                        </div>
-                        <Input 
-                            placeholder="Search..."
-                            className="pl-[120px] h-9 text-foreground"
-                            value={search}
-                            onChange={(e) => setSearch(e.target.value)}
-                        />
-                         <Search className="absolute right-3 h-4 w-4 text-muted-foreground" />
-                    </div>
-                </div>
-            </div>
-        )}
+        <div className="flex-grow" />
 
         {isManagerOrAdmin && hasSearchResults && (
             <div className="flex items-center gap-2">

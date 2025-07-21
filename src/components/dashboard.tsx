@@ -3,20 +3,21 @@
 
 import * as React from 'react';
 import Papa from "papaparse";
+import type { DateRange } from 'react-day-picker';
 import { type Project, type Role, type User, roleHierarchy, processors, qas, projectStatuses, clientNames, processes } from '@/lib/data';
 import { DataTable } from '@/components/data-table';
 import { getColumns } from '@/components/columns';
 import { Header } from '@/components/header';
 import { UserManagementTable } from './user-management-table';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
-import { ProjectForm } from './project-form';
 import { Button } from './ui/button';
 import { bulkUpdateProjects } from '@/app/actions';
 import { useToast } from '@/hooks/use-toast';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from './ui/select';
-import { Input } from './ui/input';
 import { Loader2 } from 'lucide-react';
 import { AdvancedSearchForm, type SearchCriteria } from './advanced-search-form';
+import { Sidebar, SidebarProvider, SidebarInset } from './ui/sidebar';
+import { DashboardSidebar } from './dashboard-sidebar';
 
 interface DashboardProps {
   user: User;
@@ -37,21 +38,27 @@ export default function Dashboard({
 }: DashboardProps) {
   const [activeRole, setActiveRole] = React.useState<Role | null>(null);
   const [projects, setProjects] = React.useState<Project[]>(initialProjects);
-  const [search, setSearch] = React.useState('');
-  const [searchColumn, setSearchColumn] = React.useState<SearchableColumn>('refNumber');
   const [sort, setSort] = React.useState<{ key: keyof Project; direction: 'asc' | 'desc' } | null>({ key: 'allocationDate', direction: 'desc' });
-  const [isNewProjectFormOpen, setIsNewProjectFormOpen] = React.useState(false);
   
-  // State for bulk updates
+  // State for bulk updates (Manager/Admin)
   const [rowSelection, setRowSelection] = React.useState<Record<string, boolean>>({});
   const [bulkUpdateField, setBulkUpdateField] = React.useState<(typeof bulkUpdateFields)[number]['value']>('processor');
   const [bulkUpdateValue, setBulkUpdateValue] = React.useState('');
   const [isBulkUpdating, setIsBulkUpdating] = React.useState(false);
 
-  // Advanced Search State
+  // Advanced Search State (Manager/Admin)
   const [searchCriteria, setSearchCriteria] = React.useState<SearchCriteria | null>(null);
   const [showSearchForm, setShowSearchForm] = React.useState(true);
   const [filteredProjects, setFilteredProjects] = React.useState<Project[] | null>(null);
+  
+  // Simple filter state (Processor/QA)
+  const [search, setSearch] = React.useState('');
+  const [clientNameFilter, setClientNameFilter] = React.useState('all');
+  const [processFilter, setProcessFilter] = React.useState('all');
+  const [statusFilter, setStatusFilter] = React.useState('all');
+  const [emailDateFilter, setEmailDateFilter] = React.useState<DateRange | undefined>();
+  const [allocationDateFilter, setAllocationDateFilter] = React.useState<DateRange | undefined>();
+
 
   const { toast } = useToast();
 
@@ -61,14 +68,6 @@ export default function Dashboard({
       setActiveRole(highestRole || user.roles[0]);
     }
   }, [user.roles]);
-
-  const handleProjectUpdate = (updatedProject: Project) => {
-    const updater = (prev: Project[]) => prev.map(p => p.id === updatedProject.id ? updatedProject : p);
-    setProjects(updater);
-    if(filteredProjects) {
-      setFilteredProjects(updater);
-    }
-  };
   
   const handleDownload = () => {
     const dataToExport = filteredProjects ?? dashboardProjects;
@@ -121,19 +120,12 @@ export default function Dashboard({
     }
   };
 
-  const handleSearch = (criteria: SearchCriteria) => {
+  const handleAdvancedSearch = (criteria: SearchCriteria) => {
     setSearchCriteria(criteria);
     setShowSearchForm(false);
 
     let results = [...projects];
     
-    // Role-based pre-filtering
-    if (activeRole === 'Processor') {
-      results = results.filter(p => p.processor === user.name);
-    } else if (activeRole === 'QA') {
-      results = results.filter(p => p.qa === user.name);
-    }
-
     results = results.filter(project => {
       return criteria.every(criterion => {
         if (!criterion.field || !criterion.operator || (criterion.operator !== 'blank' && !criterion.value)) return true;
@@ -162,7 +154,7 @@ export default function Dashboard({
     setFilteredProjects(results);
   };
   
-  const handleResetSearch = () => {
+  const handleResetAdvancedSearch = () => {
       setSearchCriteria(null);
       setFilteredProjects(null);
       setShowSearchForm(true);
@@ -173,26 +165,62 @@ export default function Dashboard({
       setShowSearchForm(true);
   }
 
+  const handleResetSimpleFilters = () => {
+    setSearch('');
+    setClientNameFilter('all');
+    setProcessFilter('all');
+    setStatusFilter('all');
+    setEmailDateFilter(undefined);
+    setAllocationDateFilter(undefined);
+  }
+
 
   const dashboardProjects = React.useMemo(() => {
-    let baseProjects = filteredProjects ?? (activeRole === 'Manager' || activeRole === 'Admin' ? projects : []);
+    const isManagerOrAdminView = activeRole === 'Manager' || activeRole === 'Admin';
+    
+    if (isManagerOrAdminView) {
+        // Manager/Admin view uses advanced search results
+        return filteredProjects ?? [];
+    }
 
-    let filtered = [...baseProjects];
+    // Processor/QA view uses simple filters
+    let filtered = [...projects];
 
     if (activeRole === 'Processor') {
-      filtered = projects.filter(p => p.processor === user.name);
+      filtered = filtered.filter(p => p.processor === user.name);
     } else if (activeRole === 'QA') {
-      filtered = projects.filter(p => p.qa === user.name);
+      filtered = filtered.filter(p => p.qa === user.name);
     }
-    
-    if (search && searchColumn && (activeRole === 'Processor' || activeRole === 'QA')) {
-        filtered = filtered.filter(project => {
-            const projectValue = project[searchColumn];
-            if (typeof projectValue === 'string') {
-                return projectValue.toLowerCase().includes(search.toLowerCase());
-            }
-            return false;
-        });
+
+    if (search) {
+        filtered = filtered.filter(p => 
+            p.refNumber.toLowerCase().includes(search.toLowerCase()) ||
+            p.applicationNumber.toLowerCase().includes(search.toLowerCase()) ||
+            p.patentNumber.toLowerCase().includes(search.toLowerCase()) ||
+            p.subject.toLowerCase().includes(search.toLowerCase())
+        );
+    }
+
+    if (clientNameFilter !== 'all') {
+        filtered = filtered.filter(p => p.clientName === clientNameFilter);
+    }
+    if (processFilter !== 'all') {
+        filtered = filtered.filter(p => p.process === processFilter);
+    }
+    if (statusFilter !== 'all') {
+        filtered = filtered.filter(p => p.status === statusFilter);
+    }
+    if (emailDateFilter?.from) {
+        filtered = filtered.filter(p => new Date(p.emailDate) >= emailDateFilter.from!);
+    }
+    if (emailDateFilter?.to) {
+        filtered = filtered.filter(p => new Date(p.emailDate) <= emailDateFilter.to!);
+    }
+    if (allocationDateFilter?.from) {
+        filtered = filtered.filter(p => new Date(p.allocationDate) >= allocationDateFilter.from!);
+    }
+    if (allocationDateFilter?.to) {
+        filtered = filtered.filter(p => new Date(p.allocationDate) <= allocationDateFilter.to!);
     }
     
     if (sort) {
@@ -207,7 +235,7 @@ export default function Dashboard({
     }
 
     return filtered;
-  }, [search, searchColumn, activeRole, user.name, projects, sort, filteredProjects]);
+  }, [activeRole, user.name, projects, sort, filteredProjects, search, clientNameFilter, processFilter, statusFilter, emailDateFilter, allocationDateFilter]);
 
 
   if (!activeRole) {
@@ -215,109 +243,127 @@ export default function Dashboard({
   }
   
   const isManagerOrAdmin = activeRole === 'Manager' || activeRole === 'Admin';
-  const showQuickSearch = activeRole === 'Processor' || activeRole === 'QA';
+  const showSidebarToggle = !isManagerOrAdmin;
   const columns = getColumns(isManagerOrAdmin, rowSelection, setRowSelection, dashboardProjects);
   const selectedBulkUpdateField = bulkUpdateFields.find(f => f.value === bulkUpdateField);
-
-  return (
-     <div className="flex flex-col h-screen bg-background w-full">
-        <Header 
-            user={user}
-            activeRole={activeRole}
-            setActiveRole={setActiveRole}
-            search={search}
-            setSearch={setSearch}
-            searchColumn={searchColumn}
-            setSearchColumn={setSearchColumn}
-            handleDownload={handleDownload}
-            isDownloadDisabled={(filteredProjects ?? dashboardProjects).length === 0}
-            showQuickSearch={showQuickSearch}
-            isManagerOrAdmin={isManagerOrAdmin}
-            hasSearchResults={filteredProjects !== null}
-            onAmendSearch={handleAmendSearch}
-            onResetSearch={handleResetSearch}
-        />
-        <div className="flex flex-col flex-grow overflow-hidden p-4 gap-4">
-            {activeRole === 'Admin' ? (
-                <UserManagementTable sessionUser={user} />
-            ) : isManagerOrAdmin ? (
-              <>
-                {showSearchForm && <AdvancedSearchForm onSearch={handleSearch} initialCriteria={searchCriteria} />}
-                
-                {filteredProjects !== null && !showSearchForm && (
-                   <DataTable 
-                        data={filteredProjects}
-                        columns={columns}
-                        sort={sort}
-                        setSort={setSort}
-                        rowSelection={rowSelection}
-                        setRowSelection={setRowSelection}
-                        isManagerOrAdmin={isManagerOrAdmin}
-                    >
-                         {Object.keys(rowSelection).length > 0 && (
-                            <div className="flex items-center gap-4 p-4 border-t bg-muted/50">
-                                <span className="text-sm font-semibold">{Object.keys(rowSelection).length} selected</span>
-                                <div className="flex items-center gap-2">
-                                    <Select value={bulkUpdateField} onValueChange={(v) => {
-                                        setBulkUpdateField(v as typeof bulkUpdateField);
-                                        setBulkUpdateValue('');
-                                    }}>
-                                        <SelectTrigger className="w-[180px] h-9">
-                                            <SelectValue placeholder="Select field" />
-                                        </SelectTrigger>
-                                        <SelectContent>
-                                            {bulkUpdateFields.map(f => (
-                                                <SelectItem key={f.value} value={f.value}>{f.label}</SelectItem>
-                                            ))}
-                                        </SelectContent>
-                                    </Select>
-                                    
-                                    <Select value={bulkUpdateValue} onValueChange={setBulkUpdateValue}>
-                                        <SelectTrigger className="w-[180px] h-9">
-                                            <SelectValue placeholder="Select new value" />
-                                        </SelectTrigger>
-                                        <SelectContent>
-                                            {selectedBulkUpdateField?.options.map(opt => (
-                                                 <SelectItem key={opt} value={opt}>{opt}</SelectItem>
-                                            ))}
-                                        </SelectContent>
-                                    </Select>
-                                </div>
-                                <Button size="sm" onClick={handleBulkUpdate} disabled={isBulkUpdating}>
-                                     {isBulkUpdating && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
-                                    Apply Update
-                                </Button>
-                            </div>
-                        )}
-                    </DataTable>
-                )}
-              </>
-            ) : (
-                <DataTable 
+  
+  const mainContent = (
+     <div className="flex flex-col flex-grow overflow-hidden p-4 gap-4">
+        {activeRole === 'Admin' ? (
+            <UserManagementTable sessionUser={user} />
+        ) : isManagerOrAdmin ? (
+          <>
+            {showSearchForm && <AdvancedSearchForm onSearch={handleAdvancedSearch} initialCriteria={searchCriteria} />}
+            
+            {!showSearchForm && (
+               <DataTable 
                     data={dashboardProjects}
                     columns={columns}
                     sort={sort}
                     setSort={setSort}
-                    rowSelection={{}}
-                    setRowSelection={() => {}}
-                    isManagerOrAdmin={false}
-                />
+                    rowSelection={rowSelection}
+                    setRowSelection={setRowSelection}
+                    isManagerOrAdmin={isManagerOrAdmin}
+                >
+                     {Object.keys(rowSelection).length > 0 && (
+                        <div className="flex items-center gap-4 p-4 border-t bg-muted/50">
+                            <span className="text-sm font-semibold">{Object.keys(rowSelection).length} selected</span>
+                            <div className="flex items-center gap-2">
+                                <Select value={bulkUpdateField} onValueChange={(v) => {
+                                    setBulkUpdateField(v as typeof bulkUpdateField);
+                                    setBulkUpdateValue('');
+                                }}>
+                                    <SelectTrigger className="w-[180px] h-9">
+                                        <SelectValue placeholder="Select field" />
+                                    </SelectTrigger>
+                                    <SelectContent>
+                                        {bulkUpdateFields.map(f => (
+                                            <SelectItem key={f.value} value={f.value}>{f.label}</SelectItem>
+                                        ))}
+                                    </SelectContent>
+                                </Select>
+                                
+                                <Select value={bulkUpdateValue} onValueChange={setBulkUpdateValue}>
+                                    <SelectTrigger className="w-[180px] h-9">
+                                        <SelectValue placeholder="Select new value" />
+                                    </SelectTrigger>
+                                    <SelectContent>
+                                        {selectedBulkUpdateField?.options.map(opt => (
+                                             <SelectItem key={opt} value={opt}>{opt}</SelectItem>
+                                        ))}
+                                    </SelectContent>
+                                </Select>
+                            </div>
+                            <Button size="sm" onClick={handleBulkUpdate} disabled={isBulkUpdating}>
+                                 {isBulkUpdating && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
+                                Apply Update
+                            </Button>
+                        </div>
+                    )}
+                </DataTable>
             )}
-        </div>
-        <Dialog open={isNewProjectFormOpen} onOpenChange={setIsNewProjectFormOpen}>
-            <DialogContent className="sm:max-w-[75vw] h-[90vh] flex flex-col">
-                <DialogHeader>
-                    <DialogTitle>Create New Project</DialogTitle>
-                </DialogHeader>
-                <div className="flex-grow min-h-0">
-                    <ProjectForm 
-                        onFormSubmit={handleProjectUpdate} 
-                        setOpen={setIsNewProjectFormOpen}
-                        role={activeRole}
-                    />
+          </>
+        ) : (
+            <DataTable 
+                data={dashboardProjects}
+                columns={columns}
+                sort={sort}
+                setSort={setSort}
+                rowSelection={{}}
+                setRowSelection={() => {}}
+                isManagerOrAdmin={false}
+            />
+        )}
+    </div>
+  );
+
+  return (
+     <div className="flex flex-col h-screen bg-background w-full">
+        <SidebarProvider>
+            <Header 
+                user={user}
+                activeRole={activeRole}
+                setActiveRole={setActiveRole}
+                handleDownload={handleDownload}
+                isDownloadDisabled={dashboardProjects.length === 0}
+                isManagerOrAdmin={isManagerOrAdmin}
+                hasSearchResults={filteredProjects !== null}
+                onAmendSearch={handleAmendSearch}
+                onResetSearch={handleResetAdvancedSearch}
+                showSidebarToggle={showSidebarToggle}
+            />
+            {showSidebarToggle ? (
+                <div className="flex flex-grow overflow-hidden">
+                    <Sidebar collapsible="icon">
+                        <DashboardSidebar 
+                            user={user}
+                            activeRole={activeRole}
+                            search={search}
+                            setSearch={setSearch}
+                            clientNameFilter={clientNameFilter}
+                            setClientNameFilter={setClientNameFilter}
+                            processFilter={processFilter}
+                            setProcessFilter={setProcessFilter}
+                            statusFilter={statusFilter}
+                            setStatusFilter={setStatusFilter}
+                            emailDateFilter={emailDateFilter}
+                            setEmailDateFilter={setEmailDateFilter}
+                            allocationDateFilter={allocationDateFilter}
+                            setAllocationDateFilter={setAllocationDateFilter}
+                            clientNames={clientNames}
+                            processes={processes}
+                            projectStatuses={projectStatuses}
+                            onResetFilters={handleResetSimpleFilters}
+                        />
+                    </Sidebar>
+                    <SidebarInset>
+                         {mainContent}
+                    </SidebarInset>
                 </div>
-            </DialogContent>
-      </Dialog>
+            ) : (
+                mainContent
+            )}
+        </SidebarProvider>
     </div>
   );
 }
