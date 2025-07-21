@@ -1,3 +1,4 @@
+
 "use client";
 
 import * as React from 'react';
@@ -82,17 +83,14 @@ export default function Dashboard() {
 
   React.useEffect(() => {
     setFilteredProjects(userQueue);
+    // Always set the active project to the first one in the queue
+    if (userQueue.length > 0) {
+      setActiveProject(userQueue[0]);
+    } else {
+      setActiveProject(null);
+    }
   }, [userQueue]);
 
-  React.useEffect(() => {
-    // If there's no active project, and the queue has items, set the first one as active.
-    if (!activeProject && userQueue.length > 0) {
-      if(role === 'Processor' || role === 'QA') {
-        const firstRelevantTask = userQueue.find(p => p.status === (role === 'Processor' ? 'Processing' : 'QA'));
-        setActiveProject(firstRelevantTask || userQueue[0]);
-      }
-    }
-  }, [userQueue, activeProject, role]);
 
   const handleProjectUpdate = (updatedProject: Project) => {
     let newProjects : Project[];
@@ -106,14 +104,6 @@ export default function Dashboard() {
     }
     
     setProjects(newProjects);
-    
-    // Logic to move to next task
-    if (updatedProject.status === 'QA' || updatedProject.status === 'Complete') {
-        const nextProject = userQueue.find(p => p.id !== updatedProject.id);
-        setActiveProject(nextProject || null);
-    } else {
-        setActiveProject(updatedProject);
-    }
 
     toast({
         title: "Project Saved",

@@ -1,3 +1,4 @@
+
 "use client"
 
 import * as React from "react"
@@ -105,8 +106,8 @@ export function ProjectForm({ project, onFormSubmit, onCancel, role, setOpen }: 
     return (
         <Card>
             <CardHeader>
-                <CardTitle>No Task Selected</CardTitle>
-                <CardDescription>Select a task from the list below to begin, or you will be assigned one automatically.</CardDescription>
+                <CardTitle>No Task in Queue</CardTitle>
+                <CardDescription>You have no pending tasks. New tasks will appear here when assigned.</CardDescription>
             </CardHeader>
         </Card>
     )
@@ -416,17 +417,22 @@ export function ProjectForm({ project, onFormSubmit, onCancel, role, setOpen }: 
                 render={({ field }) => (
                     <FormItem>
                     <FormLabel>Status</FormLabel>
-                    <Select onValueChange={field.onChange} value={field.value} disabled={!isProcessor && !isQA}>
+                    <Select onValueChange={field.onChange} value={field.value} disabled={!isProcessor && !isQA && !isManager}>
                         <FormControl>
                         <SelectTrigger>
                             <SelectValue placeholder="Select status" />
                         </SelectTrigger>
                         </FormControl>
                         <SelectContent>
-                            {isProcessor && <SelectItem value="Processing">Processing</SelectItem>}
-                            {isProcessor && <SelectItem value="On Hold">On Hold</SelectItem>}
-                            {isQA && <SelectItem value="QA">QA</SelectItem>}
-                            {isQA && <SelectItem value="On Hold">On Hold</SelectItem>}
+                            {isManager && <SelectItem value="Pending">Pending</SelectItem>}
+                            {isManager && <SelectItem value="Processing">Processing</SelectItem>}
+                            {isManager && <SelectItem value="QA">QA</SelectItem>}
+                            {isManager && <SelectItem value="Complete">Complete</SelectItem>}
+                            {isManager && <SelectItem value="On Hold">On Hold</SelectItem>}
+                            
+                            {isProcessor && project?.status === "Processing" && <SelectItem value="On Hold">On Hold</SelectItem>}
+                            
+                            {isQA && project?.status === "QA" && <SelectItem value="On Hold">On Hold</SelectItem>}
                         </SelectContent>
                     </Select>
                     <FormMessage />
@@ -449,7 +455,7 @@ export function ProjectForm({ project, onFormSubmit, onCancel, role, setOpen }: 
                         QA Complete
                     </Button>
                 )}
-                 <Button type="submit" onClick={form.handleSubmit(d => onSubmit({...d, submitAction: 'save'}))} disabled={isSubmitting || (isQA && project?.status !== 'QA')}>
+                 <Button type="submit" onClick={form.handleSubmit(d => onSubmit({...d, submitAction: 'save'}))} disabled={isSubmitting || (isProcessor && project?.status !== 'Processing') || (isQA && project?.status !== 'QA')}>
                     {isSubmitting && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
                     {isManager ? 'Create Project' : 'Save Changes'}
                 </Button>
