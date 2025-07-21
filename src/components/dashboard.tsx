@@ -169,6 +169,7 @@ export default function Dashboard({
   }
 
   const handleAmendSearch = () => {
+      setFilteredProjects(null);
       setShowSearchForm(true);
   }
 
@@ -242,7 +243,8 @@ export default function Dashboard({
             ) : isManagerOrAdmin ? (
               <>
                 {showSearchForm && <AdvancedSearchForm onSearch={handleSearch} initialCriteria={searchCriteria} />}
-                {filteredProjects !== null && (
+                
+                {filteredProjects !== null && !showSearchForm && (
                    <DataTable 
                         data={filteredProjects}
                         columns={columns}
