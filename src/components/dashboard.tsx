@@ -10,6 +10,9 @@ import { ProjectForm } from './project-form';
 import { ScrollArea } from './ui/scroll-area';
 import { UserManagementTable } from './user-management-table';
 import { useToast } from "@/hooks/use-toast";
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from './ui/dialog';
+import { Button } from './ui/button';
+import { PlusCircle } from 'lucide-react';
 
 interface DashboardProps {
   user: User;
@@ -20,7 +23,6 @@ export default function Dashboard({
   user, 
   initialProjects,
 }: DashboardProps) {
-  const [activeProject, setActiveProject] = React.useState<Project | null>(null);
   const [activeRole, setActiveRole] = React.useState<Role | null>(null);
 
   const [projects, setProjects] = React.useState<Project[]>(initialProjects);
@@ -28,6 +30,7 @@ export default function Dashboard({
   const [sort, setSort] = React.useState<{ key: keyof Project; direction: 'asc' | 'desc' } | null>({ key: 'allocationDate', direction: 'desc' });
   const [clientNameFilter, setClientNameFilter] = React.useState<string>('all');
   const [processFilter, setProcessFilter] = React.useState<ProcessType | 'all'>('all');
+  const [isNewProjectDialogOpen, setIsNewProjectDialogOpen] = React.useState(false);
   const { toast } = useToast();
   
   React.useEffect(() => {
@@ -58,14 +61,11 @@ export default function Dashboard({
         setProjects(prev => [updatedProject, ...prev]);
     }
     
-    if (activeProject?.id === updatedProject.id) {
-        setActiveProject(updatedProject);
-    }
-    
     toast({
         title: "Project Saved",
         description: `Project ${updatedProject.refNumber} has been updated.`,
     });
+    setIsNewProjectDialogOpen(false);
   };
 
   const filteredProjects = React.useMemo(() => {
@@ -116,27 +116,14 @@ export default function Dashboard({
     return userProjects;
   }, [search, sort, projects, activeRole, user.name, clientNameFilter, processFilter]);
 
-  React.useEffect(() => {
-    if (filteredProjects.length > 0) {
-      if (!activeProject || !filteredProjects.find(p => p.id === activeProject.id)) {
-        setActiveProject(filteredProjects[0]);
-      }
-    } else {
-      setActiveProject(null);
-    }
-  }, [filteredProjects, activeProject]);
 
-  const handleRowClick = (project: Project) => {
-    setActiveProject(project);
-  }
-  
   if (!activeRole) {
     // This can be a loading spinner as well
     return null;
   }
 
-  const isTaskView = activeRole === 'Processor' || activeRole === 'QA';
   const isAdminView = activeRole === 'Admin';
+  const isManagerView = activeRole === 'Manager';
 
   return (
     <div className="flex flex-col h-screen bg-background w-full">
@@ -151,41 +138,41 @@ export default function Dashboard({
             processFilter={processFilter}
             setProcessFilter={setProcessFilter}
         />
-        <div className="flex flex-col flex-grow overflow-hidden py-2 gap-2">
+        <div className="flex flex-col flex-grow overflow-hidden p-4 gap-4">
           {isAdminView ? (
             <UserManagementTable sessionUser={user} />
-          ) : isTaskView ? (
-             <div className="flex flex-col h-full space-y-2">
-                <div className="flex-shrink-0" style={{ height: 'calc(70% - 0.5rem)' }}>
-                    <ProjectForm 
-                        project={activeProject} 
-                        onFormSubmit={handleProjectUpdate}
-                        onCancel={() => setActiveProject(null)}
-                        role={activeRole}
-                    />
-                </div>
-                <div className="flex-grow flex-shrink min-h-0" style={{ height: 'calc(30% - 0.5rem)' }}>
-                    <DataTable 
-                        data={filteredProjects}
-                        columns={columns}
-                        sort={sort}
-                        setSort={setSort}
-                        onRowClick={handleRowClick}
-                        activeProjectId={activeProject?.id}
-                        isTaskView={true}
-                        projectsToDownload={filteredProjects}
-                    />
-                </div>
-            </div>
-          ) : ( // Manager view
-             <DataTable 
-                data={filteredProjects}
-                columns={columns}
-                sort={sort}
-                setSort={setSort}
-                isTaskView={false}
-                projectsToDownload={filteredProjects}
-              />
+          ) : (
+            <>
+              {isManagerView && (
+                 <div className="flex justify-end">
+                    <Dialog open={isNewProjectDialogOpen} onOpenChange={setIsNewProjectDialogOpen}>
+                      <DialogTrigger asChild>
+                        <Button>
+                          <PlusCircle className="mr-2 h-4 w-4" />
+                          New Project
+                        </Button>
+                      </DialogTrigger>
+                      <DialogContent className="sm:max-w-4xl">
+                        <DialogHeader>
+                          <DialogTitle>Create New Project</DialogTitle>
+                        </DialogHeader>
+                        <ProjectForm 
+                          onFormSubmit={handleProjectUpdate}
+                          role={activeRole}
+                          setOpen={setIsNewProjectDialogOpen}
+                        />
+                      </DialogContent>
+                    </Dialog>
+                 </div>
+              )}
+               <DataTable 
+                  data={filteredProjects}
+                  columns={columns}
+                  sort={sort}
+                  setSort={setSort}
+                  projectsToDownload={filteredProjects}
+                />
+            </>
           )}
         </div>
     </div>

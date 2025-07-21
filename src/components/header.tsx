@@ -2,7 +2,7 @@
 "use client"
 
 import * as React from "react"
-import { LogOut, Search, Settings, FileSpreadsheet, Workflow } from "lucide-react"
+import { LogOut, Search, Settings, FileSpreadsheet, Workflow, Home } from "lucide-react"
 import type { ProcessType, Role, User } from "@/lib/data"
 import { clientNames, processes, roleHierarchy } from "@/lib/data"
 import { Button } from "@/components/ui/button"
@@ -76,6 +76,9 @@ export function Header({
   return (
     <div className="flex items-center justify-between bg-primary text-primary-foreground p-2 px-4 shadow-md h-16 shrink-0">
         <div className="flex items-center gap-4">
+          <Button variant="ghost" size="icon" className="h-8 w-8 hover:bg-primary/80" onClick={() => router.push('/')}>
+            <Home className="h-5 w-5" />
+          </Button>
           <div className="flex items-center gap-2">
             <Workflow className="h-6 w-6" />
             <h2 className="text-xl font-bold tracking-tight">ProjectFlow</h2>

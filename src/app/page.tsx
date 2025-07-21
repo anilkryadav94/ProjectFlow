@@ -7,7 +7,7 @@ import type { Project } from '@/lib/data';
 import { projects } from '@/lib/data';
 
 async function getProjects(): Promise<Project[]> {
-    // Return mock data directly
+    // In a real app, this would be a database call.
     return JSON.parse(JSON.stringify(projects));
 }
 

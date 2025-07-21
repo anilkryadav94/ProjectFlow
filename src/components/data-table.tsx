@@ -27,11 +27,10 @@ interface DataTableProps {
   setSort: (sort: { key: keyof Project; direction: 'asc' | 'desc' } | null) => void;
   onRowClick?: (project: Project) => void;
   activeProjectId?: string;
-  isTaskView: boolean;
   projectsToDownload: Project[];
 }
 
-export function DataTable({ data, columns, sort, setSort, onRowClick, activeProjectId, isTaskView, projectsToDownload }: DataTableProps) {
+export function DataTable({ data, columns, sort, setSort, onRowClick, activeProjectId, projectsToDownload }: DataTableProps) {
   const handleSort = (key: keyof Project) => {
     if (sort && sort.key === key) {
       setSort({ key, direction: sort.direction === 'asc' ? 'desc' : 'asc' });
@@ -56,14 +55,8 @@ export function DataTable({ data, columns, sort, setSort, onRowClick, activeProj
     document.body.removeChild(link);
   };
 
-
-  const maxHeightClass = isTaskView
-    ? "h-full"
-    : "max-h-[calc(100vh-280px)]";
-
-
   return (
-    <div className={cn("animated-border shadow-xl", maxHeightClass)}>
+    <div className={cn("animated-border shadow-xl h-full")}>
       <div className={cn("rounded-md border bg-card overflow-y-auto relative h-full")}>
         <Table>
           <TableHeader className="sticky top-0 z-10 bg-primary backdrop-blur-sm">
@@ -95,10 +88,7 @@ export function DataTable({ data, columns, sort, setSort, onRowClick, activeProj
                 <TableRow 
                   key={row.id}
                   onClick={() => onRowClick?.(row)}
-                  className={cn(
-                      onRowClick && 'cursor-pointer',
-                      activeProjectId === row.id && 'bg-muted/80'
-                  )}
+                  data-state={activeProjectId === row.id ? 'selected' : undefined}
                 >
                   {columns.map((column) => (
                     <TableCell key={column.key}>

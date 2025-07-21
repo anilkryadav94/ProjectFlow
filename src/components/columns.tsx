@@ -1,9 +1,11 @@
 
 "use client";
 
+import Link from "next/link";
 import type { Project, ProjectStatus } from "@/lib/data";
 import { Badge } from "@/components/ui/badge";
 import { cn } from "@/lib/utils";
+import { Button } from "./ui/button";
 
 const statusColors: Record<ProjectStatus, string> = {
   Pending: "bg-yellow-500/20 text-yellow-700 border-yellow-500/30",
@@ -17,6 +19,13 @@ export const columns = [
   {
     key: "refNumber" as const,
     header: "Ref Number",
+    render: (project: Project) => (
+        <Button variant="link" asChild className="p-0 h-auto">
+             <Link href={`/task/${project.id}`} className="font-medium">
+                {project.refNumber}
+            </Link>
+        </Button>
+    )
   },
   {
     key: "clientName" as const,

@@ -63,12 +63,11 @@ type ProjectFormValues = z.infer<typeof formSchema>
 interface ProjectFormProps {
   project?: Project | null;
   onFormSubmit: (project: Project) => void;
-  onCancel?: () => void;
   role: Role;
   setOpen?: (open: boolean) => void;
 }
 
-export function ProjectForm({ project, onFormSubmit, onCancel, role, setOpen }: ProjectFormProps) {
+export function ProjectForm({ project, onFormSubmit, role, setOpen }: ProjectFormProps) {
   const [isSubmitting, setIsSubmitting] = React.useState(false);
   const [isMMFormOpen, setIsMMFormOpen] = React.useState(false);
   
@@ -134,10 +133,10 @@ export function ProjectForm({ project, onFormSubmit, onCancel, role, setOpen }: 
   if (!project && (role === 'Processor' || role === 'QA')) {
     return (
         <div className="animated-border shadow-xl h-full">
-            <Card className="h-full">
+            <Card className="h-full flex items-center justify-center">
                 <CardHeader>
-                    <CardTitle className="text-xl">No Task in Queue</CardTitle>
-                    <CardDescription>You have no pending tasks. New tasks will appear here when assigned.</CardDescription>
+                    <CardTitle className="text-xl">No Task Selected</CardTitle>
+                    <CardDescription>Select a task from the dashboard to view its details.</CardDescription>
                 </CardHeader>
             </Card>
         </div>
