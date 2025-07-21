@@ -115,7 +115,7 @@ export default function Dashboard({
 
 
   return (
-    <div className="flex flex-col h-screen p-4 md:p-8 pt-6">
+    <div className="flex flex-col h-screen p-4 md:p-8 pt-2">
         <Header 
           search={search}
           setSearch={setSearch}
@@ -134,7 +134,7 @@ export default function Dashboard({
             <UserManagementTable users={allUsers} />
           ) : isTaskView ? (
              <div className="flex flex-col h-full space-y-4">
-                <div className="flex-shrink-0 h-[70%]">
+                <div className="flex-shrink-0 h-[calc(50%-0.5rem)]">
                     <ProjectForm 
                         project={activeProject} 
                         onFormSubmit={onProjectUpdate}
@@ -142,7 +142,7 @@ export default function Dashboard({
                         role={activeRole}
                     />
                 </div>
-                <div className="flex-grow flex-shrink min-h-0">
+                <div className="flex-grow flex-shrink min-h-0 h-[calc(50%-0.5rem)]">
                     <DataTable 
                         data={filteredProjects}
                         columns={columns}
