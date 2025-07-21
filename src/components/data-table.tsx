@@ -11,7 +11,6 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table"
-import { DataTableRowActions } from "./data-table-row-actions"
 import { cn } from "@/lib/utils"
 
 interface DataTableProps {
@@ -38,9 +37,9 @@ export function DataTable({ data, columns, sort, setSort, onProjectUpdate, onRow
   };
 
   return (
-    <div className="rounded-md border bg-card">
+    <div className="rounded-md border bg-card overflow-y-auto relative max-h-[calc(100vh-420px)]">
       <Table>
-        <TableHeader>
+        <TableHeader className="sticky top-0 z-10 bg-card/95 backdrop-blur-sm">
           <TableRow>
             {columns.map((column) => (
               <TableHead key={column.key}>

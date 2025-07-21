@@ -35,17 +35,19 @@ export function DataTableRowActions({ project, onProjectUpdate }: DataTableRowAc
             </Button>
           </DropdownMenuTrigger>
           <DropdownMenuContent align="end" className="w-[160px]">
-            <DialogTrigger asChild onSelect={() => setIsEditFormOpen(true)}>
-              <DropdownMenuItem>
-                <Pencil className="mr-2 h-4 w-4" />
-                Edit
-              </DropdownMenuItem>
+            <DialogTrigger asChild>
+                <DropdownMenuItem onSelect={(e) => { e.preventDefault(); setIsEditFormOpen(true); }}>
+                    <Pencil className="mr-2 h-4 w-4" />
+                    Edit
+                </DropdownMenuItem>
             </DialogTrigger>
             <DropdownMenuSeparator />
-             <DropdownMenuItem onSelect={() => setIsMMFormOpen(true)}>
-                <PlusSquare className="mr-2 h-4 w-4" />
-                Add MM Records
-              </DropdownMenuItem>
+             <DialogTrigger asChild>
+                <DropdownMenuItem onSelect={(e) => { e.preventDefault(); setIsMMFormOpen(true); }}>
+                    <PlusSquare className="mr-2 h-4 w-4" />
+                    Add MM Records
+                </DropdownMenuItem>
+             </DialogTrigger>
           </DropdownMenuContent>
         </DropdownMenu>
         <DialogContent className="sm:max-w-[625px]">
