@@ -41,7 +41,7 @@ export default function Dashboard({
   activeRole,
   setActiveRole
 }: DashboardProps) {
-  const [activeProject, React.useState<Project | null>(null);
+  const [activeProject, setActiveProject] = React.useState<Project | null>(null);
 
   const filteredProjects = React.useMemo(() => {
     let userProjects = [...projects];
@@ -134,7 +134,7 @@ export default function Dashboard({
             <UserManagementTable users={allUsers} />
           ) : isTaskView ? (
              <div className="flex flex-col h-full space-y-4">
-                <div className="h-[70%] pr-4">
+                <div className="h-[70%]">
                     <ProjectForm 
                         project={activeProject} 
                         onFormSubmit={onProjectUpdate}
