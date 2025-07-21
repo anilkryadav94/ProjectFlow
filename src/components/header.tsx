@@ -53,11 +53,11 @@ export function Header({ search, setSearch, role, setRole, onProjectUpdate, clie
   }
 
   return (
-    <div className="flex flex-col gap-4">
-      <div className="flex items-center justify-between space-y-2">
+    <div className="flex flex-col gap-2">
+      <div className="flex items-center justify-between">
         <div className="flex items-center gap-2">
-          <Workflow className="h-8 w-8 text-primary" />
-          <h2 className="text-3xl font-bold tracking-tight">SmartFlow</h2>
+          <Workflow className="h-6 w-6 text-primary" />
+          <h2 className="text-2xl font-bold tracking-tight">SmartFlow</h2>
         </div>
         <div className="flex items-center space-x-2">
             <DropdownMenu>
