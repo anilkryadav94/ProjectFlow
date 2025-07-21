@@ -15,6 +15,7 @@ import { Calendar } from "@/components/ui/calendar"
 import {
   Form,
   FormControl,
+  FormDescription,
   FormField,
   FormItem,
   FormLabel,
@@ -34,12 +35,13 @@ import {
   SelectValue,
 } from "@/components/ui/select"
 import { saveProject } from "@/app/actions"
-import { type Project, processors, qas, clientNames, processes, type Role } from "@/lib/data"
+import { type Project, processors, qas, clientNames, processes, type Role, processorSubmissionStatuses, qaSubmissionStatuses, processorActionableStatuses } from "@/lib/data"
 import { Textarea } from "./ui/textarea"
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "./ui/card"
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "./ui/dialog"
 import { MultiMattersForm } from "./multi-matters-form"
 import { ScrollArea } from "./ui/scroll-area"
+import { Badge } from "./ui/badge"
 
 const formSchema = z.object({
   id: z.string().optional(),
@@ -52,11 +54,15 @@ const formSchema = z.object({
   allocationDate: z.date({ required_error: "Allocation date is required." }),
   processor: z.string().min(1, "Processor is required."),
   qa: z.string().min(1, "QA is required."),
-  status: z.enum(["Pending", "Processing", "QA", "Complete", "On Hold"]),
+  
+  processorStatus: z.enum(["Pending", "On Hold", "Re-Work", "Processed", "NTP", "Client Query", "Already Processed"]),
+  qaStatus: z.enum(["Pending", "Complete", "NTP", "Client Query", "Already Processed"]),
+  reworkReason: z.string().optional(),
+
   subject: z.string().optional(),
   actionTaken: z.string().optional(),
   documentName: z.string().optional(),
-  submitAction: z.enum(['save', 'process', 'qa_complete'])
+  submitAction: z.enum(['save', 'submit_for_qa', 'submit_qa', 'send_for_rework'])
 })
 
 type ProjectFormValues = z.infer<typeof formSchema>
@@ -75,7 +81,6 @@ export function ProjectForm({ project, onFormSubmit, role, setOpen }: ProjectFor
   
   const form = useForm<ProjectFormValues>({
     resolver: zodResolver(formSchema),
-    // This key ensures the form re-initializes when the project changes
     key: project?.id || 'new',
     defaultValues: {
       id: project?.id,
@@ -87,11 +92,13 @@ export function ProjectForm({ project, onFormSubmit, role, setOpen }: ProjectFor
       documentName: project?.documentName || "",
       processor: project?.processor || "",
       qa: project?.qa || "",
-      status: project?.status || "Pending",
       emailDate: project ? new Date(project.emailDate) : new Date(),
       allocationDate: project ? new Date(project.allocationDate) : new Date(),
       clientName: project?.clientName || clientNames[0],
       process: project?.process || "Patent",
+      processorStatus: project?.processorStatus || "Pending",
+      qaStatus: project?.qaStatus || "Pending",
+      reworkReason: project?.reworkReason || "",
     }
   })
 
@@ -108,27 +115,15 @@ export function ProjectForm({ project, onFormSubmit, role, setOpen }: ProjectFor
             allocationDate: new Date(project.allocationDate),
             processor: project.processor || "",
             qa: project.qa || "",
-            status: project.status || "Pending",
             subject: project.subject || "",
             actionTaken: project.actionTaken || "",
             documentName: project.documentName || "",
+            processorStatus: project.processorStatus || "Pending",
+            qaStatus: project.qaStatus || "Pending",
+            reworkReason: project.reworkReason || "",
         });
     } else {
-        form.reset({
-            refNumber: "",
-            applicationNumber: "",
-            patentNumber: "",
-            subject: "",
-            actionTaken: "",
-            documentName: "",
-            processor: "",
-            qa: "",
-            status: "Pending",
-            emailDate: new Date(),
-            allocationDate: new Date(),
-            clientName: clientNames[0],
-            process: "Patent",
-        });
+        form.reset(); // Reset to default empty values for a new project
     }
   }, [project, form]);
   
@@ -140,8 +135,7 @@ export function ProjectForm({ project, onFormSubmit, role, setOpen }: ProjectFor
       if(setOpen) {
         setOpen(false);
       } else {
-        // If not in a dialog, assume it's on a page and refresh to go back
-        router.push('/');
+        router.push(`/?role=${role}`);
         router.refresh();
       }
     } catch (error) {
@@ -158,13 +152,16 @@ export function ProjectForm({ project, onFormSubmit, role, setOpen }: ProjectFor
   const isFieldEditable = (fieldName: string) => {
     if (isManager) return true;
     if (isProcessor) {
-        return ['applicationNumber', 'patentNumber', 'documentName', 'actionTaken', 'status'].includes(fieldName);
+        return ['applicationNumber', 'patentNumber', 'documentName', 'actionTaken', 'processorStatus'].includes(fieldName);
     }
      if (isQA) {
-        return ['status'].includes(fieldName);
+        return ['qaStatus', 'reworkReason'].includes(fieldName);
     }
     return false;
   }
+
+  const canProcessorSubmit = isProcessor && project?.workflowStatus === 'With Processor';
+  const canQASubmit = isQA && project?.workflowStatus === 'With QA';
 
   return (
     <div className="animated-border shadow-xl h-full">
@@ -194,19 +191,25 @@ export function ProjectForm({ project, onFormSubmit, role, setOpen }: ProjectFor
                         </Dialog>
                     )}
                     
-                    {isProcessor && project?.status === "Processing" && (
-                        <Button size="sm" type="submit" onClick={form.handleSubmit(d => onSubmit({...d, submitAction: 'process'}))} disabled={isSubmitting}>
+                    {canProcessorSubmit && (
+                        <Button size="sm" type="submit" onClick={form.handleSubmit(d => onSubmit({...d, submitAction: 'submit_for_qa'}))} disabled={isSubmitting}>
                             {isSubmitting && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
                             Submit for QA
                         </Button>
                     )}
-                    {isQA && project?.status === "QA" && (
-                        <Button size="sm" type="submit" onClick={form.handleSubmit(d => onSubmit({...d, submitAction: 'qa_complete'}))} disabled={isSubmitting}>
-                            {isSubmitting && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
-                            QA Complete
-                        </Button>
+                    {canQASubmit && (
+                        <>
+                           <Button size="sm" type="submit" variant="destructive" onClick={form.handleSubmit(d => onSubmit({...d, submitAction: 'send_for_rework'}))} disabled={isSubmitting}>
+                                {isSubmitting && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
+                                Send for Rework
+                            </Button>
+                             <Button size="sm" type="submit" onClick={form.handleSubmit(d => onSubmit({...d, submitAction: 'submit_qa'}))} disabled={isSubmitting}>
+                                {isSubmitting && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
+                                QA Complete
+                            </Button>
+                        </>
                     )}
-                    <Button size="sm" type="submit" onClick={form.handleSubmit(d => onSubmit({...d, submitAction: 'save'}))} disabled={isSubmitting || (isProcessor && project?.status !== 'Processing') || (isQA && project?.status !== 'QA')}>
+                     <Button size="sm" type="submit" onClick={form.handleSubmit(d => onSubmit({...d, submitAction: 'save'}))} disabled={isSubmitting || (!isManager && !canProcessorSubmit && !canQASubmit)}>
                         {isSubmitting && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
                         {isManager && !project ? 'Create Project' : 'Save Changes'}
                     </Button>
@@ -215,6 +218,15 @@ export function ProjectForm({ project, onFormSubmit, role, setOpen }: ProjectFor
               <ScrollArea className="flex-grow">
                 <CardContent className="p-4">
                     <div className="space-y-4">
+                      {project?.workflowStatus === 'With Processor' && project.processorStatus === 'Re-Work' && (
+                        <div className="p-3 rounded-md border border-destructive/50 bg-destructive/10">
+                          <h4 className="font-semibold text-destructive">Rework Required</h4>
+                          <p className="text-sm text-destructive/80 mt-1">
+                            QA has sent this task back with the following reason: <span className="font-medium">{project.reworkReason || "No reason provided."}</span>
+                          </p>
+                        </div>
+                      )}
+
                       <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
                           <FormField
                               control={form.control}
@@ -277,32 +289,83 @@ export function ProjectForm({ project, onFormSubmit, role, setOpen }: ProjectFor
                                   </FormItem>
                               )}
                           />
-                          {project && <FormField
-                          control={form.control}
-                          name="status"
-                          render={({ field }) => (
-                              <FormItem>
-                              <FormLabel>Status</FormLabel>
-                              <Select onValueChange={field.onChange} value={field.value} disabled={!isFieldEditable('status')}>
-                                  <FormControl>
-                                  <SelectTrigger>
-                                      <SelectValue placeholder="Select status" />
-                                  </SelectTrigger>
-                                  </FormControl>
-                                  <SelectContent>
-                                      <SelectItem value="Pending" disabled={!isManager}>Pending</SelectItem>
-                                      <SelectItem value="Processing" disabled={!isManager}>Processing</SelectItem>
-                                      <SelectItem value="QA" disabled={!isManager}>QA</SelectItem>
-                                      <SelectItem value="Complete" disabled={!isManager}>Complete</SelectItem>
-                                      
-                                      <SelectItem value="On Hold" disabled={!isProcessor && !isQA && !isManager}>On Hold</SelectItem>
-                                  </SelectContent>
-                              </Select>
-                              <FormMessage />
-                              </FormItem>
-                          )}
-                          />}
+                           <FormItem>
+                                <FormLabel>Workflow Status</FormLabel>
+                                <Input value={project?.workflowStatus || 'N/A'} disabled />
+                            </FormItem>
                       </div>
+
+                       <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                         {isProcessor || isManager || (isQA && project) ? (
+                            <FormField
+                                control={form.control}
+                                name="processorStatus"
+                                render={({ field }) => (
+                                <FormItem>
+                                <FormLabel>Processor Status</FormLabel>
+                                <Select onValueChange={field.onChange} value={field.value} disabled={!isFieldEditable('processorStatus')}>
+                                    <FormControl>
+                                    <SelectTrigger>
+                                        <SelectValue placeholder="Select status" />
+                                    </SelectTrigger>
+                                    </FormControl>
+                                    <SelectContent>
+                                        { (isProcessor || isManager) && 
+                                            processorActionableStatuses.map(s => <SelectItem key={s} value={s}>{s}</SelectItem>)
+                                        }
+                                        { (isProcessor || isManager) && <hr className="my-1"/>}
+                                        {
+                                            processorSubmissionStatuses.map(s => <SelectItem key={s} value={s}>{s}</SelectItem>)
+                                        }
+                                    </SelectContent>
+                                </Select>
+                                <FormMessage />
+                                </FormItem>
+                            )}
+                         />
+                         ) : null}
+                         
+                         {isQA || isManager || (isProcessor && project) ? (
+                             <FormField
+                                control={form.control}
+                                name="qaStatus"
+                                render={({ field }) => (
+                                <FormItem>
+                                <FormLabel>QA Status</FormLabel>
+                                <Select onValueChange={field.onChange} value={field.value} disabled={!isFieldEditable('qaStatus')}>
+                                    <FormControl>
+                                    <SelectTrigger>
+                                        <SelectValue placeholder="Select status" />
+                                    </SelectTrigger>
+                                    </FormControl>
+                                    <SelectContent>
+                                       {qaSubmissionStatuses.map(s => <SelectItem key={s} value={s}>{s}</SelectItem>)}
+                                    </SelectContent>
+                                </Select>
+                                <FormMessage />
+                                </FormItem>
+                            )}
+                         />
+                         ) : null}
+                       </div>
+                       
+                        {canQASubmit && (
+                            <FormField
+                                control={form.control}
+                                name="reworkReason"
+                                render={({ field }) => (
+                                    <FormItem>
+                                    <FormLabel>Rework Reason</FormLabel>
+                                    <FormControl>
+                                        <Textarea placeholder="Provide a reason for sending this task back for rework..." {...field} value={field.value || ''} disabled={!isFieldEditable('reworkReason')} />
+                                    </FormControl>
+                                    <FormDescription>This is only required if you are sending for rework.</FormDescription>
+                                    <FormMessage />
+                                    </FormItem>
+                                )}
+                            />
+                        )}
+
                       <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
                           <FormField
                               control={form.control}

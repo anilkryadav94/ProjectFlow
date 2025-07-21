@@ -16,11 +16,15 @@ const formSchema = z.object({
   allocationDate: z.date({ required_error: "Allocation date is required." }),
   processor: z.string().min(1, "Processor is required."),
   qa: z.string().min(1, "QA is required."),
-  status: z.enum(["Pending", "Processing", "QA", "Complete", "On Hold"]),
+  
+  processorStatus: z.enum(["Pending", "On Hold", "Re-Work", "Processed", "NTP", "Client Query", "Already Processed"]),
+  qaStatus: z.enum(["Pending", "Complete", "NTP", "Client Query", "Already Processed"]),
+  reworkReason: z.string().optional(),
+
   subject: z.string().optional(),
   actionTaken: z.string().optional(),
   documentName: z.string().optional(),
-  submitAction: z.enum(['save', 'process', 'qa_complete'])
+  submitAction: z.enum(['save', 'submit_for_qa', 'submit_qa', 'send_for_rework'])
 });
 
 type ProjectFormValues = z.infer<typeof formSchema>;
@@ -36,25 +40,44 @@ export async function saveProject(data: ProjectFormValues): Promise<Project> {
     const validatedData = formSchema.parse(data);
 
     let projectToSave: Project;
-    let existingProjectData: Partial<Project> = {};
+    let projectIndex = -1;
 
     if (validatedData.id) {
-        const project = projects.find(p => p.id === validatedData.id);
-        if (project) {
-            existingProjectData = project;
-        }
+        projectIndex = projects.findIndex(p => p.id === validatedData.id);
     }
 
+    if (projectIndex === -1 && validatedData.id) {
+         throw new Error("Project not found for update");
+    }
+    
+    const existingProjectData = projectIndex !== -1 ? projects[projectIndex] : {};
+    
+    let workflowStatus = existingProjectData?.workflowStatus || 'With Processor';
     let processingDate = existingProjectData?.processingDate || null;
     let qaDate = existingProjectData?.qaDate || null;
-    let status = validatedData.status;
+    let processorStatus = validatedData.processorStatus;
+    let qaStatus = validatedData.qaStatus;
+    let reworkReason = validatedData.reworkReason || '';
 
-    if (validatedData.submitAction === 'process') {
-        processingDate = new Date().toISOString().split('T')[0];
-        status = 'QA';
-    } else if (validatedData.submitAction === 'qa_complete') {
-        qaDate = new Date().toISOString().split('T')[0];
-        status = 'Complete';
+    switch(validatedData.submitAction) {
+        case 'submit_for_qa':
+            workflowStatus = 'With QA';
+            processingDate = new Date().toISOString().split('T')[0];
+            qaStatus = 'Pending';
+            break;
+        case 'submit_qa':
+            workflowStatus = 'Completed';
+            qaDate = new Date().toISOString().split('T')[0];
+            break;
+        case 'send_for_rework':
+            workflowStatus = 'With Processor';
+            processorStatus = 'Re-Work';
+            qaStatus = 'Pending'; // Reset QA status
+            reworkReason = validatedData.reworkReason || 'No reason provided';
+            break;
+        case 'save':
+            // Statuses are taken directly from the form data
+            break;
     }
 
     const commonData = {
@@ -66,29 +89,26 @@ export async function saveProject(data: ProjectFormValues): Promise<Project> {
         documentName: validatedData.documentName || '',
         emailDate: toISOString(validatedData.emailDate)!,
         allocationDate: toISOString(validatedData.allocationDate)!,
-        processingDate: processingDate,
-        qaDate: qaDate,
-        status,
+        processingDate,
+        qaDate,
+        workflowStatus,
+        processorStatus,
+        qaStatus,
+        reworkReason,
     };
     
     delete (commonData as any).submitAction;
 
-
-    if (validatedData.id) {
-        const projectIndex = projects.findIndex(p => p.id === validatedData.id);
-        if (projectIndex !== -1) {
-            projects[projectIndex] = { ...projects[projectIndex], ...commonData };
-            projectToSave = projects[projectIndex];
-        } else {
-            // This case should ideally not happen if an ID is present
-            throw new Error("Project not found for update");
-        }
+    if (projectIndex !== -1) {
+        projects[projectIndex] = { ...projects[projectIndex], ...commonData };
+        projectToSave = projects[projectIndex];
     } else {
         const newId = (Math.max(...projects.map(p => parseInt(p.id, 10))) + 1).toString();
         projectToSave = {
             ...commonData,
-            from: "new.user@example.com", // Dummy from
+            from: "new.user@example.com", 
             id: newId,
+            country: 'USA',
         };
         projects.unshift(projectToSave);
     }
@@ -98,7 +118,7 @@ export async function saveProject(data: ProjectFormValues): Promise<Project> {
 
 const bulkUpdateSchema = z.object({
   projectIds: z.array(z.string()),
-  field: z.enum(['processor', 'qa', 'status']),
+  field: z.enum(['processor', 'qa']),
   value: z.string().min(1, "New value cannot be empty."),
 });
 

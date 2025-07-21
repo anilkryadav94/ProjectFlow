@@ -3,7 +3,7 @@
 
 import * as React from 'react';
 import Papa from "papaparse";
-import { type Project, type Role, type User, roleHierarchy, processors, qas, projectStatuses, clientNames, processes } from '@/lib/data';
+import { type Project, type Role, type User, roleHierarchy, processors, qas, projectStatuses, clientNames, processes, processorActionableStatuses } from '@/lib/data';
 import { DataTable } from '@/components/data-table';
 import { getColumns } from '@/components/columns';
 import { Header } from '@/components/header';
@@ -23,19 +23,18 @@ interface DashboardProps {
 
 export function DashboardWrapper(props: DashboardProps) {
     return (
-        <React.Suspense fallback={<div>Loading...</div>}>
+        <React.Suspense fallback={<div className="flex h-screen w-full items-center justify-center"><Loader2 className="h-8 w-8 animate-spin" /></div>}>
             <Dashboard {...props} />
         </React.Suspense>
     )
 }
 
 
-export type SearchableColumn = 'refNumber' | 'applicationNumber' | 'patentNumber' | 'subject' | 'status' | 'allocationDate' | 'emailDate';
+export type SearchableColumn = 'refNumber' | 'applicationNumber' | 'patentNumber' | 'subject' | 'processorStatus' | 'qaStatus' | 'workflowStatus' | 'allocationDate' | 'emailDate';
 
 const bulkUpdateFields = [
     { value: 'processor', label: 'Processor', options: processors },
     { value: 'qa', label: 'QA', options: qas },
-    { value: 'status', label: 'Status', options: projectStatuses },
 ] as const;
 
 function Dashboard({ 
@@ -51,18 +50,15 @@ function Dashboard({
   const [searchColumn, setSearchColumn] = React.useState<SearchableColumn>('refNumber');
   const [sort, setSort] = React.useState<{ key: keyof Project; direction: 'asc' | 'desc' } | null>({ key: 'allocationDate', direction: 'desc' });
   
-  // State for bulk updates (Manager/Admin)
   const [rowSelection, setRowSelection] = React.useState<Record<string, boolean>>({});
   const [bulkUpdateField, setBulkUpdateField] = React.useState<(typeof bulkUpdateFields)[number]['value']>('processor');
   const [bulkUpdateValue, setBulkUpdateValue] = React.useState('');
   const [isBulkUpdating, setIsBulkUpdating] = React.useState(false);
 
-  // Advanced Search State (Manager/Admin)
   const [searchCriteria, setSearchCriteria] = React.useState<SearchCriteria | null>(null);
   const [showSearchForm, setShowSearchForm] = React.useState(true);
   const [filteredProjects, setFilteredProjects] = React.useState<Project[] | null>(null);
 
-  // Filters for QA/Processor
   const [clientNameFilter, setClientNameFilter] = React.useState('all');
   const [processFilter, setProcessFilter] = React.useState<string | 'all'>('all');
   
@@ -70,11 +66,9 @@ function Dashboard({
   const { toast } = useToast();
 
   React.useEffect(() => {
-    // If a role is specified in the URL and the user has that role, use it.
     if (urlRole && user.roles.includes(urlRole)) {
         setActiveRole(urlRole);
     } else if (user?.roles?.length > 0) {
-      // Otherwise, fall back to the highest role in the hierarchy.
       const highestRole = roleHierarchy.find(role => user.roles.includes(role));
       setActiveRole(highestRole || user.roles[0]);
     }
@@ -184,21 +178,22 @@ function Dashboard({
             return [];
         }
 
-        let results = filteredProjects ?? [];
+        let baseProjects = showSearchForm ? [] : (filteredProjects ?? projects);
+
         if (search) {
-             results = results.filter(p => 
+             baseProjects = baseProjects.filter(p => 
                 (p[searchColumn] as string)?.toLowerCase().includes(search.toLowerCase())
              );
         }
-        return results;
+        return baseProjects;
     }
     
     let filtered = [...projects];
 
     if (activeRole === 'Processor') {
-      filtered = filtered.filter(p => p.processor === user.name);
+      filtered = filtered.filter(p => p.processor === user.name && p.workflowStatus === 'With Processor' && processorActionableStatuses.includes(p.processorStatus));
     } else if (activeRole === 'QA') {
-      filtered = filtered.filter(p => p.qa === user.name);
+      filtered = filtered.filter(p => p.qa === user.name && p.workflowStatus === 'With QA');
     }
 
     if (search) {
@@ -231,7 +226,7 @@ function Dashboard({
 
 
   if (!activeRole) {
-    return null; // Or a loading spinner
+    return <div className="flex h-screen w-full items-center justify-center"><Loader2 className="h-8 w-8 animate-spin" /></div>;
   }
   
   const isManagerOrAdmin = activeRole === 'Manager' || activeRole === 'Admin';
