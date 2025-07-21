@@ -4,7 +4,9 @@ import { SignJWT, jwtVerify } from 'jose';
 import { cookies } from 'next/headers';
 import { db } from './firebase';
 import { collection, query, where, getDocs, doc, setDoc, addDoc, updateDoc } from 'firebase/firestore';
-import type { User } from './data';
+import type { User, Role } from './data';
+import { users as mockUsers } from './data';
+
 
 const secretKey = process.env.SESSION_SECRET || "fallback-secret-key-for-development";
 const key = new TextEncoder().encode(secretKey);
@@ -29,14 +31,8 @@ export async function decrypt(input: string): Promise<any> {
 }
 
 async function findUserByEmail(email: string): Promise<User | null> {
-    const usersRef = collection(db, 'users');
-    const q = query(usersRef, where('email', '==', email));
-    const querySnapshot = await getDocs(q);
-    if (querySnapshot.empty) {
-        return null;
-    }
-    const userDoc = querySnapshot.docs[0];
-    return { id: userDoc.id, ...userDoc.data() } as User;
+    const user = mockUsers.find((u) => u.email === email);
+    return user || null;
 }
 
 export async function login(prevState: { error: string } | undefined, formData: FormData) {
@@ -139,11 +135,5 @@ export async function addBulkUsers(newUsers: Omit<User, 'id'>[]) {
 }
 
 export async function getUsers(): Promise<User[]> {
-    const usersCol = collection(db, "users");
-    const userSnapshot = await getDocs(usersCol);
-    const userList = userSnapshot.docs.map(doc => ({
-        id: doc.id,
-        ...doc.data()
-    } as User));
-    return userList;
+    return mockUsers;
 }
