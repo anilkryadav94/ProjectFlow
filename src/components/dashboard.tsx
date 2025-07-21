@@ -2,17 +2,25 @@
 "use client";
 
 import * as React from 'react';
-import { type Project, type Role, ProcessType, type User, roleHierarchy } from '@/lib/data';
+import { type Project, type Role, ProcessType, type User, roleHierarchy, ProjectStatus, clientNames, processes, projectStatuses } from '@/lib/data';
 import { DataTable } from '@/components/data-table';
 import { columns } from '@/components/columns';
 import { Header } from '@/components/header';
 import { ProjectForm } from './project-form';
-import { ScrollArea } from './ui/scroll-area';
 import { UserManagementTable } from './user-management-table';
 import { useToast } from "@/hooks/use-toast";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from './ui/dialog';
 import { Button } from './ui/button';
 import { PlusCircle } from 'lucide-react';
+import type { DateRange } from 'react-day-picker';
+import { addDays } from 'date-fns';
+import { DashboardSidebar } from './dashboard-sidebar';
+import {
+  Sidebar,
+  SidebarContent,
+  SidebarInset,
+  SidebarProvider,
+} from "@/components/ui/sidebar";
 
 interface DashboardProps {
   user: User;
@@ -24,22 +32,22 @@ export default function Dashboard({
   initialProjects,
 }: DashboardProps) {
   const [activeRole, setActiveRole] = React.useState<Role | null>(null);
-
   const [projects, setProjects] = React.useState<Project[]>(initialProjects);
   const [search, setSearch] = React.useState('');
   const [sort, setSort] = React.useState<{ key: keyof Project; direction: 'asc' | 'desc' } | null>({ key: 'allocationDate', direction: 'desc' });
   const [clientNameFilter, setClientNameFilter] = React.useState<string>('all');
   const [processFilter, setProcessFilter] = React.useState<ProcessType | 'all'>('all');
+  const [statusFilter, setStatusFilter] = React.useState<ProjectStatus | 'all'>('all');
+  const [emailDateFilter, setEmailDateFilter] = React.useState<DateRange | undefined>({ from: addDays(new Date(), -90), to: new Date() });
+  const [allocationDateFilter, setAllocationDateFilter] = React.useState<DateRange | undefined>();
   const [isNewProjectDialogOpen, setIsNewProjectDialogOpen] = React.useState(false);
   const { toast } = useToast();
   
   React.useEffect(() => {
     if (user?.roles?.length > 0) {
-      // If user is an admin and has other roles, default to Manager view.
       if (user.roles.includes('Admin') && user.roles.includes('Manager')) {
           setActiveRole('Manager');
       } else {
-        // Otherwise, pick the highest role in the hierarchy.
         for (const role of roleHierarchy) {
             if (user.roles.includes(role)) {
                 setActiveRole(role);
@@ -81,9 +89,10 @@ export default function Dashboard({
     
     if (search) {
       userProjects = userProjects.filter(project =>
+        (project.refNumber || '').toLowerCase().includes(search.toLowerCase()) ||
+        (project.clientName || '').toLowerCase().includes(search.toLowerCase()) ||
         (project.applicationNumber || '').toLowerCase().includes(search.toLowerCase()) ||
-        (project.patentNumber || '').toLowerCase().includes(search.toLowerCase()) ||
-        (project.refNumber || '').toLowerCase().includes(search.toLowerCase())
+        (project.patentNumber || '').toLowerCase().includes(search.toLowerCase())
       );
     }
     
@@ -93,6 +102,24 @@ export default function Dashboard({
 
     if (processFilter !== 'all') {
       userProjects = userProjects.filter(p => p.process === processFilter);
+    }
+
+    if (statusFilter !== 'all') {
+        userProjects = userProjects.filter(p => p.status === statusFilter);
+    }
+
+    if (emailDateFilter?.from) {
+        userProjects = userProjects.filter(p => new Date(p.emailDate) >= emailDateFilter.from!);
+    }
+    if (emailDateFilter?.to) {
+        userProjects = userProjects.filter(p => new Date(p.emailDate) <= emailDateFilter.to!);
+    }
+
+    if (allocationDateFilter?.from) {
+        userProjects = userProjects.filter(p => new Date(p.allocationDate) >= allocationDateFilter.from!);
+    }
+    if (allocationDateFilter?.to) {
+        userProjects = userProjects.filter(p => new Date(p.allocationDate) <= allocationDateFilter.to!);
     }
 
     if (sort) {
@@ -114,19 +141,18 @@ export default function Dashboard({
     }
 
     return userProjects;
-  }, [search, sort, projects, activeRole, user.name, clientNameFilter, processFilter]);
-
+  }, [search, sort, projects, activeRole, user.name, clientNameFilter, processFilter, statusFilter, emailDateFilter, allocationDateFilter]);
 
   if (!activeRole) {
-    // This can be a loading spinner as well
     return null;
   }
 
   const isAdminView = activeRole === 'Admin';
   const isManagerView = activeRole === 'Manager';
+  const isQATorProcessorView = activeRole === 'QA' || activeRole === 'Processor';
 
-  return (
-    <div className="flex flex-col h-screen bg-background w-full">
+  const renderManagerOrAdminView = () => (
+     <div className="flex flex-col h-screen bg-background w-full">
         <Header 
             user={user}
             activeRole={activeRole}
@@ -177,4 +203,39 @@ export default function Dashboard({
         </div>
     </div>
   );
+
+  const renderQATorProcessorView = () => (
+     <SidebarProvider>
+      <DashboardSidebar 
+        user={user}
+        activeRole={activeRole}
+        search={search}
+        setSearch={setSearch}
+        clientNameFilter={clientNameFilter}
+        setClientNameFilter={setClientNameFilter}
+        processFilter={processFilter}
+        setProcessFilter={setProcessFilter}
+        statusFilter={statusFilter}
+        setStatusFilter={setStatusFilter}
+        emailDateFilter={emailDateFilter}
+        setEmailDateFilter={setEmailDateFilter}
+        allocationDateFilter={allocationDateFilter}
+        setAllocationDateFilter={setAllocationDateFilter}
+        clientNames={clientNames}
+        processes={processes}
+        projectStatuses={projectStatuses}
+      />
+      <SidebarInset className="p-4 flex-1">
+         <DataTable 
+            data={filteredProjects}
+            columns={columns}
+            sort={sort}
+            setSort={setSort}
+            projectsToDownload={filteredProjects}
+          />
+      </SidebarInset>
+     </SidebarProvider>
+  )
+
+  return isQATorProcessorView ? renderQATorProcessorView() : renderManagerOrAdminView();
 }

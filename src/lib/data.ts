@@ -18,8 +18,8 @@ export type User = {
 // In a real application, this would come from a database.
 // This data can now be used to seed the database for the first time.
 export const users: User[] = [
-    { id: '1', email: 'admin@example.com', password: 'password', name: 'Admin User', roles: ['Admin'] },
-    { id: '2', email: 'manager@example.com', password: 'password', name: 'Manager User', roles: ['Manager'] },
+    { id: '1', email: 'admin@example.com', password: 'password', name: 'Admin User', roles: ['Admin', 'Manager'] },
+    { id: '2', email: 'manager@example.com', password: 'password', name: 'Manager User', roles: ['Manager', 'QA'] },
     { id: '3', email: 'alice@example.com', password: 'password', name: 'Alice', roles: ['Processor'] },
     { id: '4', email: 'bob@example.com', password: 'password', name: 'Bob', roles: ['Processor', 'QA'] },
     { id: '5', email: 'charlie@example.com', password: 'password', name: 'Charlie', roles: ['Processor'] },
@@ -56,9 +56,10 @@ export type Project = {
 
 
 export const processors = ['Alice', 'Bob', 'Charlie', 'Rahul'];
-export const qas = ['David', 'Eve', 'Anil', 'Ankit', 'Rahul', 'Bob'];
+export const qas = ['David', 'Eve', 'Anil', 'Ankit', 'Rahul', 'Bob', 'Manager User'];
 export const clientNames = ['Client A', 'Client B', 'Client C'];
 export const processes: ProcessType[] = ['Patent', 'TM', 'IDS', 'Project'];
+export const projectStatuses: ProjectStatus[] = ['Pending', 'Processing', 'QA', 'Complete', 'On Hold'];
 
 
 export const projects: Project[] = [
