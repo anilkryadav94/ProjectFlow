@@ -1,13 +1,11 @@
+
 'use server';
 
 import { SignJWT, jwtVerify } from 'jose';
 import { cookies } from 'next/headers';
-import { db } from './firebase';
-import { collection, query, where, getDocs, doc, setDoc, addDoc, updateDoc } from 'firebase/firestore';
 import type { User, Role } from './data';
 import { users as mockUsers } from './data';
 import { redirect } from 'next/navigation';
-
 
 const secretKey = process.env.SESSION_SECRET || "fallback-secret-key-for-development";
 const key = new TextEncoder().encode(secretKey);
@@ -31,18 +29,11 @@ export async function decrypt(input: string): Promise<any> {
   }
 }
 
-async function findUserByEmail(email: string): Promise<User | null> {
-    const usersCol = collection(db, "users");
-    const q = query(usersCol, where("email", "==", email));
-    const userSnapshot = await getDocs(q);
-    if (userSnapshot.empty) {
-        return null;
-    }
-    const userData = userSnapshot.docs[0].data();
-    return { id: userSnapshot.docs[0].id, ...userData } as User;
+function findUserByEmail(email: string): User | undefined {
+  return mockUsers.find(u => u.email === email);
 }
 
-export async function login(prevState: { error: string } | undefined, formData: FormData) {
+export async function login(prevState: { error?: string, success?: boolean } | undefined, formData: FormData) {
   const email = formData.get('email') as string;
   const password = formData.get('password') as string;
 
@@ -50,10 +41,8 @@ export async function login(prevState: { error: string } | undefined, formData: 
     return { error: 'Email and password are required.' };
   }
 
-  const user = await findUserByEmail(email);
-
-  // In a real app, you would use a secure password hashing and comparison library like bcrypt.
-  // For this example, we'll stick with plain text comparison.
+  const user = findUserByEmail(email);
+  
   if (!user || user.password !== password) {
     return { error: 'Invalid email or password.' };
   }
@@ -63,12 +52,14 @@ export async function login(prevState: { error: string } | undefined, formData: 
   const session = await encrypt({ user: sessionUser, expires });
 
   cookies().set('session', session, { expires, httpOnly: true });
-  
-  redirect('/');
+
+  // Redirect after successful login
+  return redirect('/');
 }
 
 export async function logout() {
   cookies().set('session', '', { expires: new Date(0) });
+  redirect('/login');
 }
 
 export async function getSession() {
@@ -83,71 +74,56 @@ export async function getSession() {
   return session;
 }
 
-export async function updateUser(updatedUser: User) {
-    if (!updatedUser.id) throw new Error("User ID is required for update.");
-    
-    const userRef = doc(db, 'users', updatedUser.id);
-    const updateData: Partial<User> = {
-        name: updatedUser.name,
-        roles: updatedUser.roles,
-    };
-
-    // Only update password if a new one is provided
-    if (updatedUser.password) {
-        updateData.password = updatedUser.password;
-    }
-    
-    await updateDoc(userRef, updateData);
-
-    const session = await getSession();
-    if (session && session.user.id === updatedUser.id) {
-        const expires = new Date(Date.now() + 60 * 60 * 1000); // 1 hour
-        const sessionUser = { 
-            id: updatedUser.id, 
-            email: updatedUser.email, 
-            name: updatedUser.name, 
-            roles: updatedUser.roles 
-        };
-        const newSession = await encrypt({ user: sessionUser, expires });
-        cookies().set('session', newSession, { expires, httpOnly: true });
-    }
-    
-    return { success: true };
-}
-
-export async function addUser(newUser: Omit<User, 'id'>) {
-    const existingUser = await findUserByEmail(newUser.email);
-    if (existingUser) {
-        throw new Error('User with this email already exists.');
-    }
-    
-    const docRef = await addDoc(collection(db, 'users'), newUser);
-    return { success: true, user: { id: docRef.id, ...newUser } };
-}
-
-export async function addBulkUsers(newUsers: Omit<User, 'id'>[]) {
-    const addedUsers: User[] = [];
-    const errors: { email: string; reason: string }[] = [];
-
-    for (const newUser of newUsers) {
-        const existingUser = await findUserByEmail(newUser.email);
-        if (existingUser) {
-            errors.push({ email: newUser.email, reason: 'Email already exists.' });
-        } else {
-            const docRef = await addDoc(collection(db, "users"), newUser);
-            addedUsers.push({ id: docRef.id, ...newUser });
-        }
-    }
-    
-    return { success: true, addedUsers, errors };
-}
+// --- User Management Functions ---
 
 export async function getUsers(): Promise<User[]> {
-    const usersCol = collection(db, "users");
-    const userSnapshot = await getDocs(usersCol);
-    const userList = userSnapshot.docs.map(doc => ({
-        id: doc.id,
-        ...doc.data()
-    } as User));
-    return userList;
+    // In a real app, this would fetch from a database.
+    // Here we're returning the mock data.
+    return Promise.resolve(mockUsers);
+}
+
+export async function updateUser(userToUpdate: User): Promise<{ success: boolean; user?: User }> {
+    const index = mockUsers.findIndex(u => u.id === userToUpdate.id);
+    if (index === -1) {
+        return { success: false };
+    }
+    // Only update fields that are supposed to change
+    mockUsers[index].name = userToUpdate.name;
+    mockUsers[index].roles = userToUpdate.roles;
+    if (userToUpdate.password) { // only update password if a new one is provided
+        mockUsers[index].password = userToUpdate.password;
+    }
+    return { success: true, user: mockUsers[index] };
+}
+
+export async function addUser(newUser: Omit<User, 'id'>): Promise<{ success: boolean; user?: User }> {
+    if (mockUsers.some(u => u.email === newUser.email)) {
+        throw new Error("User with this email already exists.");
+    }
+    const user: User = {
+        id: (mockUsers.length + 1).toString(),
+        ...newUser
+    };
+    mockUsers.unshift(user); // Add to the beginning of the array
+    return { success: true, user };
+}
+
+export async function addBulkUsers(newUsers: Omit<User, 'id'>[]): Promise<{ addedUsers: User[], errors: any[] }> {
+    const addedUsers: User[] = [];
+    const errors: any[] = [];
+
+    newUsers.forEach(newUser => {
+        if (mockUsers.some(u => u.email === newUser.email)) {
+            errors.push({ email: newUser.email, reason: 'duplicate' });
+        } else {
+            const user: User = {
+                id: (mockUsers.length + 1 + addedUsers.length).toString(),
+                ...newUser
+            };
+            addedUsers.push(user);
+        }
+    });
+
+    mockUsers.unshift(...addedUsers);
+    return { addedUsers, errors };
 }
