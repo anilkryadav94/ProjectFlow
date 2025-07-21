@@ -66,19 +66,19 @@ export async function getSession() {
   return session;
 }
 
-export async function updateUserRole(userId: string, newRole: Role) {
+export async function updateUser(updatedUser: User) {
     // In a real app, you'd update this in the database.
     // Here we just find and modify the in-memory user.
-    const userIndex = users.findIndex(u => u.id === userId);
+    const userIndex = users.findIndex(u => u.id === updatedUser.id);
     if (userIndex !== -1) {
-        users[userIndex].role = newRole;
+        users[userIndex] = { ...users[userIndex], ...updatedUser };
         
         // If the updated user is the currently logged-in user, update their session
         const session = await getSession();
-        if (session && session.user.id === userId) {
-            const updatedUser = users[userIndex];
+        if (session && session.user.id === updatedUser.id) {
+            const user = users[userIndex];
             const expires = new Date(Date.now() + 60 * 60 * 1000); // 1 hour
-            const sessionUser = { id: updatedUser.id, email: updatedUser.email, name: updatedUser.name, role: updatedUser.role };
+            const sessionUser = { id: user.id, email: user.email, name: user.name, role: user.role };
             const newSession = await encrypt({ user: sessionUser, expires });
             cookies().set('session', newSession, { expires, httpOnly: true });
         }
@@ -86,5 +86,5 @@ export async function updateUserRole(userId: string, newRole: Role) {
         await new Promise(resolve => setTimeout(resolve, 500)); // Simulate DB delay
         return { success: true };
     }
-    return { error: 'User not found' };
+    throw new Error('User not found');
 }
