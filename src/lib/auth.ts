@@ -84,7 +84,41 @@ export async function updateUser(updatedUser: User) {
         }
         
         await new Promise(resolve => setTimeout(resolve, 500)); // Simulate DB delay
-        return { success: true };
+        return { success: true, user: users[userIndex] };
     }
     throw new Error('User not found');
+}
+
+export async function addUser(newUser: Omit<User, 'id'>) {
+    if (users.some(u => u.email === newUser.email)) {
+        throw new Error('User with this email already exists.');
+    }
+    const user: User = {
+        id: String(Date.now()), // Simple unique ID
+        ...newUser
+    };
+    users.unshift(user); // Add to the top of the list
+    await new Promise(resolve => setTimeout(resolve, 500));
+    return { success: true, user };
+}
+
+export async function addBulkUsers(newUsers: Omit<User, 'id'>[]) {
+    const addedUsers: User[] = [];
+    const errors: { email: string; reason: string }[] = [];
+
+    for (const newUser of newUsers) {
+        if (users.some(u => u.email === newUser.email)) {
+            errors.push({ email: newUser.email, reason: 'Email already exists.' });
+        } else {
+            const user: User = {
+                id: String(Date.now() + Math.random()),
+                ...newUser
+            };
+            users.unshift(user);
+            addedUsers.push(user);
+        }
+    }
+    
+    await new Promise(resolve => setTimeout(resolve, 500));
+    return { success: true, addedUsers, errors };
 }
