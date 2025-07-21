@@ -96,14 +96,14 @@ export function Header({
     <div className="flex flex-col gap-1">
       <div className="flex items-center justify-between">
         <div className="flex items-center gap-2">
-          <Workflow className="h-5 w-5 text-primary" />
-          <h2 className="text-xl font-bold tracking-tight">ProjectFlow</h2>
+          <Workflow className="h-4 w-4 text-primary" />
+          <h2 className="text-lg font-bold tracking-tight">ProjectFlow</h2>
         </div>
         <div className="flex items-center space-x-2">
             <ThemeToggle />
             <DropdownMenu>
                 <DropdownMenuTrigger asChild>
-                    <Button variant="outline" className="w-48 justify-between h-9">
+                    <Button variant="outline" className="w-48 justify-between h-8">
                        <UserCircle className="mr-2 h-4 w-4" />
                        <span className="truncate">{user.name}</span>
                        <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
@@ -137,7 +137,7 @@ export function Header({
         </div>
       </div>
       <div className="flex items-center justify-between">
-         <h3 className="text-base font-medium">{getDashboardName()}</h3>
+         <h3 className="text-sm font-semibold">{getDashboardName()}</h3>
         
         {/* Hide filters for Admin */}
         {activeRole !== 'Admin' && (
@@ -146,13 +146,13 @@ export function Header({
                   <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
                   <Input 
                       placeholder="Quick search..."
-                      className="pl-9 h-9"
+                      className="pl-9 h-8"
                       value={search}
                       onChange={(e) => setSearch(e.target.value)}
                   />
               </div>
               <Select value={clientNameFilter} onValueChange={setClientNameFilter}>
-                  <SelectTrigger className="w-[180px] h-9">
+                  <SelectTrigger className="w-[180px] h-8">
                       <SelectValue placeholder="Filter by Client" />
                   </SelectTrigger>
                   <SelectContent>
@@ -163,7 +163,7 @@ export function Header({
                   </SelectContent>
               </Select>
               <Select value={processFilter} onValueChange={(value) => setProcessFilter(value as ProcessType | 'all')}>
-                  <SelectTrigger className="w-[180px] h-9">
+                  <SelectTrigger className="w-[180px] h-8">
                       <SelectValue placeholder="Filter by Process" />
                   </SelectTrigger>
                   <SelectContent>
@@ -173,7 +173,7 @@ export function Header({
                       ))}
                   </SelectContent>
               </Select>
-              <Button variant="outline" size="sm" onClick={handleDownload} disabled={projectsToDownload.length === 0} className="h-9 w-9 p-0">
+              <Button variant="outline" size="sm" onClick={handleDownload} disabled={projectsToDownload.length === 0} className="h-8 w-8 p-0">
                 <Download className="h-4 w-4" />
                 <span className="sr-only">Download CSV</span>
               </Button>
