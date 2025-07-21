@@ -20,11 +20,9 @@ export const columns = [
     key: "refNumber" as const,
     header: "Ref Number",
     render: (project: Project) => (
-        <Button variant="link" asChild className="p-0 h-auto">
-             <Link href={`/task/${project.id}`} className="font-medium">
-                {project.refNumber}
-            </Link>
-        </Button>
+        <span className="font-medium text-primary">
+          {project.refNumber}
+        </span>
     )
   },
   {
