@@ -89,7 +89,7 @@ export function DataTable({ data, columns, sort, setSort, rowSelection, setRowSe
             <TableFooter>
                 <TableRow>
                     <TableCell colSpan={columns.length} className="text-right font-medium text-muted-foreground">
-                        Total Projects: {totalCount}
+                        Total {totalCount === 1 ? 'Item' : 'Items'}: {totalCount}
                     </TableCell>
                 </TableRow>
             </TableFooter>
