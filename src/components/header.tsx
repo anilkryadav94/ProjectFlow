@@ -37,6 +37,21 @@ interface HeaderProps {
 export function Header({ search, setSearch, role, setRole, onProjectUpdate, clientNameFilter, setClientNameFilter, processFilter, setProcessFilter }: HeaderProps) {
   const [isFormOpen, setIsFormOpen] = React.useState(false);
 
+  const getDashboardName = () => {
+    switch(role) {
+      case 'Processor':
+        return 'Processor Dashboard';
+      case 'QA':
+        return 'QA Dashboard';
+      case 'Manager':
+        return 'Manager Dashboard';
+      case 'Admin':
+        return 'Admin Dashboard';
+      default:
+        return 'Dashboard';
+    }
+  }
+
   return (
     <div className="flex flex-col gap-4">
       <div className="flex items-center justify-between space-y-2">
@@ -67,7 +82,7 @@ export function Header({ search, setSearch, role, setRole, onProjectUpdate, clie
       </div>
       <div className="flex items-center justify-between">
         <TabsList>
-            <TabsTrigger value="projects">Projects</TabsTrigger>
+            <TabsTrigger value="projects">{getDashboardName()}</TabsTrigger>
             {(role === 'Admin' || role === 'Manager') && (
               <TabsTrigger value="manager">Manager Tools</TabsTrigger>
             )}
