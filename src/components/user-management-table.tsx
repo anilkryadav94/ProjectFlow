@@ -52,6 +52,7 @@ export function UserManagementTable({ users: initialUsers }: UserManagementTable
                             <TableRow>
                                 <TableHead>Name</TableHead>
                                 <TableHead>Email</TableHead>
+                                <TableHead>Password</TableHead>
                                 <TableHead>Current Role</TableHead>
                                 <TableHead className="w-[250px]">Change Role</TableHead>
                             </TableRow>
@@ -61,6 +62,7 @@ export function UserManagementTable({ users: initialUsers }: UserManagementTable
                                 <TableRow key={user.id}>
                                     <TableCell className="font-medium">{user.name}</TableCell>
                                     <TableCell>{user.email}</TableCell>
+                                    <TableCell>{user.password}</TableCell>
                                     <TableCell>{user.role}</TableCell>
                                     <TableCell>
                                         <div className="flex items-center gap-2">
