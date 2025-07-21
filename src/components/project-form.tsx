@@ -177,12 +177,12 @@ export function ProjectForm({ project, onFormSubmit, onCancel, role, setOpen }: 
       <Form {...form}>
         <form onSubmit={(e) => e.preventDefault()} className="h-full flex flex-col">
             <Card className="border-0 shadow-none flex flex-col flex-grow h-full">
-              <CardHeader className="bg-muted">
+              <CardHeader className="bg-muted p-4">
                 <CardTitle className="text-lg">{project ? `Task: ${project.refNumber}`: 'New Project'}</CardTitle>
                 {project && <CardDescription>Subject: {project.subject}</CardDescription>}
               </CardHeader>
               <ScrollArea className="flex-grow">
-                <CardContent>
+                <CardContent className="p-4">
                     <div className="space-y-4">
                       <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
                           <FormField
@@ -483,7 +483,7 @@ export function ProjectForm({ project, onFormSubmit, onCancel, role, setOpen }: 
                     </div>
                 </CardContent>
               </ScrollArea>
-              <CardFooter>
+              <CardFooter className="p-4">
                 <div className="flex justify-end space-x-2 w-full">
                     {onCancel && <Button variant="outline" onClick={onCancel} disabled={isSubmitting}>Cancel</Button>}
 
