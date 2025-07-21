@@ -1,5 +1,4 @@
 
-
 export type Role = 'Admin' | 'Manager' | 'Processor' | 'QA';
 export const roles: Role[] = ['Admin', 'Manager', 'Processor', 'QA'];
 
@@ -52,6 +51,7 @@ export type Project = {
   processingDate: string | null;
   qaDate: string | null;
   status: ProjectStatus;
+  country: string;
 };
 
 
@@ -60,6 +60,7 @@ export const qas = ['David', 'Eve', 'Anil', 'Ankit', 'Rahul', 'Bob', 'Manager Us
 export const clientNames = ['Client A', 'Client B', 'Client C'];
 export const processes: ProcessType[] = ['Patent', 'TM', 'IDS', 'Project'];
 export const projectStatuses: ProjectStatus[] = ['Pending', 'Processing', 'QA', 'Complete', 'On Hold'];
+export const countries = ['USA', 'India', 'Canada', 'UK', 'Germany'];
 
 
 export const projects: Project[] = [
@@ -81,6 +82,7 @@ export const projects: Project[] = [
     processingDate: '2023-10-05',
     qaDate: '2023-10-07',
     status: 'Complete',
+    country: 'USA',
   },
   {
     id: '2',
@@ -100,6 +102,7 @@ export const projects: Project[] = [
     processingDate: '2023-10-08',
     qaDate: null,
     status: 'QA',
+    country: 'USA',
   },
   {
     id: '3',
@@ -119,6 +122,7 @@ export const projects: Project[] = [
     processingDate: null,
     qaDate: null,
     status: 'Processing',
+    country: 'Canada',
   },
   {
     id: '4',
@@ -138,6 +142,7 @@ export const projects: Project[] = [
     processingDate: null,
     qaDate: null,
     status: 'Pending',
+    country: 'UK',
   },
   {
     id: '5',
@@ -157,6 +162,7 @@ export const projects: Project[] = [
     processingDate: '2023-09-25',
     qaDate: '2023-09-28',
     status: 'Complete',
+    country: 'Germany',
   },
     {
     id: '6',
@@ -176,6 +182,7 @@ export const projects: Project[] = [
     processingDate: '2023-10-25',
     qaDate: null,
     status: 'On Hold',
+    country: 'India',
   },
   {
     id: '7',
@@ -195,6 +202,7 @@ export const projects: Project[] = [
     processingDate: null,
     qaDate: null,
     status: 'Processing',
+    country: 'USA',
   },
   {
     id: '8',
@@ -214,6 +222,7 @@ export const projects: Project[] = [
     processingDate: null,
     qaDate: null,
     status: 'Pending',
+    country: 'Canada',
   },
   {
     id: '9',
@@ -233,6 +242,7 @@ export const projects: Project[] = [
     processingDate: '2023-11-14',
     qaDate: '2023-11-16',
     status: 'Complete',
+    country: 'USA',
   },
   {
     id: '10',
@@ -252,6 +262,7 @@ export const projects: Project[] = [
     processingDate: '2023-11-15',
     qaDate: null,
     status: 'QA',
+    country: 'UK',
   },
   {
     id: '11',
@@ -271,6 +282,7 @@ export const projects: Project[] = [
     processingDate: null,
     qaDate: null,
     status: 'Processing',
+    country: 'Germany',
   },
   {
     id: '12',
@@ -290,6 +302,7 @@ export const projects: Project[] = [
     processingDate: null,
     qaDate: null,
     status: 'Pending',
+    country: 'India',
   },
   {
     id: '13',
@@ -309,6 +322,7 @@ export const projects: Project[] = [
     processingDate: null,
     qaDate: null,
     status: 'Processing',
+    country: 'USA',
   },
   {
     id: '14',
@@ -328,6 +342,7 @@ export const projects: Project[] = [
     processingDate: '2023-11-30',
     qaDate: '2023-12-01',
     status: 'Complete',
+    country: 'Canada',
   },
   {
     id: '15',
@@ -347,6 +362,7 @@ export const projects: Project[] = [
     processingDate: null,
     qaDate: null,
     status: 'On Hold',
+    country: 'USA',
   },
   {
     id: '16',
@@ -366,6 +382,7 @@ export const projects: Project[] = [
     processingDate: null,
     qaDate: null,
     status: 'Pending',
+    country: 'UK',
   },
   {
     id: '17',
@@ -385,6 +402,7 @@ export const projects: Project[] = [
     processingDate: null,
     qaDate: null,
     status: 'Processing',
+    country: 'Germany',
   },
   {
     id: '18',
@@ -404,6 +422,7 @@ export const projects: Project[] = [
     processingDate: null,
     qaDate: null,
     status: 'Pending',
+    country: 'India',
   },
   {
     id: '19',
@@ -423,6 +442,7 @@ export const projects: Project[] = [
     processingDate: null,
     qaDate: null,
     status: 'On Hold',
+    country: 'USA',
   },
   {
     id: '20',
@@ -442,6 +462,7 @@ export const projects: Project[] = [
     processingDate: '2023-12-20',
     qaDate: '2023-12-21',
     status: 'Complete',
+    country: 'Canada',
   },
   {
     id: '21',
@@ -461,6 +482,7 @@ export const projects: Project[] = [
     processingDate: null,
     qaDate: null,
     status: 'Processing',
+    country: 'USA',
   },
   {
     id: '22',
@@ -480,6 +502,7 @@ export const projects: Project[] = [
     processingDate: '2023-12-27',
     qaDate: null,
     status: 'QA',
+    country: 'UK',
   },
   {
     id: '23',
@@ -499,6 +522,7 @@ export const projects: Project[] = [
     processingDate: null,
     qaDate: null,
     status: 'Pending',
+    country: 'Germany',
   },
   {
     id: '24',
@@ -518,6 +542,7 @@ export const projects: Project[] = [
     processingDate: null,
     qaDate: null,
     status: 'Processing',
+    country: 'India',
   },
   {
     id: '25',
@@ -537,6 +562,7 @@ export const projects: Project[] = [
     processingDate: '2024-01-10',
     qaDate: '2024-01-11',
     status: 'Complete',
+    country: 'USA',
   },
   {
     id: '26',
@@ -556,6 +582,7 @@ export const projects: Project[] = [
     processingDate: null,
     qaDate: null,
     status: 'On Hold',
+    country: 'Canada',
   },
   {
     id: '27',
@@ -575,6 +602,7 @@ export const projects: Project[] = [
     processingDate: null,
     qaDate: null,
     status: 'Pending',
+    country: 'USA',
   },
   {
     id: '28',
@@ -594,6 +622,7 @@ export const projects: Project[] = [
     processingDate: null,
     qaDate: null,
     status: 'Processing',
+    country: 'UK',
   },
   {
     id: '29',
@@ -613,6 +642,7 @@ export const projects: Project[] = [
     processingDate: '2024-01-22',
     qaDate: null,
     status: 'QA',
+    country: 'Germany',
   },
   {
     id: '30',
@@ -632,6 +662,7 @@ export const projects: Project[] = [
     processingDate: null,
     qaDate: null,
     status: 'Pending',
+    country: 'India',
   },
   {
     id: '31',
@@ -651,6 +682,7 @@ export const projects: Project[] = [
     processingDate: '2024-01-28',
     qaDate: '2024-01-30',
     status: 'Complete',
+    country: 'USA',
   },
   {
     id: '32',
@@ -670,6 +702,7 @@ export const projects: Project[] = [
     processingDate: null,
     qaDate: null,
     status: 'Processing',
+    country: 'Canada',
   },
   {
     id: '33',
@@ -689,6 +722,7 @@ export const projects: Project[] = [
     processingDate: null,
     qaDate: null,
     status: 'Pending',
+    country: 'USA',
   },
   {
     id: '34',
@@ -708,6 +742,7 @@ export const projects: Project[] = [
     processingDate: null,
     qaDate: null,
     status: 'Processing',
+    country: 'UK',
   },
   {
     id: '35',
@@ -727,6 +762,7 @@ export const projects: Project[] = [
     processingDate: '2024-02-10',
     qaDate: '2024-02-12',
     status: 'Complete',
+    country: 'Germany',
   },
   {
     id: '36',
@@ -746,6 +782,7 @@ export const projects: Project[] = [
     processingDate: null,
     qaDate: null,
     status: 'Processing',
+    country: 'India',
   },
   {
     id: '37',
@@ -765,6 +802,7 @@ export const projects: Project[] = [
     processingDate: '2024-02-19',
     qaDate: null,
     status: 'QA',
+    country: 'USA',
   },
   {
     id: '38',
@@ -784,6 +822,7 @@ export const projects: Project[] = [
     processingDate: null,
     qaDate: null,
     status: 'On Hold',
+    country: 'Canada',
   },
   {
     id: '39',
@@ -803,6 +842,7 @@ export const projects: Project[] = [
     processingDate: null,
     qaDate: null,
     status: 'Pending',
+    country: 'USA',
   },
   {
     id: '40',
@@ -822,5 +862,6 @@ export const projects: Project[] = [
     processingDate: '2024-02-27',
     qaDate: '2024-02-28',
     status: 'Complete',
+    country: 'UK',
   }
 ];

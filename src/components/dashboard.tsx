@@ -3,7 +3,7 @@
 
 import * as React from 'react';
 import Papa from "papaparse";
-import { type Project, type Role, type User, roleHierarchy, processors, qas, projectStatuses } from '@/lib/data';
+import { type Project, type Role, type User, roleHierarchy, processors, qas, projectStatuses, clientNames, processes } from '@/lib/data';
 import { DataTable } from '@/components/data-table';
 import { getColumns } from '@/components/columns';
 import { Header } from '@/components/header';
@@ -16,6 +16,7 @@ import { useToast } from '@/hooks/use-toast';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from './ui/select';
 import { Input } from './ui/input';
 import { Loader2 } from 'lucide-react';
+import { AdvancedSearchForm, type SearchCriteria } from './advanced-search-form';
 
 interface DashboardProps {
   user: User;
@@ -46,37 +47,36 @@ export default function Dashboard({
   const [bulkUpdateField, setBulkUpdateField] = React.useState<(typeof bulkUpdateFields)[number]['value']>('processor');
   const [bulkUpdateValue, setBulkUpdateValue] = React.useState('');
   const [isBulkUpdating, setIsBulkUpdating] = React.useState(false);
+
+  // Advanced Search State
+  const [searchCriteria, setSearchCriteria] = React.useState<SearchCriteria | null>(null);
+  const [showSearchForm, setShowSearchForm] = React.useState(true);
+  const [filteredProjects, setFilteredProjects] = React.useState<Project[] | null>(null);
+
   const { toast } = useToast();
 
   React.useEffect(() => {
     if (user?.roles?.length > 0) {
-      if (user.roles.includes('Admin') && user.roles.includes('Manager')) {
-          setActiveRole('Manager');
-      } else {
-        for (const role of roleHierarchy) {
-            if (user.roles.includes(role)) {
-                setActiveRole(role);
-                break;
-            }
-        }
-      }
+      const highestRole = roleHierarchy.find(role => user.roles.includes(role));
+      setActiveRole(highestRole || user.roles[0]);
     }
   }, [user.roles]);
 
   const handleProjectUpdate = (updatedProject: Project) => {
-    const existingProjectIndex = projects.findIndex(p => p.id === updatedProject.id);
-
-    if (existingProjectIndex > -1) {
-        const newProjects = [...projects];
-        newProjects[existingProjectIndex] = updatedProject;
-        setProjects(newProjects);
-    } else {
-        setProjects(prev => [updatedProject, ...prev]);
+    const updater = (prev: Project[]) => prev.map(p => p.id === updatedProject.id ? updatedProject : p);
+    setProjects(updater);
+    if(filteredProjects) {
+      setFilteredProjects(updater);
     }
   };
   
   const handleDownload = () => {
-    const csv = Papa.unparse(dashboardProjects);
+    const dataToExport = filteredProjects ?? dashboardProjects;
+    if (dataToExport.length === 0) {
+      toast({ title: "No data to export", variant: "destructive" });
+      return;
+    }
+    const csv = Papa.unparse(dataToExport);
     const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
     const link = document.createElement("a");
     const url = URL.createObjectURL(blob);
@@ -99,16 +99,20 @@ export default function Dashboard({
     try {
         const result = await bulkUpdateProjects({ projectIds, field: bulkUpdateField, value: bulkUpdateValue });
         if (result.success) {
-            // Update local state to reflect changes
             setProjects(prevProjects => {
-                return prevProjects.map(p => {
-                    const updated = result.updatedProjects.find(up => up.id === p.id);
-                    return updated || p;
-                });
+                const updated = new Map(result.updatedProjects.map(p => [p.id, p]));
+                return prevProjects.map(p => updated.get(p.id) || p);
             });
+            if (filteredProjects) {
+                 setFilteredProjects(prevProjects => {
+                    if (!prevProjects) return null;
+                    const updated = new Map(result.updatedProjects.map(p => [p.id, p]));
+                    return prevProjects.map(p => updated.get(p.id) || p);
+                });
+            }
             toast({ title: "Success", description: `${result.updatedProjects.length} projects have been updated.` });
-            setRowSelection({}); // Clear selection
-            setBulkUpdateValue(''); // Clear value
+            setRowSelection({});
+            setBulkUpdateValue('');
         }
     } catch (error) {
         toast({ title: "Bulk Update Failed", description: "An error occurred.", variant: "destructive" });
@@ -117,18 +121,71 @@ export default function Dashboard({
     }
   };
 
+  const handleSearch = (criteria: SearchCriteria) => {
+    setSearchCriteria(criteria);
+    setShowSearchForm(false);
+
+    let results = [...projects];
+    
+    // Role-based pre-filtering
+    if (activeRole === 'Processor') {
+      results = results.filter(p => p.processor === user.name);
+    } else if (activeRole === 'QA') {
+      results = results.filter(p => p.qa === user.name);
+    }
+
+    results = results.filter(project => {
+      return criteria.every(criterion => {
+        if (!criterion.field || !criterion.operator || !criterion.value) return true;
+        const fieldValue = project[criterion.field as keyof Project] as string | null | undefined;
+
+        switch (criterion.operator) {
+            case 'blank':
+                return !fieldValue;
+            case 'equals':
+                return fieldValue?.toLowerCase() === criterion.value.toLowerCase();
+            case 'in':
+                const values = criterion.value.split(',').map(v => v.trim().toLowerCase());
+                return fieldValue ? values.includes(fieldValue.toLowerCase()) : false;
+            case 'startsWith':
+                return fieldValue?.toLowerCase().startsWith(criterion.value.toLowerCase()) ?? false;
+            case 'contains':
+                return fieldValue?.toLowerCase().includes(criterion.value.toLowerCase()) ?? false;
+            case 'dateEquals':
+                 if (!fieldValue) return false;
+                 return new Date(fieldValue).toDateString() === new Date(criterion.value).toDateString();
+            default:
+                return true;
+        }
+      });
+    });
+    setFilteredProjects(results);
+  };
+  
+  const handleResetSearch = () => {
+      setSearchCriteria(null);
+      setFilteredProjects(null);
+      setShowSearchForm(true);
+  }
+
+  const handleAmendSearch = () => {
+      setShowSearchForm(true);
+  }
+
 
   const dashboardProjects = React.useMemo(() => {
-    let filteredProjects = [...projects];
+    let baseProjects = filteredProjects ?? (activeRole === 'Manager' || activeRole === 'Admin' ? projects : []);
+
+    let filtered = [...baseProjects];
 
     if (activeRole === 'Processor') {
-      filteredProjects = filteredProjects.filter(p => p.processor === user.name);
+      filtered = projects.filter(p => p.processor === user.name);
     } else if (activeRole === 'QA') {
-      filteredProjects = filteredProjects.filter(p => p.qa === user.name);
+      filtered = projects.filter(p => p.qa === user.name);
     }
     
-    if (search && searchColumn) {
-        filteredProjects = filteredProjects.filter(project => {
+    if (search && searchColumn && (activeRole === 'Processor' || activeRole === 'QA')) {
+        filtered = filtered.filter(project => {
             const projectValue = project[searchColumn];
             if (typeof projectValue === 'string') {
                 return projectValue.toLowerCase().includes(search.toLowerCase());
@@ -138,7 +195,7 @@ export default function Dashboard({
     }
     
     if (sort) {
-      filteredProjects.sort((a, b) => {
+      filtered.sort((a, b) => {
         const valA = a[sort.key];
         const valB = b[sort.key];
         if (valA === null) return 1; if (valB === null) return -1;
@@ -148,8 +205,8 @@ export default function Dashboard({
       });
     }
 
-    return filteredProjects;
-  }, [search, searchColumn, activeRole, user.name, projects, sort]);
+    return filtered;
+  }, [search, searchColumn, activeRole, user.name, projects, sort, filteredProjects]);
 
 
   if (!activeRole) {
@@ -157,7 +214,7 @@ export default function Dashboard({
   }
   
   const isManagerOrAdmin = activeRole === 'Manager' || activeRole === 'Admin';
-  const showFilters = activeRole === 'Manager' || activeRole === 'Processor' || activeRole === 'QA' || activeRole === 'Admin';
+  const showQuickSearch = activeRole === 'Processor' || active-role === 'QA';
   const columns = getColumns(isManagerOrAdmin, rowSelection, setRowSelection, dashboardProjects);
   const selectedBulkUpdateField = bulkUpdateFields.find(f => f.value === bulkUpdateField);
 
@@ -172,16 +229,22 @@ export default function Dashboard({
             searchColumn={searchColumn}
             setSearchColumn={setSearchColumn}
             handleDownload={handleDownload}
-            isDownloadDisabled={dashboardProjects.length === 0}
-            showFilters={showFilters}
+            isDownloadDisabled={(filteredProjects ?? dashboardProjects).length === 0}
+            showQuickSearch={showQuickSearch}
+            isManagerOrAdmin={isManagerOrAdmin}
+            hasSearchResults={filteredProjects !== null}
+            onAmendSearch={handleAmendSearch}
+            onResetSearch={handleResetSearch}
         />
         <div className="flex flex-col flex-grow overflow-hidden p-4 gap-4">
             {activeRole === 'Admin' ? (
                 <UserManagementTable sessionUser={user} />
-            ) : (
-                <>
-                    <DataTable 
-                        data={dashboardProjects}
+            ) : isManagerOrAdmin ? (
+              <>
+                {showSearchForm && <AdvancedSearchForm onSearch={handleSearch} initialCriteria={searchCriteria} />}
+                {filteredProjects !== null && (
+                   <DataTable 
+                        data={filteredProjects}
                         columns={columns}
                         sort={sort}
                         setSort={setSort}
@@ -189,7 +252,7 @@ export default function Dashboard({
                         setRowSelection={setRowSelection}
                         isManagerOrAdmin={isManagerOrAdmin}
                     >
-                         {isManagerOrAdmin && Object.keys(rowSelection).length > 0 && (
+                         {Object.keys(rowSelection).length > 0 && (
                             <div className="flex items-center gap-4 p-4 border-t bg-muted/50">
                                 <span className="text-sm font-semibold">{Object.keys(rowSelection).length} selected</span>
                                 <div className="flex items-center gap-2">
@@ -225,7 +288,18 @@ export default function Dashboard({
                             </div>
                         )}
                     </DataTable>
-                </>
+                )}
+              </>
+            ) : (
+                <DataTable 
+                    data={dashboardProjects}
+                    columns={columns}
+                    sort={sort}
+                    setSort={setSort}
+                    rowSelection={{}}
+                    setRowSelection={() => {}}
+                    isManagerOrAdmin={false}
+                />
             )}
         </div>
         <Dialog open={isNewProjectFormOpen} onOpenChange={setIsNewProjectFormOpen}>

@@ -2,7 +2,7 @@
 "use client"
 
 import * as React from "react"
-import { LogOut, Search, Settings, FileSpreadsheet, Workflow } from "lucide-react"
+import { LogOut, Search, Settings, FileSpreadsheet, Workflow, Edit, RotateCcw } from "lucide-react"
 import type { Role, User } from "@/lib/data"
 import { roleHierarchy } from "@/lib/data"
 import { Button } from "@/components/ui/button"
@@ -36,7 +36,11 @@ interface HeaderProps {
     setSearchColumn?: (column: SearchableColumn) => void;
     handleDownload?: () => void;
     isDownloadDisabled?: boolean;
-    showFilters: boolean;
+    showQuickSearch: boolean;
+    isManagerOrAdmin: boolean;
+    hasSearchResults: boolean;
+    onAmendSearch: () => void;
+    onResetSearch: () => void;
 }
 
 const searchColumns: { value: SearchableColumn; label: string }[] = [
@@ -56,7 +60,11 @@ export function Header({
   setSearchColumn,
   handleDownload,
   isDownloadDisabled,
-  showFilters,
+  showQuickSearch,
+  isManagerOrAdmin,
+  hasSearchResults,
+  onAmendSearch,
+  onResetSearch
 }: HeaderProps) {
   const router = useRouter();
 
@@ -99,7 +107,7 @@ export function Header({
           <h3 className="text-md font-semibold">{getDashboardName()}</h3>
         </div>
         
-        {showFilters && setSearch && (
+        {showQuickSearch && setSearch && (
              <div className="flex-grow flex items-center justify-center">
                  <div className="w-full max-w-xl">
                     <div className="relative flex items-center">
@@ -115,7 +123,7 @@ export function Header({
                         </div>
                         <Input 
                             placeholder="Search..."
-                            className="pl-[120px] h-9"
+                            className="pl-[120px] h-9 text-foreground"
                             value={search}
                             onChange={(e) => setSearch(e.target.value)}
                         />
@@ -125,8 +133,19 @@ export function Header({
             </div>
         )}
 
+        {isManagerOrAdmin && hasSearchResults && (
+            <div className="flex items-center gap-2">
+                <Button variant="outline" size="sm" onClick={onAmendSearch} className="text-foreground">
+                    <Edit /> Amend Search
+                </Button>
+                 <Button variant="outline" size="sm" onClick={onResetSearch} className="text-foreground">
+                    <RotateCcw /> Reset Search
+                </Button>
+            </div>
+        )}
+
         <div className="flex items-center space-x-2 flex-shrink-0">
-            {showFilters && handleDownload && (
+            {handleDownload && (
                 <Button variant="ghost" size="icon" onClick={handleDownload} disabled={isDownloadDisabled} className="h-8 w-8 hover:bg-primary/80">
                   <FileSpreadsheet className="h-5 w-5" />
                   <span className="sr-only">Download CSV</span>
