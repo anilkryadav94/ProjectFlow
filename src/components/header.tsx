@@ -79,12 +79,12 @@ export function Header({
   };
 
   const handleRoleChange = (role: Role) => {
+    const targetUrl = `/?role=${role}`;
     if (setActiveRole) {
       setActiveRole(role);
+      router.push(targetUrl, { scroll: false });
     } else {
-      // If on a page without setActiveRole (like task page), redirect to home
-      // with the selected role as a query parameter.
-      router.push(`/?role=${role}`);
+      router.push(targetUrl);
     }
   }
 
@@ -114,8 +114,7 @@ export function Header({
   const dashboardLink = activeRole ? `/?role=${activeRole}` : '/';
 
   return (
-    <>
-    <div className="flex items-center justify-between bg-primary text-primary-foreground p-2 px-4 shadow-md h-16 shrink-0 gap-4">
+    <header className="flex items-center justify-between bg-primary text-primary-foreground p-2 px-4 shadow-md h-16 shrink-0 gap-4">
         <div className="flex items-center gap-2 flex-shrink-0">
           <div className="flex items-center gap-2">
             <Workflow className="h-6 w-6" />
@@ -127,14 +126,27 @@ export function Header({
             </Link>
         </div>
         
-        <div className="flex-grow flex items-center justify-center px-8">
-            {children ? (
-                children
-            ) : !isManagerOrAdmin && setSearch && setSearchColumn && setClientNameFilter && setProcessFilter && clientNameFilter && processFilter && (
-              <div className="flex w-full max-w-2xl items-center space-x-2">
+        <div className="flex-grow" />
+
+        <div className="flex items-center gap-2 flex-shrink-0">
+            {children}
+            
+            {isManagerOrAdmin && hasSearchResults && onAmendSearch && onResetSearch && (
+                <div className="flex items-center gap-2">
+                    <Button variant="outline" size="sm" onClick={onAmendSearch} className="text-foreground">
+                        <Edit /> Amend Search
+                    </Button>
+                     <Button variant="outline" size="sm" onClick={onResetSearch} className="text-foreground">
+                        <RotateCcw /> Reset Search
+                    </Button>
+                </div>
+            )}
+            
+            {setSearch && setSearchColumn && (
+              <div className="flex w-full max-w-lg items-center space-x-2">
                 <div className="flex items-center space-x-0 w-1/2">
                     <Select value={searchColumn} onValueChange={(v) => setSearchColumn(v as SearchableColumn)}>
-                    <SelectTrigger className="w-[180px] rounded-r-none focus:ring-0 text-foreground">
+                    <SelectTrigger className="w-[180px] rounded-r-none focus:ring-0 text-foreground h-9">
                         <SelectValue placeholder="Select column" />
                     </SelectTrigger>
                     <SelectContent>
@@ -152,56 +164,47 @@ export function Header({
                     placeholder="Quick search..."
                     value={search}
                     onChange={(e) => setSearch(e.target.value)}
-                    className="rounded-l-none focus-visible:ring-0"
+                    className="rounded-l-none focus-visible:ring-0 h-9"
                     />
                 </div>
                 
-                <Select value={clientNameFilter} onValueChange={setClientNameFilter}>
-                  <SelectTrigger className="w-1/4 text-foreground">
-                    <SelectValue placeholder="Filter by Client" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="all">All Clients</SelectItem>
-                    {clientNames.map(name => (
-                        <SelectItem key={name} value={name}>{name}</SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
+                {!isManagerOrAdmin && setClientNameFilter && setProcessFilter && (
+                  <>
+                    <Select value={clientNameFilter} onValueChange={setClientNameFilter}>
+                      <SelectTrigger className="w-1/4 text-foreground h-9">
+                        <SelectValue placeholder="Filter by Client" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="all">All Clients</SelectItem>
+                        {clientNames.map(name => (
+                            <SelectItem key={name} value={name}>{name}</SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
 
-                <Select value={processFilter} onValueChange={setProcessFilter}>
-                  <SelectTrigger className="w-1/4 text-foreground">
-                    <SelectValue placeholder="Filter by Process" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="all">All Processes</SelectItem>
-                    {processes.map(p => (
-                        <SelectItem key={p} value={p}>{p}</SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-
+                    <Select value={processFilter} onValueChange={setProcessFilter}>
+                      <SelectTrigger className="w-1/4 text-foreground h-9">
+                        <SelectValue placeholder="Filter by Process" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="all">All Processes</SelectItem>
+                        {processes.map(p => (
+                            <SelectItem key={p} value={p}>{p}</SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                  </>
+                )}
               </div>
             )}
-        </div>
 
-        {isManagerOrAdmin && hasSearchResults && (
-            <div className="flex items-center gap-2">
-                <Button variant="outline" size="sm" onClick={onAmendSearch} className="text-foreground">
-                    <Edit /> Amend Search
-                </Button>
-                 <Button variant="outline" size="sm" onClick={onResetSearch} className="text-foreground">
-                    <RotateCcw /> Reset Search
-                </Button>
-            </div>
-        )}
-
-        <div className="flex items-center space-x-2 flex-shrink-0">
             {handleDownload && (
                 <Button variant="ghost" size="icon" onClick={handleDownload} disabled={isDownloadDisabled} className="h-8 w-8 hover:bg-primary/80">
                   <FileSpreadsheet className="h-5 w-5" />
                   <span className="sr-only">Download CSV</span>
                 </Button>
             )}
+            
             <DropdownMenu>
                 <DropdownMenuTrigger asChild>
                     <Button variant="outline" className="w-auto h-9 text-foreground text-xs px-2">
@@ -239,7 +242,6 @@ export function Header({
                 </DropdownMenuContent>
             </DropdownMenu>
         </div>
-    </div>
-    </>
+    </header>
   )
 }

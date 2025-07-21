@@ -183,7 +183,14 @@ function Dashboard({
         if (!filteredProjects && showSearchForm) {
             return [];
         }
-        return filteredProjects ?? [];
+
+        let results = filteredProjects ?? [];
+        if (search) {
+             results = results.filter(p => 
+                (p[searchColumn] as string)?.toLowerCase().includes(search.toLowerCase())
+             );
+        }
+        return results;
     }
     
     let filtered = [...projects];
