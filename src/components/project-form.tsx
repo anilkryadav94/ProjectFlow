@@ -129,8 +129,17 @@ export function ProjectForm({ project, onFormSubmit, onCancel, role, setOpen }: 
   const isProcessor = role === 'Processor';
   const isQA = role === 'QA';
   const isManager = role === 'Manager' || role === 'Admin';
-
-  const readOnly = isQA || (isManager && !form.getValues('id')) || (isManager && !!project);
+  
+  const isFieldEditable = (fieldName: string) => {
+    if (isManager) return true;
+    if (isProcessor) {
+        return ['applicationNumber', 'patentNumber', 'documentName', 'actionTaken', 'status'].includes(fieldName);
+    }
+     if (isQA) {
+        return ['status'].includes(fieldName);
+    }
+    return false;
+  }
 
   return (
     <Card>
@@ -149,7 +158,7 @@ export function ProjectForm({ project, onFormSubmit, onCancel, role, setOpen }: 
                         <FormItem>
                         <FormLabel>Reference Number</FormLabel>
                         <FormControl>
-                            <Input placeholder="REF..." {...field} disabled={!isManager || !!project}/>
+                            <Input placeholder="REF..." {...field} disabled={!isFieldEditable('refNumber')}/>
                         </FormControl>
                         <FormMessage />
                         </FormItem>
@@ -162,7 +171,7 @@ export function ProjectForm({ project, onFormSubmit, onCancel, role, setOpen }: 
                         <FormItem>
                         <FormLabel>Subject</FormLabel>
                         <FormControl>
-                            <Input placeholder="Invention disclosure..." {...field} disabled={!isManager || !!project}/>
+                            <Input placeholder="Invention disclosure..." {...field} disabled={!isFieldEditable('subject')}/>
                         </FormControl>
                         <FormMessage />
                         </FormItem>
@@ -177,7 +186,7 @@ export function ProjectForm({ project, onFormSubmit, onCancel, role, setOpen }: 
                         <FormItem>
                         <FormLabel>Client Name</FormLabel>
                           {isManager ? (
-                            <Select onValueChange={field.onChange} defaultValue={field.value}>
+                            <Select onValueChange={field.onChange} defaultValue={field.value} disabled={!isFieldEditable('clientName')}>
                                 <FormControl>
                                 <SelectTrigger>
                                     <SelectValue placeholder="Select a client" />
@@ -201,7 +210,7 @@ export function ProjectForm({ project, onFormSubmit, onCancel, role, setOpen }: 
                         <FormItem>
                         <FormLabel>Process</FormLabel>
                         {isManager ? (
-                            <Select onValueChange={field.onChange} defaultValue={field.value}>
+                            <Select onValueChange={field.onChange} defaultValue={field.value} disabled={!isFieldEditable('process')}>
                                 <FormControl>
                                 <SelectTrigger>
                                     <SelectValue placeholder="Select a process" />
@@ -227,7 +236,7 @@ export function ProjectForm({ project, onFormSubmit, onCancel, role, setOpen }: 
                         <FormItem>
                         <FormLabel>Application Number</FormLabel>
                         <FormControl>
-                            <Input placeholder="US16/123,456" {...field} value={field.value || ''} disabled={!isProcessor} />
+                            <Input placeholder="US16/123,456" {...field} value={field.value || ''} disabled={!isFieldEditable('applicationNumber')} />
                         </FormControl>
                         <FormMessage />
                         </FormItem>
@@ -240,7 +249,7 @@ export function ProjectForm({ project, onFormSubmit, onCancel, role, setOpen }: 
                         <FormItem>
                         <FormLabel>Patent Number</FormLabel>
                         <FormControl>
-                            <Input placeholder="10,123,456" {...field} value={field.value || ''} disabled={!isProcessor} />
+                            <Input placeholder="10,123,456" {...field} value={field.value || ''} disabled={!isFieldEditable('patentNumber')} />
                         </FormControl>
                         <FormMessage />
                         </FormItem>
@@ -253,7 +262,7 @@ export function ProjectForm({ project, onFormSubmit, onCancel, role, setOpen }: 
                         <FormItem>
                         <FormLabel>Document Name</FormLabel>
                         <FormControl>
-                            <Input placeholder="Response_To_OA.pdf" {...field} value={field.value || ''} disabled={!isProcessor} />
+                            <Input placeholder="Response_To_OA.pdf" {...field} value={field.value || ''} disabled={!isFieldEditable('documentName')} />
                         </FormControl>
                         <FormMessage />
                         </FormItem>
@@ -267,7 +276,7 @@ export function ProjectForm({ project, onFormSubmit, onCancel, role, setOpen }: 
                     <FormItem>
                     <FormLabel>Action Taken</FormLabel>
                     <FormControl>
-                        <Textarea placeholder="Describe the action taken..." {...field} value={field.value || ''} disabled={!isProcessor} />
+                        <Textarea placeholder="Describe the action taken..." {...field} value={field.value || ''} disabled={!isFieldEditable('actionTaken')} />
                     </FormControl>
                     <FormMessage />
                     </FormItem>
@@ -289,8 +298,10 @@ export function ProjectForm({ project, onFormSubmit, onCancel, role, setOpen }: 
                                     variant={"outline"}
                                     className={cn(
                                         "pl-3 text-left font-normal",
-                                        !field.value && "text-muted-foreground"
+                                        !field.value && "text-muted-foreground",
+                                        !isFieldEditable('emailDate') && "disabled:opacity-100 disabled:cursor-default"
                                     )}
+                                    disabled={!isFieldEditable('emailDate')}
                                     >
                                     {field.value ? (
                                         format(field.value, "PPP")
@@ -333,8 +344,10 @@ export function ProjectForm({ project, onFormSubmit, onCancel, role, setOpen }: 
                                     variant={"outline"}
                                     className={cn(
                                         "pl-3 text-left font-normal",
-                                        !field.value && "text-muted-foreground"
+                                        !field.value && "text-muted-foreground",
+                                        !isFieldEditable('allocationDate') && "disabled:opacity-100 disabled:cursor-default"
                                     )}
+                                    disabled={!isFieldEditable('allocationDate')}
                                     >
                                     {field.value ? (
                                         format(field.value, "PPP")
@@ -370,7 +383,7 @@ export function ProjectForm({ project, onFormSubmit, onCancel, role, setOpen }: 
                     <FormItem>
                         <FormLabel>Processor</FormLabel>
                          {isManager ? (
-                            <Select onValueChange={field.onChange} defaultValue={field.value}>
+                            <Select onValueChange={field.onChange} defaultValue={field.value} disabled={!isFieldEditable('processor')}>
                                 <FormControl>
                                 <SelectTrigger>
                                     <SelectValue placeholder="Select a processor" />
@@ -393,7 +406,7 @@ export function ProjectForm({ project, onFormSubmit, onCancel, role, setOpen }: 
                      <FormItem>
                         <FormLabel>QA</FormLabel>
                          {isManager ? (
-                            <Select onValueChange={field.onChange} defaultValue={field.value}>
+                            <Select onValueChange={field.onChange} defaultValue={field.value} disabled={!isFieldEditable('qa')}>
                                 <FormControl>
                                 <SelectTrigger>
                                     <SelectValue placeholder="Select a QA" />
@@ -417,22 +430,19 @@ export function ProjectForm({ project, onFormSubmit, onCancel, role, setOpen }: 
                 render={({ field }) => (
                     <FormItem>
                     <FormLabel>Status</FormLabel>
-                    <Select onValueChange={field.onChange} value={field.value} disabled={!isProcessor && !isQA && !isManager}>
+                    <Select onValueChange={field.onChange} value={field.value} disabled={!isFieldEditable('status')}>
                         <FormControl>
                         <SelectTrigger>
                             <SelectValue placeholder="Select status" />
                         </SelectTrigger>
                         </FormControl>
                         <SelectContent>
-                            {isManager && <SelectItem value="Pending">Pending</SelectItem>}
-                            {isManager && <SelectItem value="Processing">Processing</SelectItem>}
-                            {isManager && <SelectItem value="QA">QA</SelectItem>}
-                            {isManager && <SelectItem value="Complete">Complete</SelectItem>}
-                            {isManager && <SelectItem value="On Hold">On Hold</SelectItem>}
+                            <SelectItem value="Pending" disabled={!isManager}>Pending</SelectItem>
+                            <SelectItem value="Processing" disabled={!isManager}>Processing</SelectItem>
+                            <SelectItem value="QA" disabled={!isManager}>QA</SelectItem>
+                            <SelectItem value="Complete" disabled={!isManager}>Complete</SelectItem>
                             
-                            {isProcessor && project?.status === "Processing" && <SelectItem value="On Hold">On Hold</SelectItem>}
-                            
-                            {isQA && project?.status === "QA" && <SelectItem value="On Hold">On Hold</SelectItem>}
+                            <SelectItem value="On Hold" disabled={!isProcessor && !isQA && !isManager}>On Hold</SelectItem>
                         </SelectContent>
                     </Select>
                     <FormMessage />
@@ -466,3 +476,5 @@ export function ProjectForm({ project, onFormSubmit, onCancel, role, setOpen }: 
     </Card>
   )
 }
+
+    
