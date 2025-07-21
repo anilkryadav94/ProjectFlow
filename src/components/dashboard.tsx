@@ -38,7 +38,7 @@ const bulkUpdateFields = [
     { value: 'status', label: 'Status', options: projectStatuses },
 ] as const;
 
-export default function Dashboard({ 
+function Dashboard({ 
   user, 
   initialProjects,
 }: DashboardProps) {
@@ -331,3 +331,5 @@ export default function Dashboard({
     </div>
   );
 }
+
+export default Dashboard;

@@ -1,6 +1,6 @@
 
 import * as React from 'react';
-import Dashboard, { DashboardWrapper } from '@/components/dashboard';
+import { DashboardWrapper } from '@/components/dashboard';
 import { redirect } from 'next/navigation';
 import { getSession } from '@/lib/auth';
 import type { Project } from '@/lib/data';
