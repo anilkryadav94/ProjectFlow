@@ -39,13 +39,13 @@ export function DataTable({ data, columns, sort, setSort, onProjectUpdate, onRow
   };
 
   const maxHeightClass = isTaskView
-    ? "h-full"
+    ? "max-h-[30vh]"
     : "max-h-[calc(100vh-280px)]";
 
 
   return (
     <div className={cn("animated-border shadow-md", maxHeightClass)}>
-      <div className={cn("rounded-md border bg-card overflow-y-auto relative h-full")}>
+      <div className={cn("rounded-md border bg-card overflow-y-auto relative h-full pb-1")}>
         <Table>
           <TableHeader className="sticky top-0 z-10 bg-muted/95 backdrop-blur-sm">
             <TableRow>
