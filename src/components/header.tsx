@@ -21,33 +21,40 @@ import { useRouter } from "next/navigation"
 import { ThemeToggle } from "./theme-toggle";
 import { Separator } from "./ui/separator";
 import { Label } from "@/components/ui/label";
-import { SidebarTrigger } from "./ui/sidebar"
-
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "./ui/select";
+import { Input } from "./ui/input";
+import type { SearchableColumn } from "./dashboard"
 
 interface HeaderProps {
     user: User;
     activeRole: Role;
     setActiveRole?: (role: Role) => void;
+    search?: string;
+    setSearch?: (search: string) => void;
+    searchColumn?: SearchableColumn;
+    setSearchColumn?: (column: SearchableColumn) => void;
     handleDownload?: () => void;
     isDownloadDisabled?: boolean;
     isManagerOrAdmin: boolean;
     hasSearchResults: boolean;
     onAmendSearch: () => void;
     onResetSearch: () => void;
-    showSidebarToggle: boolean;
 }
 
 export function Header({ 
   user, 
   activeRole,
   setActiveRole,
+  search,
+  setSearch,
+  searchColumn,
+  setSearchColumn,
   handleDownload,
   isDownloadDisabled,
   isManagerOrAdmin,
   hasSearchResults,
   onAmendSearch,
   onResetSearch,
-  showSidebarToggle
 }: HeaderProps) {
   const router = useRouter();
 
@@ -82,7 +89,6 @@ export function Header({
     <>
     <div className="flex items-center justify-between bg-primary text-primary-foreground p-2 px-4 shadow-md h-16 shrink-0 gap-4">
         <div className="flex items-center gap-2 flex-shrink-0">
-          {showSidebarToggle && <SidebarTrigger />}
           <div className="flex items-center gap-2">
             <Workflow className="h-6 w-6" />
             <h2 className="text-xl font-bold tracking-tight">ProjectFlow</h2>
@@ -91,7 +97,30 @@ export function Header({
           <h3 className="text-md font-semibold">{getDashboardName()}</h3>
         </div>
         
-        <div className="flex-grow" />
+        <div className="flex-grow flex items-center justify-center px-8">
+            {!isManagerOrAdmin && setSearch && setSearchColumn && (
+              <div className="flex w-full max-w-lg items-center space-x-0">
+                <Select value={searchColumn} onValueChange={(v) => setSearchColumn(v as SearchableColumn)}>
+                  <SelectTrigger className="w-[180px] rounded-r-none focus:ring-0 text-foreground">
+                    <SelectValue placeholder="Select column" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="refNumber">Ref Number</SelectItem>
+                    <SelectItem value="applicationNumber">Application No.</SelectItem>
+                    <SelectItem value="patentNumber">Patent No.</SelectItem>
+                    <SelectItem value="subject">Subject</SelectItem>
+                  </SelectContent>
+                </Select>
+                <Input
+                  type="text"
+                  placeholder="Quick search..."
+                  value={search}
+                  onChange={(e) => setSearch(e.target.value)}
+                  className="rounded-l-none focus-visible:ring-0"
+                />
+              </div>
+            )}
+        </div>
 
         {isManagerOrAdmin && hasSearchResults && (
             <div className="flex items-center gap-2">
@@ -152,3 +181,5 @@ export function Header({
     </>
   )
 }
+
+    

@@ -90,3 +90,5 @@ export function DataTable({ data, columns, sort, setSort, rowSelection, setRowSe
     </div>
   )
 }
+
+    
