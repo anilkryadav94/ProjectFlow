@@ -19,6 +19,10 @@ export const columns = [
     header: "Ref Number",
   },
   {
+    key: "subject" as const,
+    header: "Subject",
+  },
+  {
     key: "applicationNumber" as const,
     header: "Application No.",
   },

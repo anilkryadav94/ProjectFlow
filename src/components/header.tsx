@@ -27,13 +27,10 @@ interface HeaderProps {
     setSearch: (search: string) => void;
     role: Role;
     setRole: (role: Role) => void;
-    date: DateRange | undefined;
-    setDate: (date: DateRange | undefined) => void;
-    onExport: () => void;
     onProjectUpdate: (project: Project) => void;
 }
 
-export function Header({ search, setSearch, role, setRole, date, setDate, onExport, onProjectUpdate }: HeaderProps) {
+export function Header({ search, setSearch, role, setRole, onProjectUpdate }: HeaderProps) {
   const [isFormOpen, setIsFormOpen] = React.useState(false);
 
   return (
@@ -62,24 +59,6 @@ export function Header({ search, setSearch, role, setRole, date, setDate, onExpo
                     </DropdownMenuRadioGroup>
                 </DropdownMenuContent>
             </DropdownMenu>
-            <Button onClick={onExport} variant="outline">
-              <Download className="mr-2 h-4 w-4" />
-              Export CSV
-            </Button>
-            <Dialog open={isFormOpen} onOpenChange={setIsFormOpen}>
-              <DialogTrigger asChild>
-                <Button>
-                  <PlusCircle className="mr-2 h-4 w-4" />
-                  New Project
-                </Button>
-              </DialogTrigger>
-              <DialogContent className="sm:max-w-[625px]">
-                <DialogHeader>
-                  <DialogTitle>Create Project</DialogTitle>
-                </DialogHeader>
-                <ProjectForm onFormSubmit={onProjectUpdate} setOpen={setIsFormOpen}/>
-              </DialogContent>
-            </Dialog>
         </div>
       </div>
       <div className="flex items-center justify-between">
@@ -99,7 +78,6 @@ export function Header({ search, setSearch, role, setRole, date, setDate, onExpo
                     onChange={(e) => setSearch(e.target.value)}
                 />
             </div>
-            <DateRangePicker date={date} setDate={setDate} />
         </div>
       </div>
     </div>

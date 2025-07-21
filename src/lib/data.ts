@@ -7,6 +7,9 @@ export type Project = {
   applicationNumber: string;
   patentNumber: string;
   refNumber: string;
+  subject: string;
+  actionTaken: string;
+  documentName: string;
   emailDate: string;
   allocationDate: string;
   processor: string;
@@ -19,7 +22,7 @@ export type Project = {
 export const roles: Role[] = ['Admin', 'Manager', 'Processor', 'QA'];
 
 export const processors = ['Alice', 'Bob', 'Charlie'];
-export const qas = ['David', 'Eve'];
+export const qas = ['David', 'Eve', 'Anil', 'Ankit', 'Rahul'];
 
 export const projects: Project[] = [
   {
@@ -27,6 +30,9 @@ export const projects: Project[] = [
     applicationNumber: 'US16/123,456',
     patentNumber: '10,123,456',
     refNumber: 'REF001',
+    subject: 'Invention Disclosure - AI in Healthcare',
+    actionTaken: 'First Office Action',
+    documentName: 'Response_To_OA.pdf',
     emailDate: '2023-10-01',
     allocationDate: '2023-10-02',
     processor: 'Alice',
@@ -40,22 +46,28 @@ export const projects: Project[] = [
     applicationNumber: 'US16/234,567',
     patentNumber: '10,234,567',
     refNumber: 'REF002',
+    subject: 'New Patent Application Filing',
+    actionTaken: '',
+    documentName: '',
     emailDate: '2023-10-03',
     allocationDate: '2023-10-04',
     processor: 'Bob',
-    qa: 'Eve',
+    qa: 'Anil',
     processingDate: '2023-10-08',
     qaDate: null,
     status: 'QA',
   },
   {
     id: '3',
-    applicationNumber: 'US16/345,678',
-    patentNumber: 'N/A',
+    applicationNumber: '',
+    patentNumber: '',
     refNumber: 'REF003',
+    subject: 'Follow-up on Application XYZ',
+    actionTaken: '',
+    documentName: '',
     emailDate: '2023-10-10',
     allocationDate: '2023-10-11',
-    processor: 'Charlie',
+    processor: 'Alice',
     qa: 'David',
     processingDate: null,
     qaDate: null,
@@ -63,9 +75,12 @@ export const projects: Project[] = [
   },
   {
     id: '4',
-    applicationNumber: 'US16/456,789',
-    patentNumber: 'N/A',
+    applicationNumber: '',
+    patentNumber: '',
     refNumber: 'REF004',
+    subject: 'Urgent: Client Request',
+    actionTaken: '',
+    documentName: '',
     emailDate: '2023-10-15',
     allocationDate: '2023-10-16',
     processor: 'Alice',
@@ -79,32 +94,41 @@ export const projects: Project[] = [
     applicationNumber: 'US17/567,890',
     patentNumber: '10,567,890',
     refNumber: 'REF005',
+    subject: 'Biotech Patent Documents',
+    actionTaken: 'Filed Amendment',
+    documentName: 'Amendment.pdf',
     emailDate: '2023-09-20',
     allocationDate: '2023-09-21',
     processor: 'Bob',
-    qa: 'David',
+    qa: 'Ankit',
     processingDate: '2023-09-25',
     qaDate: '2023-09-28',
     status: 'Complete',
   },
     {
     id: '6',
-    applicationNumber: 'US17/678,901',
-    patentNumber: 'N/A',
+    applicationNumber: '',
+    patentNumber: '',
     refNumber: 'REF006',
+    subject: 'Query from Patent Office',
+    actionTaken: '',
+    documentName: '',
     emailDate: '2023-10-20',
     allocationDate: '2023-10-21',
     processor: 'Charlie',
-    qa: 'Eve',
+    qa: 'Rahul',
     processingDate: '2023-10-25',
     qaDate: null,
     status: 'On Hold',
   },
   {
     id: '7',
-    applicationNumber: 'US17/789,012',
-    patentNumber: 'N/A',
+    applicationNumber: '',
+    patentNumber: '',
     refNumber: 'REF007',
+    subject: 'New Submission for Review',
+    actionTaken: '',
+    documentName: '',
     emailDate: '2023-11-01',
     allocationDate: '2023-11-02',
     processor: 'Alice',

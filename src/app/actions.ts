@@ -6,13 +6,16 @@ import { projects } from "@/lib/data";
 const formSchema = z.object({
   id: z.string().optional(),
   refNumber: z.string().min(1, "Reference number is required."),
-  applicationNumber: z.string().min(1, "Application number is required."),
+  applicationNumber: z.string().optional(),
   patentNumber: z.string().optional(),
   emailDate: z.date({ required_error: "Email date is required." }),
   allocationDate: z.date({ required_error: "Allocation date is required." }),
   processor: z.string().min(1, "Processor is required."),
   qa: z.string().min(1, "QA is required."),
   status: z.enum(["Pending", "Processing", "QA", "Complete", "On Hold"]),
+  subject: z.string().optional(),
+  actionTaken: z.string().optional(),
+  documentName: z.string().optional(),
   submitAction: z.enum(['save', 'process', 'qa_complete'])
 });
 
@@ -40,6 +43,11 @@ export async function saveProject(data: ProjectFormValues) {
         projectToSave = {
             ...existingProject,
             ...validatedData,
+            applicationNumber: validatedData.applicationNumber || '',
+            patentNumber: validatedData.patentNumber || '',
+            subject: validatedData.subject || '',
+            actionTaken: validatedData.actionTaken || '',
+            documentName: validatedData.documentName || '',
             emailDate: validatedData.emailDate.toISOString().split('T')[0],
             allocationDate: validatedData.allocationDate.toISOString().split('T')[0],
             processingDate,
@@ -50,6 +58,11 @@ export async function saveProject(data: ProjectFormValues) {
         projectToSave = {
             id: String(Date.now()), // Create a new ID for new projects
             ...validatedData,
+            applicationNumber: validatedData.applicationNumber || '',
+            patentNumber: validatedData.patentNumber || '',
+            subject: validatedData.subject || '',
+            actionTaken: validatedData.actionTaken || '',
+            documentName: validatedData.documentName || '',
             emailDate: validatedData.emailDate.toISOString().split('T')[0],
             allocationDate: validatedData.allocationDate.toISOString().split('T')[0],
             processingDate,

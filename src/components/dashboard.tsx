@@ -1,8 +1,6 @@
 "use client";
 
 import * as React from 'react';
-import { addDays, format } from 'date-fns';
-import type { DateRange } from 'react-day-picker';
 import { useToast } from "@/hooks/use-toast"
 import { type Project, projects as initialProjects, type Role } from '@/lib/data';
 import { DataTable } from '@/components/data-table';
@@ -10,51 +8,45 @@ import { columns } from '@/components/columns';
 import { Header } from '@/components/header';
 import { ManagerView } from '@/components/manager-view';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
+import { ProjectForm } from './project-form';
 
 export default function Dashboard() {
   const [projects, setProjects] = React.useState<Project[]>(initialProjects);
   const [filteredProjects, setFilteredProjects] = React.useState<Project[]>(initialProjects);
+  const [activeProject, setActiveProject] = React.useState<Project | null>(null);
+
   const [search, setSearch] = React.useState('');
-  const [role, setRole] = React.useState<Role>('Admin');
-  const [date, setDate] = React.useState<DateRange | undefined>({
-    from: addDays(new Date(), -30),
-    to: new Date(),
-  });
+  const [role, setRole] = React.useState<Role>('Processor'); // Default to processor for demo
   const [sort, setSort] = React.useState<{ key: keyof Project; direction: 'asc' | 'desc' } | null>({ key: 'allocationDate', direction: 'desc' });
   const { toast } = useToast();
 
-  React.useEffect(() => {
-    let newFilteredProjects = [...projects];
-
+  const userQueue = React.useMemo(() => {
+    let userProjects = [...projects];
     // Role-based filtering
     if (role === 'Processor') {
-        // For demo, let's assume the processor is 'Alice'
-        newFilteredProjects = newFilteredProjects.filter(p => p.processor === 'Alice');
+      // For demo, let's assume the processor is 'Alice'
+      // Show projects that are 'Pending' or 'Processing' and assigned to Alice
+      userProjects = userProjects.filter(p => p.processor === 'Alice' && (p.status === 'Processing' || p.status === 'Pending' || p.status === 'On Hold'));
     } else if (role === 'QA') {
-        // For demo, let's assume the QA is 'David'
-        newFilteredProjects = newFilteredProjects.filter(p => p.qa === 'David');
+        // For demo, let's assume the QA is 'Anil'
+        // Show projects that are in 'QA' status and assigned to Anil
+        userProjects = userProjects.filter(p => p.qa === 'Anil' && p.status === 'QA');
+    } else if (role === 'Manager' || role === 'Admin') {
+      // No filter, show all
     }
 
     // Search filtering
     if (search) {
-      newFilteredProjects = newFilteredProjects.filter(project =>
+        userProjects = userProjects.filter(project =>
         project.applicationNumber.toLowerCase().includes(search.toLowerCase()) ||
         project.patentNumber.toLowerCase().includes(search.toLowerCase()) ||
         project.refNumber.toLowerCase().includes(search.toLowerCase())
       );
     }
-    
-    // Date range filtering on 'allocationDate'
-    if (date?.from && date?.to) {
-        newFilteredProjects = newFilteredProjects.filter(project => {
-            const allocationDate = new Date(project.allocationDate);
-            return allocationDate >= date.from! && allocationDate <= date.to!;
-        });
-    }
 
     // Sorting
     if (sort) {
-      newFilteredProjects.sort((a, b) => {
+        userProjects.sort((a, b) => {
         const valA = a[sort.key];
         const valB = b[sort.key];
 
@@ -70,49 +62,56 @@ export default function Dashboard() {
         return 0;
       });
     }
-    
-    setFilteredProjects(newFilteredProjects);
-  }, [search, date, sort, projects, role]);
+
+    return userProjects;
+  }, [search, sort, projects, role]);
+
+  React.useEffect(() => {
+    setFilteredProjects(userQueue);
+  }, [userQueue]);
+
+  React.useEffect(() => {
+    // If there's no active project, and the queue has items, set the first one as active.
+    if (!activeProject && userQueue.length > 0) {
+      if(role === 'Processor' || role === 'QA') {
+        const firstRelevantTask = userQueue.find(p => p.status === (role === 'Processor' ? 'Processing' : 'QA'));
+        setActiveProject(firstRelevantTask || userQueue[0]);
+      }
+    }
+  }, [userQueue, activeProject, role]);
 
   const handleProjectUpdate = (updatedProject: Project) => {
-    setProjects(prevProjects => {
-        const existingProjectIndex = prevProjects.findIndex(p => p.id === updatedProject.id);
-        if (existingProjectIndex > -1) {
-            const newProjects = [...prevProjects];
-            newProjects[existingProjectIndex] = updatedProject;
-            return newProjects;
-        }
-        return [updatedProject, ...prevProjects];
-    });
+    let newProjects : Project[];
+    const existingProjectIndex = projects.findIndex(p => p.id === updatedProject.id);
+
+    if (existingProjectIndex > -1) {
+        newProjects = [...projects];
+        newProjects[existingProjectIndex] = updatedProject;
+    } else {
+        newProjects = [updatedProject, ...projects];
+    }
+    
+    setProjects(newProjects);
+    
+    // Logic to move to next task
+    if (updatedProject.status === 'QA' || updatedProject.status === 'Complete') {
+        const nextProject = userQueue.find(p => p.id !== updatedProject.id);
+        setActiveProject(nextProject || null);
+    } else {
+        setActiveProject(updatedProject);
+    }
+
     toast({
         title: "Project Saved",
         description: `Project ${updatedProject.refNumber} has been updated.`,
     })
   };
 
-  const exportToCsv = () => {
-    const csvHeader = Object.keys(filteredProjects[0]).join(',');
-    const csvRows = filteredProjects.map(row => 
-      Object.values(row).map(value => `"${String(value).replace(/"/g, '""')}"`).join(',')
-    );
-    const csvContent = `${csvHeader}\n${csvRows.join('\n')}`;
-    
-    const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
-    const link = document.createElement('a');
-    if (link.href) {
-      URL.revokeObjectURL(link.href);
-    }
-    const url = URL.createObjectURL(blob);
-    link.href = url;
-    link.setAttribute('download', `ProjectFlow_Export_${format(new Date(), 'yyyy-MM-dd')}.csv`);
-    document.body.appendChild(link);
-    link.click();
-    document.body.removeChild(link);
-    toast({
-        title: "Export Complete",
-        description: "Your data has been downloaded as a CSV file.",
-    })
-  };
+  const handleRowClick = (project: Project) => {
+    setActiveProject(project);
+  }
+
+  const isTaskView = role === 'Processor' || role === 'QA';
 
   return (
     <div className="flex-1 space-y-4 p-4 md:p-8 pt-6">
@@ -122,23 +121,34 @@ export default function Dashboard() {
           setSearch={setSearch}
           role={role}
           setRole={setRole}
-          date={date}
-          setDate={setDate}
-          onExport={exportToCsv}
           onProjectUpdate={handleProjectUpdate}
         />
         <TabsContent value="projects" className="space-y-4">
+          {isTaskView && (
+            <div className="mb-8">
+              <ProjectForm 
+                project={activeProject} 
+                onFormSubmit={handleProjectUpdate}
+                onCancel={() => setActiveProject(null)}
+                role={role}
+              />
+            </div>
+          )}
           <DataTable 
             data={filteredProjects}
             columns={columns}
             sort={sort}
             setSort={setSort}
             onProjectUpdate={handleProjectUpdate}
+            onRowClick={isTaskView ? handleRowClick : undefined}
+            activeProjectId={activeProject?.id}
           />
         </TabsContent>
-        <TabsContent value="manager" className="space-y-4">
-          <ManagerView />
-        </TabsContent>
+        {(role === 'Admin' || role === 'Manager') && (
+            <TabsContent value="manager" className="space-y-4">
+                <ManagerView />
+            </TabsContent>
+        )}
        </Tabs>
     </div>
   );

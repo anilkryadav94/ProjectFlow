@@ -12,20 +12,23 @@ import {
   TableRow,
 } from "@/components/ui/table"
 import { DataTableRowActions } from "./data-table-row-actions"
+import { cn } from "@/lib/utils"
 
 interface DataTableProps {
   data: Project[];
   columns: {
-    key: keyof Project | 'actions';
+    key: keyof Project | 'actions' | 'subject';
     header: string;
     render?: (project: Project, onProjectUpdate: (project: Project) => void) => React.ReactNode;
   }[];
   sort: { key: keyof Project; direction: 'asc' | 'desc' } | null;
   setSort: (sort: { key: keyof Project; direction: 'asc' | 'desc' } | null) => void;
   onProjectUpdate: (project: Project) => void;
+  onRowClick?: (project: Project) => void;
+  activeProjectId?: string;
 }
 
-export function DataTable({ data, columns, sort, setSort, onProjectUpdate }: DataTableProps) {
+export function DataTable({ data, columns, sort, setSort, onProjectUpdate, onRowClick, activeProjectId }: DataTableProps) {
   const handleSort = (key: keyof Project) => {
     if (sort && sort.key === key) {
       setSort({ key, direction: sort.direction === 'asc' ? 'desc' : 'asc' });
@@ -61,7 +64,14 @@ export function DataTable({ data, columns, sort, setSort, onProjectUpdate }: Dat
         <TableBody>
           {data.length ? (
             data.map((row) => (
-              <TableRow key={row.id}>
+              <TableRow 
+                key={row.id}
+                onClick={() => onRowClick?.(row)}
+                className={cn(
+                    onRowClick && 'cursor-pointer',
+                    activeProjectId === row.id && 'bg-muted/80'
+                )}
+              >
                 {columns.map((column) => (
                   <TableCell key={column.key}>
                     {column.render ? column.render(row, onProjectUpdate) : (row[column.key as keyof Project] ?? 'N/A')}

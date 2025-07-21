@@ -1,21 +1,15 @@
 "use client";
 
 import * as React from "react";
-import { addDays } from "date-fns";
-import type { DateRange } from "react-day-picker";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
-import { DateRangePicker } from "./date-range-picker";
 import { Input } from "./ui/input";
 import { Label } from "./ui/label";
 import { useToast } from "@/hooks/use-toast";
 import { Upload } from "lucide-react";
+import { Textarea } from "./ui/textarea";
 
 export function ManagerView() {
-    const [reportDate, setReportDate] = React.useState<DateRange | undefined>({
-        from: addDays(new Date(), -30),
-        to: new Date(),
-    });
     const { toast } = useToast();
 
     const handleFileUpload = (fileType: string) => {
@@ -38,17 +32,13 @@ export function ManagerView() {
                 <CardHeader>
                     <CardTitle>Generate Reports</CardTitle>
                     <CardDescription>
-                        Generate reports based on a date range or text query.
+                        Generate reports based on a text query.
                     </CardDescription>
                 </CardHeader>
                 <CardContent className="space-y-4">
-                    <div className="space-y-2">
-                        <Label>Date Range</Label>
-                        <DateRangePicker date={reportDate} setDate={setReportDate} />
-                    </div>
                      <div className="space-y-2">
                         <Label>Text Query</Label>
-                        <Input placeholder="Enter keywords, names, or numbers..." />
+                        <Textarea placeholder="Enter keywords, names, or numbers..." />
                     </div>
                     <Button onClick={handleGenerateReport}>Generate Report</Button>
                 </CardContent>
