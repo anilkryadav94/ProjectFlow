@@ -23,6 +23,7 @@ import { logout } from "@/lib/auth"
 import { useRouter } from "next/navigation"
 import { ThemeToggle } from "./theme-toggle";
 import { Separator } from "./ui/separator";
+import { Label } from "@/components/ui/label";
 
 interface HeaderProps {
     search: string;
