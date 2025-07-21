@@ -1,7 +1,7 @@
 "use client";
 
 import * as React from "react";
-import { useFormStatus } from "react-dom";
+import { useFormState, useFormStatus } from "react-dom";
 import { login } from "@/lib/auth";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
@@ -11,14 +11,8 @@ import { Loader2, Workflow } from "lucide-react";
 import { useRouter } from "next/navigation";
 
 export function LoginForm() {
-  const [state, action] = React.useActionState(login, undefined);
+  const [state, action] = useFormState(login, undefined);
   const router = useRouter();
-
-  React.useEffect(() => {
-    if (state?.success) {
-      router.push('/');
-    }
-  }, [state?.success, router]);
 
   return (
     <Card className="w-full max-w-sm shadow-xl">

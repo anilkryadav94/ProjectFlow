@@ -6,6 +6,7 @@ import { db } from './firebase';
 import { collection, query, where, getDocs, doc, setDoc, addDoc, updateDoc } from 'firebase/firestore';
 import type { User, Role } from './data';
 import { users as mockUsers } from './data';
+import { redirect } from 'next/navigation';
 
 
 const secretKey = process.env.SESSION_SECRET || "fallback-secret-key-for-development";
@@ -31,8 +32,14 @@ export async function decrypt(input: string): Promise<any> {
 }
 
 async function findUserByEmail(email: string): Promise<User | null> {
-    const user = mockUsers.find((u) => u.email === email);
-    return user || null;
+    const usersCol = collection(db, "users");
+    const q = query(usersCol, where("email", "==", email));
+    const userSnapshot = await getDocs(q);
+    if (userSnapshot.empty) {
+        return null;
+    }
+    const userData = userSnapshot.docs[0].data();
+    return { id: userSnapshot.docs[0].id, ...userData } as User;
 }
 
 export async function login(prevState: { error: string } | undefined, formData: FormData) {
@@ -56,7 +63,8 @@ export async function login(prevState: { error: string } | undefined, formData: 
   const session = await encrypt({ user: sessionUser, expires });
 
   cookies().set('session', session, { expires, httpOnly: true });
-  return { success: true, user };
+  
+  redirect('/');
 }
 
 export async function logout() {
@@ -135,5 +143,11 @@ export async function addBulkUsers(newUsers: Omit<User, 'id'>[]) {
 }
 
 export async function getUsers(): Promise<User[]> {
-    return mockUsers;
+    const usersCol = collection(db, "users");
+    const userSnapshot = await getDocs(usersCol);
+    const userList = userSnapshot.docs.map(doc => ({
+        id: doc.id,
+        ...doc.data()
+    } as User));
+    return userList;
 }
