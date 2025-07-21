@@ -33,6 +33,8 @@ import {
   SelectItem,
   SelectTrigger,
   SelectValue,
+  SelectGroup,
+  SelectLabel,
 } from "@/components/ui/select"
 import { saveProject } from "@/app/actions"
 import { type Project, processors, qas, clientNames, processes, type Role, processorSubmissionStatuses, qaSubmissionStatuses, processorActionableStatuses } from "@/lib/data"
@@ -136,8 +138,7 @@ export function ProjectForm({ project, onFormSubmit, role, setOpen }: ProjectFor
         setOpen(false);
       }
       // The redirect is now handled in the server action for 'submit_for_qa'
-      // so no router.push is needed here for that case.
-      // We can add logic for other redirects if needed.
+      // so no client-side navigation is needed for that case.
     } catch (error) {
       console.error("Failed to save project", error);
     } finally {
@@ -310,13 +311,14 @@ export function ProjectForm({ project, onFormSubmit, role, setOpen }: ProjectFor
                                     </SelectTrigger>
                                     </FormControl>
                                     <SelectContent>
-                                        { (isProcessor || isManager) && 
-                                            processorActionableStatuses.map(s => <SelectItem key={s} value={s}>{s}</SelectItem>)
-                                        }
-                                        { (isProcessor || isManager) && <hr className="my-1"/>}
-                                        {
-                                            processorSubmissionStatuses.map(s => <SelectItem key={s} value={s}>{s}</SelectItem>)
-                                        }
+                                      <SelectGroup>
+                                        <SelectLabel>In-Progress Statuses</SelectLabel>
+                                        {processorActionableStatuses.map(s => <SelectItem key={s} value={s}>{s}</SelectItem>)}
+                                      </SelectGroup>
+                                      <SelectGroup>
+                                        <SelectLabel>Submission Statuses</SelectLabel>
+                                        {processorSubmissionStatuses.map(s => <SelectItem key={s} value={s}>{s}</SelectItem>)}
+                                      </SelectGroup>
                                     </SelectContent>
                                 </Select>
                                 <FormMessage />

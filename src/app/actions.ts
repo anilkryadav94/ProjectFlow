@@ -3,7 +3,7 @@
 
 import { z } from "zod";
 import type { Project } from "@/lib/data";
-import { projects } from "@/lib/data";
+import { projects, processorSubmissionStatuses } from "@/lib/data";
 import { redirect } from "next/navigation";
 
 const formSchema = z.object({
@@ -67,6 +67,10 @@ export async function saveProject(data: ProjectFormValues): Promise<Project> {
             workflowStatus = 'With QA';
             processingDate = new Date().toISOString().split('T')[0];
             qaStatus = 'Pending';
+            // If processor didn't set a final status, default to 'Processed'
+            if (!processorSubmissionStatuses.includes(processorStatus)) {
+                processorStatus = 'Processed';
+            }
             shouldRedirect = true;
             break;
         case 'submit_qa':
