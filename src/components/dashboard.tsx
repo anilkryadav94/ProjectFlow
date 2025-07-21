@@ -45,38 +45,37 @@ export default function Dashboard({
 
   const filteredProjects = React.useMemo(() => {
     let userProjects = [...projects];
+
     // Role-based filtering
     if (activeRole === 'Processor') {
       userProjects = userProjects.filter(p => p.processor === user.name);
     } else if (activeRole === 'QA') {
-        userProjects = userProjects.filter(p => p.qa === user.name);
-    } else if (activeRole === 'Manager' || activeRole === 'Admin') {
-      // No filter, show all
+      userProjects = userProjects.filter(p => p.qa === user.name);
     }
+    // For Manager and Admin, we start with all projects.
 
-    // Search filtering
+    // Search filtering (applies to all roles)
     if (search) {
-        userProjects = userProjects.filter(project =>
+      userProjects = userProjects.filter(project =>
         (project.applicationNumber || '').toLowerCase().includes(search.toLowerCase()) ||
         (project.patentNumber || '').toLowerCase().includes(search.toLowerCase()) ||
         (project.refNumber || '').toLowerCase().includes(search.toLowerCase())
       );
     }
     
-    // Client Name filter
+    // Client Name filter (applies to all roles)
     if (clientNameFilter !== 'all') {
-        userProjects = userProjects.filter(p => p.clientName === clientNameFilter);
+      userProjects = userProjects.filter(p => p.clientName === clientNameFilter);
     }
 
-    // Process filter
+    // Process filter (applies to all roles)
     if (processFilter !== 'all') {
-        userProjects = userProjects.filter(p => p.process === processFilter);
+      userProjects = userProjects.filter(p => p.process === processFilter);
     }
 
-
-    // Sorting
+    // Sorting (applies to all roles)
     if (sort) {
-        userProjects.sort((a, b) => {
+      userProjects.sort((a, b) => {
         const valA = a[sort.key];
         const valB = b[sort.key];
 
