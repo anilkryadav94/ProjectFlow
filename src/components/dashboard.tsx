@@ -136,7 +136,7 @@ export default function Dashboard({
 
     results = results.filter(project => {
       return criteria.every(criterion => {
-        if (!criterion.field || !criterion.operator || !criterion.value) return true;
+        if (!criterion.field || !criterion.operator || (criterion.operator !== 'blank' && !criterion.value)) return true;
         const fieldValue = project[criterion.field as keyof Project] as string | null | undefined;
 
         switch (criterion.operator) {
@@ -214,7 +214,7 @@ export default function Dashboard({
   }
   
   const isManagerOrAdmin = activeRole === 'Manager' || activeRole === 'Admin';
-  const showQuickSearch = activeRole === 'Processor' || active-role === 'QA';
+  const showQuickSearch = activeRole === 'Processor' || activeRole === 'QA';
   const columns = getColumns(isManagerOrAdmin, rowSelection, setRowSelection, dashboardProjects);
   const selectedBulkUpdateField = bulkUpdateFields.find(f => f.value === bulkUpdateField);
 
