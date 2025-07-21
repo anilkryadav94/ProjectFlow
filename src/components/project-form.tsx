@@ -178,7 +178,7 @@ export function ProjectForm({ project, onFormSubmit, onCancel, role, setOpen }: 
       <CardContent>
         <Form {...form}>
           <form onSubmit={(e) => e.preventDefault()} className="space-y-4">
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
                  <FormField
                     control={form.control}
                     name="refNumber"
@@ -192,21 +192,6 @@ export function ProjectForm({ project, onFormSubmit, onCancel, role, setOpen }: 
                         </FormItem>
                     )}
                 />
-                 <FormField
-                    control={form.control}
-                    name="subject"
-                    render={({ field }) => (
-                        <FormItem>
-                        <FormLabel>Subject</FormLabel>
-                        <FormControl>
-                            <Input placeholder="Invention disclosure..." {...field} disabled={!isFieldEditable('subject')}/>
-                        </FormControl>
-                        <FormMessage />
-                        </FormItem>
-                    )}
-                />
-            </div>
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 <FormField
                     control={form.control}
                     name="clientName"
@@ -255,6 +240,31 @@ export function ProjectForm({ project, onFormSubmit, onCancel, role, setOpen }: 
                         </FormItem>
                     )}
                 />
+                {project && <FormField
+                control={form.control}
+                name="status"
+                render={({ field }) => (
+                    <FormItem>
+                    <FormLabel>Status</FormLabel>
+                    <Select onValueChange={field.onChange} value={field.value} disabled={!isFieldEditable('status')}>
+                        <FormControl>
+                        <SelectTrigger>
+                            <SelectValue placeholder="Select status" />
+                        </SelectTrigger>
+                        </FormControl>
+                        <SelectContent>
+                            <SelectItem value="Pending" disabled={!isManager}>Pending</SelectItem>
+                            <SelectItem value="Processing" disabled={!isManager}>Processing</SelectItem>
+                            <SelectItem value="QA" disabled={!isManager}>QA</SelectItem>
+                            <SelectItem value="Complete" disabled={!isManager}>Complete</SelectItem>
+                            
+                            <SelectItem value="On Hold" disabled={!isProcessor && !isQA && !isManager}>On Hold</SelectItem>
+                        </SelectContent>
+                    </Select>
+                    <FormMessage />
+                    </FormItem>
+                )}
+                />}
             </div>
              <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
                 <FormField
@@ -297,6 +307,19 @@ export function ProjectForm({ project, onFormSubmit, onCancel, role, setOpen }: 
                     )}
                 />
             </div>
+            <FormField
+                control={form.control}
+                name="subject"
+                render={({ field }) => (
+                    <FormItem>
+                    <FormLabel>Subject</FormLabel>
+                    <FormControl>
+                        <Input placeholder="Invention disclosure..." {...field} disabled={!isFieldEditable('subject')}/>
+                    </FormControl>
+                    <FormMessage />
+                    </FormItem>
+                )}
+            />
              <FormField
                 control={form.control}
                 name="actionTaken"
@@ -452,32 +475,6 @@ export function ProjectForm({ project, onFormSubmit, onCancel, role, setOpen }: 
                 />
             </div>
 
-            {project && <FormField
-                control={form.control}
-                name="status"
-                render={({ field }) => (
-                    <FormItem>
-                    <FormLabel>Status</FormLabel>
-                    <Select onValueChange={field.onChange} value={field.value} disabled={!isFieldEditable('status')}>
-                        <FormControl>
-                        <SelectTrigger>
-                            <SelectValue placeholder="Select status" />
-                        </SelectTrigger>
-                        </FormControl>
-                        <SelectContent>
-                            <SelectItem value="Pending" disabled={!isManager}>Pending</SelectItem>
-                            <SelectItem value="Processing" disabled={!isManager}>Processing</SelectItem>
-                            <SelectItem value="QA" disabled={!isManager}>QA</SelectItem>
-                            <SelectItem value="Complete" disabled={!isManager}>Complete</SelectItem>
-                            
-                            <SelectItem value="On Hold" disabled={!isProcessor && !isQA && !isManager}>On Hold</SelectItem>
-                        </SelectContent>
-                    </Select>
-                    <FormMessage />
-                    </FormItem>
-                )}
-                />}
-            
             <div className="flex justify-end space-x-2 pt-4">
                 {onCancel && <Button variant="outline" onClick={onCancel} disabled={isSubmitting}>Cancel</Button>}
 
