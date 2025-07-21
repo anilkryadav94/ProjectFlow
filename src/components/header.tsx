@@ -3,8 +3,8 @@
 
 import * as React from "react"
 import Papa from "papaparse";
-import { ChevronsUpDown, LogOut, Search, Settings, FileSpreadsheet, User, Workflow } from "lucide-react"
-import type { Project, ProcessType, Role } from "@/lib/data"
+import { LogOut, Search, Settings, FileSpreadsheet, Workflow } from "lucide-react"
+import type { Project, ProcessType, Role, User } from "@/lib/data"
 import { clientNames, processes, roleHierarchy } from "@/lib/data"
 import { Button } from "@/components/ui/button"
 import {
@@ -169,8 +169,8 @@ export function Header({
                     )}
 
                     <DropdownMenuSeparator />
-                     <DropdownMenuItem onSelect={(e) => e.preventDefault()} className="flex-col items-start focus:bg-transparent text-foreground cursor-default">
-                        <Label htmlFor="theme-toggle" className="text-xs mb-2">Theme</Label>
+                     <DropdownMenuItem onSelect={(e) => e.preventDefault()} className="flex-col items-start">
+                        <Label htmlFor="theme-toggle" className="text-xs mb-2 w-full cursor-pointer">Theme</Label>
                         <ThemeToggle />
                      </DropdownMenuItem>
                     <DropdownMenuSeparator />
