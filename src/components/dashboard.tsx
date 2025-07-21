@@ -3,13 +3,15 @@
 
 import * as React from 'react';
 import Papa from "papaparse";
-import { type Project, type Role, ProcessType, type User, roleHierarchy, ProjectStatus, clientNames, processes, projectStatuses } from '@/lib/data';
+import { type Project, type Role, type User, roleHierarchy } from '@/lib/data';
 import { DataTable } from '@/components/data-table';
 import { columns } from '@/components/columns';
 import { Header } from '@/components/header';
 import { UserManagementTable } from './user-management-table';
-import type { DateRange } from 'react-day-picker';
-import { DataTableRowActions } from './data-table-row-actions';
+import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
+import { ProjectForm } from './project-form';
+import { Button } from './ui/button';
+import { PlusCircle } from 'lucide-react';
 
 interface DashboardProps {
   user: User;
@@ -28,11 +30,7 @@ export default function Dashboard({
   const [search, setSearch] = React.useState('');
   const [searchColumn, setSearchColumn] = React.useState<SearchableColumn>('refNumber');
   const [sort, setSort] = React.useState<{ key: keyof Project; direction: 'asc' | 'desc' } | null>({ key: 'allocationDate', direction: 'desc' });
-  const [clientNameFilter, setClientNameFilter] = React.useState<string[]>([]);
-  const [processFilter, setProcessFilter] = React.useState<string[]>([]);
-  const [statusFilter, setStatusFilter] = React.useState<string[]>([]);
-  const [emailDateFilter, setEmailDateFilter] = React.useState<DateRange | undefined>();
-  const [allocationDateFilter, setAllocationDateFilter] = React.useState<DateRange | undefined>();
+  const [isNewProjectFormOpen, setIsNewProjectFormOpen] = React.useState(false);
   
   React.useEffect(() => {
     if (user?.roles?.length > 0) {
@@ -61,16 +59,6 @@ export default function Dashboard({
     }
   };
   
-  const resetFilters = () => {
-    setSearch('');
-    setClientNameFilter([]);
-    setProcessFilter([]);
-    setStatusFilter([]);
-    setEmailDateFilter(undefined);
-    setAllocationDateFilter(undefined);
-    setSearchColumn('refNumber');
-  }
-
   const handleDownload = () => {
     const csv = Papa.unparse(dashboardProjects);
     const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
@@ -103,32 +91,6 @@ export default function Dashboard({
         });
     }
     
-    if (clientNameFilter.length > 0) {
-      filteredProjects = filteredProjects.filter(p => clientNameFilter.includes(p.clientName));
-    }
-
-    if (processFilter.length > 0) {
-      filteredProjects = filteredProjects.filter(p => processFilter.includes(p.process));
-    }
-
-    if (statusFilter.length > 0) {
-        filteredProjects = filteredProjects.filter(p => statusFilter.includes(p.status));
-    }
-
-    if (emailDateFilter?.from) {
-        filteredProjects = filteredProjects.filter(p => new Date(p.emailDate) >= emailDateFilter.from!);
-    }
-    if (emailDateFilter?.to) {
-        filteredProjects = filteredProjects.filter(p => new Date(p.emailDate) <= emailDateFilter.to!);
-    }
-
-    if (allocationDateFilter?.from) {
-        filteredProjects = filteredProjects.filter(p => new Date(p.allocationDate) >= allocationDateFilter.from!);
-    }
-    if (allocationDateFilter?.to) {
-        filteredProjects = filteredProjects.filter(p => new Date(p.allocationDate) <= allocationDateFilter.to!);
-    }
-    
     if (sort) {
       filteredProjects.sort((a, b) => {
         const valA = a[sort.key];
@@ -141,12 +103,15 @@ export default function Dashboard({
     }
 
     return filteredProjects;
-  }, [search, searchColumn, clientNameFilter, processFilter, statusFilter, emailDateFilter, allocationDateFilter, activeRole, user.name, projects, sort]);
+  }, [search, searchColumn, activeRole, user.name, projects, sort]);
 
 
   if (!activeRole) {
     return null;
   }
+
+  const showNewProjectButton = activeRole === 'Manager' || activeRole === 'Admin';
+  const showFilters = activeRole === 'Manager' || activeRole === 'Processor' || activeRole === 'QA' || activeRole === 'Admin';
 
   return (
      <div className="flex flex-col h-screen bg-background w-full">
@@ -158,41 +123,46 @@ export default function Dashboard({
             setSearch={setSearch}
             searchColumn={searchColumn}
             setSearchColumn={setSearchColumn}
-            clientNameFilter={clientNameFilter}
-            setClientNameFilter={setClientNameFilter}
-            processFilter={processFilter}
-            setProcessFilter={setProcessFilter}
-            statusFilter={statusFilter}
-            setStatusFilter={setStatusFilter}
-            emailDateFilter={emailDateFilter}
-            setEmailDateFilter={setEmailDateFilter}
-            allocationDateFilter={allocationDateFilter}
-            setAllocationDateFilter={setAllocationDateFilter}
-            onResetFilters={resetFilters}
             handleDownload={handleDownload}
             isDownloadDisabled={dashboardProjects.length === 0}
+            showFilters={showFilters}
         />
         <div className="flex flex-col flex-grow overflow-hidden p-4 gap-4">
-          {activeRole === 'Admin' ? (
-            <UserManagementTable sessionUser={user} />
-          ) : (
-            <DataTable 
-                data={dashboardProjects}
-                columns={[
-                  ...columns,
-                  {
-                    key: "actions",
-                    header: "Actions",
-                    render: (project: Project) => (
-                      <DataTableRowActions project={project} onProjectUpdate={handleProjectUpdate} role={activeRole} />
-                    ),
-                  }
-                ]}
-                sort={sort}
-                setSort={setSort}
-            />
-          )}
+            {activeRole === 'Admin' ? (
+                <UserManagementTable sessionUser={user} />
+            ) : (
+                <>
+                    {showNewProjectButton && (
+                        <div className="flex justify-end">
+                            <Button onClick={() => setIsNewProjectFormOpen(true)}>
+                                <PlusCircle className="mr-2 h-4 w-4" />
+                                New Project
+                            </Button>
+                        </div>
+                    )}
+                    <DataTable 
+                        data={dashboardProjects}
+                        columns={columns}
+                        sort={sort}
+                        setSort={setSort}
+                    />
+                </>
+            )}
         </div>
+        <Dialog open={isNewProjectFormOpen} onOpenChange={setIsNewProjectFormOpen}>
+            <DialogContent className="sm:max-w-[75vw] h-[90vh] flex flex-col">
+                <DialogHeader>
+                    <DialogTitle>Create New Project</DialogTitle>
+                </DialogHeader>
+                <div className="flex-grow min-h-0">
+                    <ProjectForm 
+                        onFormSubmit={handleProjectUpdate} 
+                        setOpen={setIsNewProjectFormOpen}
+                        role={activeRole}
+                    />
+                </div>
+            </DialogContent>
+      </Dialog>
     </div>
   );
 }

@@ -4,6 +4,8 @@
 import type { Project, ProjectStatus } from "@/lib/data";
 import { Badge } from "@/components/ui/badge";
 import { cn } from "@/lib/utils";
+import Link from "next/link";
+import { buttonVariants } from "./ui/button";
 
 const statusColors: Record<ProjectStatus, string> = {
   Pending: "bg-yellow-500/20 text-yellow-700 border-yellow-500/30",
@@ -18,9 +20,9 @@ export const columns = [
     key: "refNumber" as const,
     header: "Ref Number",
     render: (project: Project) => (
-        <span className="font-medium text-primary">
-          {project.refNumber}
-        </span>
+       <Link href={`/task/${project.id}`} className={cn(buttonVariants({ variant: 'link' }), "p-0 h-auto font-medium text-primary")}>
+            {project.refNumber}
+        </Link>
     )
   },
   {

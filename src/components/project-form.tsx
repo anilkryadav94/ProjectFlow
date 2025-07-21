@@ -7,6 +7,7 @@ import { useForm } from "react-hook-form"
 import { z } from "zod"
 import { format } from "date-fns"
 import { CalendarIcon, Loader2, PlusSquare } from "lucide-react"
+import { useRouter } from "next/navigation"
 
 import { cn } from "@/lib/utils"
 import { Button } from "@/components/ui/button"
@@ -70,6 +71,7 @@ interface ProjectFormProps {
 export function ProjectForm({ project, onFormSubmit, role, setOpen }: ProjectFormProps) {
   const [isSubmitting, setIsSubmitting] = React.useState(false);
   const [isMMFormOpen, setIsMMFormOpen] = React.useState(false);
+  const router = useRouter();
   
   const form = useForm<ProjectFormValues>({
     resolver: zodResolver(formSchema),
@@ -135,7 +137,13 @@ export function ProjectForm({ project, onFormSubmit, role, setOpen }: ProjectFor
     try {
       const result = await saveProject(data);
       onFormSubmit(result);
-      if(setOpen) setOpen(false);
+      if(setOpen) {
+        setOpen(false);
+      } else {
+        // If not in a dialog, assume it's on a page and refresh to go back
+        router.push('/');
+        router.refresh();
+      }
     } catch (error) {
       console.error("Failed to save project", error);
     } finally {

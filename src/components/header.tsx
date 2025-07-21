@@ -2,9 +2,9 @@
 "use client"
 
 import * as React from "react"
-import { LogOut, Search, Settings, FileSpreadsheet, Workflow, X } from "lucide-react"
-import type { ProcessType, Role, User, ProjectStatus } from "@/lib/data"
-import { clientNames, processes, projectStatuses, roleHierarchy } from "@/lib/data"
+import { LogOut, Search, Settings, FileSpreadsheet, Workflow } from "lucide-react"
+import type { Role, User } from "@/lib/data"
+import { roleHierarchy } from "@/lib/data"
 import { Button } from "@/components/ui/button"
 import {
   DropdownMenu,
@@ -23,33 +23,20 @@ import { useRouter } from "next/navigation"
 import { ThemeToggle } from "./theme-toggle";
 import { Separator } from "./ui/separator";
 import { Label } from "@/components/ui/label";
-import { DateRangePicker } from "./date-range-picker"
-import type { DateRange } from "react-day-picker"
 import type { SearchableColumn } from "./dashboard"
 import { cn } from "@/lib/utils"
-import { MultiSelect } from "./ui/multi-select"
 
 interface HeaderProps {
     user: User;
     activeRole: Role;
-    setActiveRole: (role: Role) => void;
-    search: string;
-    setSearch: (search: string) => void;
-    searchColumn: SearchableColumn;
-    setSearchColumn: (column: SearchableColumn) => void;
-    clientNameFilter: string[];
-    setClientNameFilter: (client: string[]) => void;
-    processFilter: string[];
-    setProcessFilter: (process: string[]) => void;
-    statusFilter: string[];
-    setStatusFilter: (status: string[]) => void;
-    emailDateFilter: DateRange | undefined;
-    setEmailDateFilter: (date: DateRange | undefined) => void;
-    allocationDateFilter: DateRange | undefined;
-    setAllocationDateFilter: (date: DateRange | undefined) => void;
-    onResetFilters: () => void;
-    handleDownload: () => void;
-    isDownloadDisabled: boolean;
+    setActiveRole?: (role: Role) => void;
+    search?: string;
+    setSearch?: (search: string) => void;
+    searchColumn?: SearchableColumn;
+    setSearchColumn?: (column: SearchableColumn) => void;
+    handleDownload?: () => void;
+    isDownloadDisabled?: boolean;
+    showFilters: boolean;
 }
 
 const searchColumns: { value: SearchableColumn; label: string }[] = [
@@ -67,19 +54,9 @@ export function Header({
   setSearch,
   searchColumn,
   setSearchColumn,
-  clientNameFilter,
-  setClientNameFilter,
-  processFilter,
-  setProcessFilter,
-  statusFilter,
-  setStatusFilter,
-  emailDateFilter,
-  setEmailDateFilter,
-  allocationDateFilter,
-  setAllocationDateFilter,
-  onResetFilters,
   handleDownload,
   isDownloadDisabled,
+  showFilters,
 }: HeaderProps) {
   const router = useRouter();
 
@@ -109,12 +86,6 @@ export function Header({
     if (!user.roles) return [];
     return user.roles.sort((a, b) => roleHierarchy.indexOf(a) - roleHierarchy.indexOf(b));
   }, [user.roles]);
-  
-  const showFilters = activeRole === 'Manager' || activeRole === 'Processor' || activeRole === 'QA' || activeRole === 'Admin';
-
-  const clientOptions = clientNames.map(name => ({ value: name, label: name }));
-  const processOptions = processes.map(p => ({ value: p, label: p }));
-  const statusOptions = projectStatuses.map(s => ({ value: s, label: s }));
 
   return (
     <>
@@ -128,13 +99,13 @@ export function Header({
           <h3 className="text-md font-semibold">{getDashboardName()}</h3>
         </div>
         
-        {showFilters && (
+        {showFilters && setSearch && (
              <div className="flex-grow flex items-center justify-center">
                  <div className="w-full max-w-xl">
                     <div className="relative flex items-center">
-                        <div className="absolute left-0">
-                             <Select value={searchColumn} onValueChange={(value) => setSearchColumn(value as SearchableColumn)}>
-                                <SelectTrigger className="h-9 w-[110px] rounded-r-none border-r-0 focus:ring-0">
+                        <div className="absolute left-0 z-10">
+                             <Select value={searchColumn} onValueChange={(value) => setSearchColumn?.(value as SearchableColumn)}>
+                                <SelectTrigger className="h-9 w-[110px] rounded-r-none border-r-0 focus:ring-0 bg-background text-foreground">
                                     <SelectValue placeholder="Search by" />
                                 </SelectTrigger>
                                 <SelectContent>
@@ -155,10 +126,12 @@ export function Header({
         )}
 
         <div className="flex items-center space-x-2 flex-shrink-0">
-            <Button variant="ghost" size="icon" onClick={handleDownload} disabled={isDownloadDisabled} className="h-8 w-8 hover:bg-primary/80">
-              <FileSpreadsheet className="h-5 w-5" />
-              <span className="sr-only">Download CSV</span>
-            </Button>
+            {showFilters && handleDownload && (
+                <Button variant="ghost" size="icon" onClick={handleDownload} disabled={isDownloadDisabled} className="h-8 w-8 hover:bg-primary/80">
+                  <FileSpreadsheet className="h-5 w-5" />
+                  <span className="sr-only">Download CSV</span>
+                </Button>
+            )}
             <DropdownMenu>
                 <DropdownMenuTrigger asChild>
                     <Button variant="outline" className="w-auto h-9 text-foreground text-xs px-2">
@@ -169,7 +142,7 @@ export function Header({
                     <DropdownMenuLabel>{user.name}</DropdownMenuLabel>
                     <DropdownMenuLabel className="text-xs font-normal text-muted-foreground">{user.email}</DropdownMenuLabel>
                     
-                    {sortedUserRoles.length > 1 && (
+                    {sortedUserRoles.length > 1 && setActiveRole && (
                         <>
                             <DropdownMenuSeparator />
                             <DropdownMenuLabel>Switch Role</DropdownMenuLabel>
@@ -197,43 +170,6 @@ export function Header({
             </DropdownMenu>
         </div>
     </div>
-    {showFilters && (
-      <div className="flex items-center gap-2 bg-background border-b p-2">
-         <MultiSelect
-            options={clientOptions}
-            selected={clientNameFilter}
-            onChange={setClientNameFilter}
-            placeholder="All Clients"
-            className="w-[180px]"
-          />
-         <MultiSelect
-            options={processOptions}
-            selected={processFilter}
-            onChange={setProcessFilter}
-            placeholder="All Processes"
-            className="w-[180px]"
-          />
-         <MultiSelect
-            options={statusOptions}
-            selected={statusFilter}
-            onChange={setStatusFilter}
-            placeholder="All Statuses"
-            className="w-[180px]"
-          />
-        <div className="w-[250px]">
-            <Label className="text-xs font-medium text-muted-foreground ml-1">Email Date</Label>
-            <DateRangePicker date={emailDateFilter} setDate={setEmailDateFilter} />
-        </div>
-         <div className="w-[250px]">
-             <Label className="text-xs font-medium text-muted-foreground ml-1">Allocation Date</Label>
-            <DateRangePicker date={allocationDateFilter} setDate={setAllocationDateFilter} />
-        </div>
-        <Button variant="ghost" onClick={onResetFilters} size="sm">
-          <X className="mr-2 h-4 w-4" />
-          Reset
-        </Button>
-      </div>
-    )}
     </>
   )
 }
