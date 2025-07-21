@@ -2,9 +2,8 @@
 "use client"
 
 import * as React from "react"
-import Papa from "papaparse";
 import { LogOut, Search, Settings, FileSpreadsheet, Workflow } from "lucide-react"
-import type { Project, ProcessType, Role, User } from "@/lib/data"
+import type { ProcessType, Role, User } from "@/lib/data"
 import { clientNames, processes, roleHierarchy } from "@/lib/data"
 import { Button } from "@/components/ui/button"
 import {
@@ -35,7 +34,6 @@ interface HeaderProps {
     setClientNameFilter: (client: string) => void;
     processFilter: ProcessType | 'all';
     setProcessFilter: (process: ProcessType | 'all') => void;
-    projectsToDownload: Project[];
 }
 
 export function Header({ 
@@ -44,8 +42,7 @@ export function Header({
   setActiveRole,
   search, setSearch, 
   clientNameFilter, setClientNameFilter, 
-  processFilter, setProcessFilter,
-  projectsToDownload
+  processFilter, setProcessFilter
 }: HeaderProps) {
   const router = useRouter();
 
@@ -75,22 +72,6 @@ export function Header({
     if (!user.roles) return [];
     return user.roles.sort((a, b) => roleHierarchy.indexOf(a) - roleHierarchy.indexOf(b));
   }, [user.roles]);
-
-  const handleDownload = () => {
-    if (!projectsToDownload || projectsToDownload.length === 0) {
-      return;
-    }
-    const csv = Papa.unparse(projectsToDownload);
-    const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
-    const link = document.createElement("a");
-    const url = URL.createObjectURL(blob);
-    link.setAttribute("href", url);
-    link.setAttribute("download", `projects_export_${new Date().toISOString().split('T')[0]}.csv`);
-    link.style.visibility = 'hidden';
-    document.body.appendChild(link);
-    link.click();
-    document.body.removeChild(link);
-  };
 
   return (
     <div className="flex items-center justify-between bg-primary text-primary-foreground p-2 px-4 shadow-md h-16 shrink-0">
@@ -137,10 +118,6 @@ export function Header({
                           ))}
                       </SelectContent>
                   </Select>
-                  <Button variant="outline" size="icon" onClick={handleDownload} disabled={projectsToDownload.length === 0} className="h-9 w-9 text-foreground">
-                    <FileSpreadsheet className="h-4 w-4" />
-                    <span className="sr-only">Download CSV</span>
-                  </Button>
               </div>
             )}
             

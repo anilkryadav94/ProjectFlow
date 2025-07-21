@@ -1,8 +1,8 @@
+
 "use client";
 
 import type { Project, ProjectStatus } from "@/lib/data";
 import { Badge } from "@/components/ui/badge";
-import { DataTableRowActions } from "./data-table-row-actions";
 import { cn } from "@/lib/utils";
 
 const statusColors: Record<ProjectStatus, string> = {
@@ -63,9 +63,4 @@ export const columns = [
         </Badge>
     )
   },
-  {
-    key: "actions" as const,
-    header: "Actions",
-    render: (project: Project, onProjectUpdate: (project: Project) => void) => <DataTableRowActions project={project} onProjectUpdate={onProjectUpdate} />
-  }
 ];

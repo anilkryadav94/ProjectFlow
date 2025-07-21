@@ -144,7 +144,6 @@ export default function Dashboard({
             setClientNameFilter={setClientNameFilter}
             processFilter={processFilter}
             setProcessFilter={setProcessFilter}
-            projectsToDownload={filteredProjects}
         />
         <div className="flex flex-col flex-grow overflow-hidden py-2 gap-2">
           {isAdminView ? (
@@ -165,10 +164,10 @@ export default function Dashboard({
                         columns={columns}
                         sort={sort}
                         setSort={setSort}
-                        onProjectUpdate={handleProjectUpdate}
                         onRowClick={handleRowClick}
                         activeProjectId={activeProject?.id}
                         isTaskView={true}
+                        projectsToDownload={filteredProjects}
                     />
                 </div>
             </div>
@@ -178,8 +177,8 @@ export default function Dashboard({
                 columns={columns}
                 sort={sort}
                 setSort={setSort}
-                onProjectUpdate={handleProjectUpdate}
                 isTaskView={false}
+                projectsToDownload={filteredProjects}
               />
           )}
         </div>

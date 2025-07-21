@@ -2,7 +2,8 @@
 "use client"
 
 import * as React from "react"
-import { ArrowDown, ArrowUp } from "lucide-react"
+import Papa from "papaparse"
+import { ArrowDown, ArrowUp, FileSpreadsheet } from "lucide-react"
 import type { Project } from "@/lib/data"
 import {
   Table,
@@ -13,23 +14,24 @@ import {
   TableRow,
 } from "@/components/ui/table"
 import { cn } from "@/lib/utils"
+import { Button } from "./ui/button"
 
 interface DataTableProps {
   data: Project[];
   columns: {
-    key: keyof Project | 'actions' | 'subject' | 'clientName' | 'process';
+    key: keyof Project | 'subject' | 'clientName' | 'process';
     header: string;
-    render?: (project: Project, onProjectUpdate: (project: Project) => void) => React.ReactNode;
+    render?: (project: Project) => React.ReactNode;
   }[];
   sort: { key: keyof Project; direction: 'asc' | 'desc' } | null;
   setSort: (sort: { key: keyof Project; direction: 'asc' | 'desc' } | null) => void;
-  onProjectUpdate: (project: Project) => void;
   onRowClick?: (project: Project) => void;
   activeProjectId?: string;
   isTaskView: boolean;
+  projectsToDownload: Project[];
 }
 
-export function DataTable({ data, columns, sort, setSort, onProjectUpdate, onRowClick, activeProjectId, isTaskView }: DataTableProps) {
+export function DataTable({ data, columns, sort, setSort, onRowClick, activeProjectId, isTaskView, projectsToDownload }: DataTableProps) {
   const handleSort = (key: keyof Project) => {
     if (sort && sort.key === key) {
       setSort({ key, direction: sort.direction === 'asc' ? 'desc' : 'asc' });
@@ -37,6 +39,23 @@ export function DataTable({ data, columns, sort, setSort, onProjectUpdate, onRow
       setSort({ key, direction: 'asc' });
     }
   };
+  
+  const handleDownload = () => {
+    if (!projectsToDownload || projectsToDownload.length === 0) {
+      return;
+    }
+    const csv = Papa.unparse(projectsToDownload);
+    const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
+    const link = document.createElement("a");
+    const url = URL.createObjectURL(blob);
+    link.setAttribute("href", url);
+    link.setAttribute("download", `projects_export_${new Date().toISOString().split('T')[0]}.csv`);
+    link.style.visibility = 'hidden';
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+  };
+
 
   const maxHeightClass = isTaskView
     ? "h-full"
@@ -47,11 +66,10 @@ export function DataTable({ data, columns, sort, setSort, onProjectUpdate, onRow
     <div className={cn("animated-border shadow-xl", maxHeightClass)}>
       <div className={cn("rounded-md border bg-card overflow-y-auto relative h-full")}>
         <Table>
-          <TableHeader className="sticky top-0 z-10 bg-muted/95 backdrop-blur-sm">
+          <TableHeader className="sticky top-0 z-10 bg-muted backdrop-blur-sm">
             <TableRow>
               {columns.map((column) => (
                 <TableHead key={column.key}>
-                  {column.key !== 'actions' ? (
                     <div
                       className="flex items-center gap-2 cursor-pointer"
                       onClick={() => handleSort(column.key as keyof Project)}
@@ -61,11 +79,14 @@ export function DataTable({ data, columns, sort, setSort, onProjectUpdate, onRow
                         sort.direction === 'asc' ? <ArrowUp className="h-4 w-4" /> : <ArrowDown className="h-4 w-4" />
                       )}
                     </div>
-                  ) : (
-                    column.header
-                  )}
                 </TableHead>
               ))}
+              <TableHead className="text-right">
+                  <Button variant="ghost" size="icon" onClick={handleDownload} disabled={projectsToDownload.length === 0} className="h-8 w-8">
+                    <FileSpreadsheet className="h-4 w-4 text-muted-foreground" />
+                    <span className="sr-only">Download CSV</span>
+                  </Button>
+              </TableHead>
             </TableRow>
           </TableHeader>
           <TableBody>
@@ -81,14 +102,15 @@ export function DataTable({ data, columns, sort, setSort, onProjectUpdate, onRow
                 >
                   {columns.map((column) => (
                     <TableCell key={column.key}>
-                      {column.render ? column.render(row, onProjectUpdate) : (row[column.key as keyof Project] ?? 'N/A')}
+                      {column.render ? column.render(row) : (row[column.key as keyof Project] ?? 'N/A')}
                     </TableCell>
                   ))}
+                  <TableCell></TableCell>
                 </TableRow>
               ))
             ) : (
               <TableRow>
-                <TableCell colSpan={columns.length} className="h-24 text-center">
+                <TableCell colSpan={columns.length + 1} className="h-24 text-center">
                   No results found.
                 </TableCell>
               </TableRow>
