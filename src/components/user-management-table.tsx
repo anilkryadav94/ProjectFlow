@@ -222,23 +222,6 @@ export function UserManagementTable({ users: initialUsers }: UserManagementTable
                         </Table>
                     </div>
                 </CardContent>
-                <CardFooter className="justify-end gap-2">
-                    <input
-                        type="file"
-                        accept=".csv"
-                        ref={fileInputRef}
-                        onChange={handleFileUpload}
-                        className="hidden"
-                    />
-                    <Button variant="outline" onClick={() => fileInputRef.current?.click()}>
-                        <Upload className="mr-2 h-4 w-4" />
-                        Bulk Upload
-                    </Button>
-                    <Button onClick={() => setIsAddUserDialogOpen(true)}>
-                        <PlusCircle className="mr-2 h-4 w-4" />
-                        Add User
-                    </Button>
-                </CardFooter>
             </Card>
             <AddUserDialog 
                 isOpen={isAddUserDialogOpen}
