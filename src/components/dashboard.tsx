@@ -3,25 +3,27 @@
 
 import * as React from 'react';
 import Papa from "papaparse";
-import { type Project, type Role, type User, roleHierarchy, processors, qas, projectStatuses } from '@/lib/data';
+import { type Project, type Role, type User, roleHierarchy, processors, qas, projectStatuses, clientNames, processes } from '@/lib/data';
 import { DataTable } from '@/components/data-table';
 import { getColumns } from '@/components/columns';
 import { Header } from '@/components/header';
 import { UserManagementTable } from './user-management-table';
-import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
 import { Button } from './ui/button';
 import { bulkUpdateProjects } from '@/app/actions';
 import { useToast } from '@/hooks/use-toast';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from './ui/select';
 import { Loader2 } from 'lucide-react';
 import { AdvancedSearchForm, type SearchCriteria } from './advanced-search-form';
+import { DataTableRowActions } from './data-table-row-actions';
+import { ProjectForm } from './project-form';
 
 interface DashboardProps {
   user: User;
   initialProjects: Project[];
 }
 
-export type SearchableColumn = 'refNumber' | 'applicationNumber' | 'patentNumber' | 'subject';
+export type SearchableColumn = 'refNumber' | 'applicationNumber' | 'patentNumber' | 'subject' | 'status' | 'allocationDate' | 'emailDate';
 
 const bulkUpdateFields = [
     { value: 'processor', label: 'Processor', options: processors },
@@ -49,6 +51,10 @@ export default function Dashboard({
   const [searchCriteria, setSearchCriteria] = React.useState<SearchCriteria | null>(null);
   const [showSearchForm, setShowSearchForm] = React.useState(true);
   const [filteredProjects, setFilteredProjects] = React.useState<Project[] | null>(null);
+
+  // Filters for QA/Processor
+  const [clientNameFilter, setClientNameFilter] = React.useState('all');
+  const [processFilter, setProcessFilter] = React.useState<string | 'all'>('all');
   
 
   const { toast } = useToast();
@@ -156,11 +162,13 @@ export default function Dashboard({
       setShowSearchForm(true);
   }
 
-
   const dashboardProjects = React.useMemo(() => {
     const isManagerOrAdminView = activeRole === 'Manager' || activeRole === 'Admin';
     
     if (isManagerOrAdminView) {
+        if (!filteredProjects && showSearchForm) {
+            return [];
+        }
         return filteredProjects ?? [];
     }
     
@@ -177,6 +185,14 @@ export default function Dashboard({
         (p[searchColumn] as string)?.toLowerCase().includes(search.toLowerCase())
       );
     }
+
+    if (clientNameFilter !== 'all') {
+        filtered = filtered.filter(p => p.clientName === clientNameFilter);
+    }
+    
+    if (processFilter !== 'all') {
+        filtered = filtered.filter(p => p.process === processFilter);
+    }
     
     if (sort) {
       filtered.sort((a, b) => {
@@ -190,7 +206,7 @@ export default function Dashboard({
     }
 
     return filtered;
-  }, [activeRole, user.name, projects, search, searchColumn, sort, filteredProjects]);
+  }, [activeRole, user.name, projects, search, searchColumn, sort, filteredProjects, clientNameFilter, processFilter, showSearchForm]);
 
 
   if (!activeRole) {
@@ -217,6 +233,12 @@ export default function Dashboard({
             hasSearchResults={filteredProjects !== null}
             onAmendSearch={handleAmendSearch}
             onResetSearch={handleResetAdvancedSearch}
+            clientNameFilter={clientNameFilter}
+            setClientNameFilter={setClientNameFilter}
+            processFilter={processFilter}
+            setProcessFilter={setProcessFilter}
+            clientNames={clientNames}
+            processes={processes}
         />
         <div className="flex flex-col flex-grow overflow-hidden p-4 gap-4">
             {activeRole === 'Admin' ? (
@@ -288,5 +310,3 @@ export default function Dashboard({
     </div>
   );
 }
-
-    

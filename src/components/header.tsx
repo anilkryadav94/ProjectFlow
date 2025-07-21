@@ -3,7 +3,7 @@
 
 import * as React from "react"
 import { LogOut, Settings, FileSpreadsheet, Workflow, Edit, RotateCcw } from "lucide-react"
-import type { Role, User } from "@/lib/data"
+import type { Role, User, ProcessType } from "@/lib/data"
 import { roleHierarchy } from "@/lib/data"
 import { Button } from "@/components/ui/button"
 import {
@@ -39,6 +39,12 @@ interface HeaderProps {
     hasSearchResults: boolean;
     onAmendSearch: () => void;
     onResetSearch: () => void;
+    clientNameFilter: string;
+    setClientNameFilter: (value: string) => void;
+    processFilter: string | 'all';
+    setProcessFilter: (value: string | 'all') => void;
+    clientNames: string[];
+    processes: ProcessType[];
 }
 
 export function Header({ 
@@ -55,6 +61,12 @@ export function Header({
   hasSearchResults,
   onAmendSearch,
   onResetSearch,
+  clientNameFilter,
+  setClientNameFilter,
+  processFilter,
+  setProcessFilter,
+  clientNames,
+  processes
 }: HeaderProps) {
   const router = useRouter();
 
@@ -99,25 +111,55 @@ export function Header({
         
         <div className="flex-grow flex items-center justify-center px-8">
             {!isManagerOrAdmin && setSearch && setSearchColumn && (
-              <div className="flex w-full max-w-lg items-center space-x-0">
-                <Select value={searchColumn} onValueChange={(v) => setSearchColumn(v as SearchableColumn)}>
-                  <SelectTrigger className="w-[180px] rounded-r-none focus:ring-0 text-foreground">
-                    <SelectValue placeholder="Select column" />
+              <div className="flex w-full max-w-2xl items-center space-x-2">
+                <div className="flex items-center space-x-0 w-1/2">
+                    <Select value={searchColumn} onValueChange={(v) => setSearchColumn(v as SearchableColumn)}>
+                    <SelectTrigger className="w-[180px] rounded-r-none focus:ring-0 text-foreground">
+                        <SelectValue placeholder="Select column" />
+                    </SelectTrigger>
+                    <SelectContent>
+                        <SelectItem value="refNumber">Ref Number</SelectItem>
+                        <SelectItem value="applicationNumber">Application No.</SelectItem>
+                        <SelectItem value="patentNumber">Patent No.</SelectItem>
+                        <SelectItem value="subject">Subject</SelectItem>
+                        <SelectItem value="status">Status</SelectItem>
+                        <SelectItem value="emailDate">Email Date</SelectItem>
+                        <SelectItem value="allocationDate">Allocation Date</SelectItem>
+                    </SelectContent>
+                    </Select>
+                    <Input
+                    type="text"
+                    placeholder="Quick search..."
+                    value={search}
+                    onChange={(e) => setSearch(e.target.value)}
+                    className="rounded-l-none focus-visible:ring-0"
+                    />
+                </div>
+                
+                <Select value={clientNameFilter} onValueChange={setClientNameFilter}>
+                  <SelectTrigger className="w-1/4 text-foreground">
+                    <SelectValue placeholder="Filter by Client" />
                   </SelectTrigger>
                   <SelectContent>
-                    <SelectItem value="refNumber">Ref Number</SelectItem>
-                    <SelectItem value="applicationNumber">Application No.</SelectItem>
-                    <SelectItem value="patentNumber">Patent No.</SelectItem>
-                    <SelectItem value="subject">Subject</SelectItem>
+                    <SelectItem value="all">All Clients</SelectItem>
+                    {clientNames.map(name => (
+                        <SelectItem key={name} value={name}>{name}</SelectItem>
+                    ))}
                   </SelectContent>
                 </Select>
-                <Input
-                  type="text"
-                  placeholder="Quick search..."
-                  value={search}
-                  onChange={(e) => setSearch(e.target.value)}
-                  className="rounded-l-none focus-visible:ring-0"
-                />
+
+                <Select value={processFilter} onValueChange={setProcessFilter}>
+                  <SelectTrigger className="w-1/4 text-foreground">
+                    <SelectValue placeholder="Filter by Process" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="all">All Processes</SelectItem>
+                    {processes.map(p => (
+                        <SelectItem key={p} value={p}>{p}</SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+
               </div>
             )}
         </div>
@@ -181,5 +223,3 @@ export function Header({
     </>
   )
 }
-
-    
