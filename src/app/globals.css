@@ -1,3 +1,4 @@
+
 @tailwind base;
 @tailwind components;
 @tailwind utilities;
@@ -110,7 +111,7 @@ body {
 
 @layer utilities {
   .animated-border {
-      @apply relative p-[2px] overflow-hidden rounded-lg;
+      @apply relative p-[1px] overflow-hidden rounded-lg;
   }
 
   .animated-border::before {
