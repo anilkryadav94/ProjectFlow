@@ -3,7 +3,7 @@
 
 import * as React from "react"
 import Papa from "papaparse";
-import { Check, ChevronsUpDown, LogOut, PlusCircle, Search, UserCircle, Workflow, Settings, Download } from "lucide-react"
+import { Check, ChevronsUpDown, LogOut, PlusCircle, Search, UserCircle, Workflow, Settings, Download, FileSpreadsheet } from "lucide-react"
 import type { Project, ProcessType, User, Role } from "@/lib/data"
 import { clientNames, processes, roleHierarchy } from "@/lib/data"
 import { Button } from "@/components/ui/button"
@@ -94,7 +94,7 @@ export function Header({
   };
 
   return (
-    <div className="flex items-center justify-between bg-primary text-primary-foreground p-2 px-4 shadow-md h-16">
+    <div className="flex items-center justify-between bg-primary text-primary-foreground p-2 px-4 shadow-md h-16 shrink-0">
         <div className="flex items-center gap-4">
           <div className="flex items-center gap-2">
             <Workflow className="h-6 w-6" />
@@ -105,20 +105,19 @@ export function Header({
         </div>
         
         <div className="flex items-center space-x-2">
-            {/* Hide filters for Admin */}
             {activeRole !== 'Admin' && (
               <div className="flex items-center space-x-2">
                   <div className="relative">
                       <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground/80" />
                       <Input 
                           placeholder="Quick search..."
-                          className="pl-9 h-9 w-48 bg-primary-foreground/10 placeholder:text-primary-foreground/80 border-primary-foreground/40 focus:bg-primary-foreground/20 focus:border-primary-foreground/80"
+                          className="pl-9 h-9 w-40 bg-primary-foreground/10 placeholder:text-primary-foreground/80 border-primary-foreground/40 focus:bg-primary-foreground/20 focus:border-primary-foreground/80 text-xs"
                           value={search}
                           onChange={(e) => setSearch(e.target.value)}
                       />
                   </div>
                   <Select value={clientNameFilter} onValueChange={setClientNameFilter}>
-                      <SelectTrigger className="w-[150px] h-9 text-foreground">
+                      <SelectTrigger className="w-[130px] h-9 text-foreground text-xs">
                           <SelectValue placeholder="Filter by Client" />
                       </SelectTrigger>
                       <SelectContent>
@@ -129,7 +128,7 @@ export function Header({
                       </SelectContent>
                   </Select>
                   <Select value={processFilter} onValueChange={(value) => setProcessFilter(value as ProcessType | 'all')}>
-                      <SelectTrigger className="w-[150px] h-9 text-foreground">
+                      <SelectTrigger className="w-[130px] h-9 text-foreground text-xs">
                           <SelectValue placeholder="Filter by Process" />
                       </SelectTrigger>
                       <SelectContent>
@@ -139,16 +138,16 @@ export function Header({
                           ))}
                       </SelectContent>
                   </Select>
-                  <Button variant="outline" size="sm" onClick={handleDownload} disabled={projectsToDownload.length === 0} className="h-9 w-9 p-0 text-foreground">
-                    <Download className="h-4 w-4" />
+                  <Button variant="outline" size="icon" onClick={handleDownload} disabled={projectsToDownload.length === 0} className="h-9 w-9 text-foreground">
+                    <FileSpreadsheet className="h-4 w-4" />
                     <span className="sr-only">Download CSV</span>
                   </Button>
               </div>
             )}
-            <ThemeToggle />
+            
             <DropdownMenu>
                 <DropdownMenuTrigger asChild>
-                    <Button variant="outline" className="w-48 justify-between h-9 text-foreground">
+                    <Button variant="outline" className="w-40 justify-between h-9 text-foreground text-xs">
                        <UserCircle className="mr-2 h-4 w-4" />
                        <span className="truncate">{user.name}</span>
                        <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
@@ -172,6 +171,11 @@ export function Header({
                         </>
                     )}
 
+                    <DropdownMenuSeparator />
+                     <DropdownMenuItem onSelect={(e) => e.preventDefault()} className="flex-col items-start focus:bg-transparent text-foreground cursor-default">
+                        <Label htmlFor="theme-toggle" className="text-xs mb-2">Theme</Label>
+                        <ThemeToggle />
+                     </DropdownMenuItem>
                     <DropdownMenuSeparator />
                     <DropdownMenuItem onSelect={handleLogout}>
                         <LogOut className="mr-2 h-4 w-4" />
