@@ -44,13 +44,16 @@ export default function Dashboard({
 
   // Determine the primary role for the user based on the hierarchy
   const primaryRole = React.useMemo(() => {
+    if (!user || !user.roles) {
+      return 'Processor'; // Default fallback
+    }
     for (const role of roleHierarchy) {
       if (user.roles.includes(role)) {
         return role;
       }
     }
     return user.roles[0] || 'Processor'; // Fallback
-  }, [user.roles]);
+  }, [user]);
 
   const filteredProjects = React.useMemo(() => {
     let userProjects = [...projects];
