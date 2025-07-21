@@ -2,7 +2,7 @@
 
 import * as React from 'react';
 import { useToast } from "@/hooks/use-toast"
-import { type Project, projects as initialProjects, type Role } from '@/lib/data';
+import { type Project, projects as initialProjects, type Role, ProcessType } from '@/lib/data';
 import { DataTable } from '@/components/data-table';
 import { columns } from '@/components/columns';
 import { Header } from '@/components/header';
@@ -18,6 +18,9 @@ export default function Dashboard() {
   const [search, setSearch] = React.useState('');
   const [role, setRole] = React.useState<Role>('Processor'); // Default to processor for demo
   const [sort, setSort] = React.useState<{ key: keyof Project; direction: 'asc' | 'desc' } | null>({ key: 'allocationDate', direction: 'desc' });
+  const [clientNameFilter, setClientNameFilter] = React.useState<string>('all');
+  const [processFilter, setProcessFilter] = React.useState<ProcessType | 'all'>('all');
+
   const { toast } = useToast();
 
   const userQueue = React.useMemo(() => {
@@ -43,6 +46,17 @@ export default function Dashboard() {
         project.refNumber.toLowerCase().includes(search.toLowerCase())
       );
     }
+    
+    // Client Name filter
+    if (clientNameFilter !== 'all') {
+        userProjects = userProjects.filter(p => p.clientName === clientNameFilter);
+    }
+
+    // Process filter
+    if (processFilter !== 'all') {
+        userProjects = userProjects.filter(p => p.process === processFilter);
+    }
+
 
     // Sorting
     if (sort) {
@@ -64,7 +78,7 @@ export default function Dashboard() {
     }
 
     return userProjects;
-  }, [search, sort, projects, role]);
+  }, [search, sort, projects, role, clientNameFilter, processFilter]);
 
   React.useEffect(() => {
     setFilteredProjects(userQueue);
@@ -121,6 +135,10 @@ export default function Dashboard() {
           setSearch={setSearch}
           role={role}
           setRole={setRole}
+          clientNameFilter={clientNameFilter}
+          setClientNameFilter={setClientNameFilter}
+          processFilter={processFilter}
+          setProcessFilter={setProcessFilter}
           onProjectUpdate={handleProjectUpdate}
         />
         <TabsContent value="projects" className="space-y-4">

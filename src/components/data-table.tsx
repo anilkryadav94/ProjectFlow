@@ -17,7 +17,7 @@ import { cn } from "@/lib/utils"
 interface DataTableProps {
   data: Project[];
   columns: {
-    key: keyof Project | 'actions' | 'subject';
+    key: keyof Project | 'actions' | 'subject' | 'clientName' | 'process';
     header: string;
     render?: (project: Project, onProjectUpdate: (project: Project) => void) => React.ReactNode;
   }[];

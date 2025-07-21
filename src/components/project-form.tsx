@@ -32,13 +32,15 @@ import {
   SelectValue,
 } from "@/components/ui/select"
 import { saveProject } from "@/app/actions"
-import { type Project, processors, qas } from "@/lib/data"
+import { type Project, processors, qas, clientNames, processes, ProcessType } from "@/lib/data"
 import { Textarea } from "./ui/textarea"
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "./ui/card"
 
 const formSchema = z.object({
   id: z.string().optional(),
   refNumber: z.string().min(1, "Reference number is required."),
+  clientName: z.string().min(1, "Client name is required."),
+  process: z.enum(["Patent", "TM", "IDS", "Project"]),
   applicationNumber: z.string().optional(),
   patentNumber: z.string().optional(),
   emailDate: z.date({ required_error: "Email date is required." }),
@@ -76,6 +78,8 @@ export function ProjectForm({ project, onFormSubmit, onCancel, role, setOpen }: 
         form.reset({
             id: project.id,
             refNumber: project.refNumber || "",
+            clientName: project.clientName || "",
+            process: project.process || "Patent",
             applicationNumber: project.applicationNumber || "",
             patentNumber: project.patentNumber || "",
             emailDate: new Date(project.emailDate),
@@ -91,6 +95,8 @@ export function ProjectForm({ project, onFormSubmit, onCancel, role, setOpen }: 
         form.reset({
             emailDate: new Date(),
             allocationDate: new Date(),
+            clientName: clientNames[0],
+            process: "Patent",
         });
     }
   }, [project, form]);
@@ -157,6 +163,56 @@ export function ProjectForm({ project, onFormSubmit, onCancel, role, setOpen }: 
                         <FormControl>
                             <Input placeholder="Invention disclosure..." {...field} disabled={!isManager || !!project}/>
                         </FormControl>
+                        <FormMessage />
+                        </FormItem>
+                    )}
+                />
+            </div>
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <FormField
+                    control={form.control}
+                    name="clientName"
+                    render={({ field }) => (
+                        <FormItem>
+                        <FormLabel>Client Name</FormLabel>
+                          {isManager ? (
+                            <Select onValueChange={field.onChange} defaultValue={field.value}>
+                                <FormControl>
+                                <SelectTrigger>
+                                    <SelectValue placeholder="Select a client" />
+                                </SelectTrigger>
+                                </FormControl>
+                                <SelectContent>
+                                    {clientNames.map(c => <SelectItem key={c} value={c}>{c}</SelectItem>)}
+                                </SelectContent>
+                            </Select>
+                          ) : (
+                            <Input {...field} disabled />
+                          )}
+                        <FormMessage />
+                        </FormItem>
+                    )}
+                />
+                <FormField
+                    control={form.control}
+                    name="process"
+                    render={({ field }) => (
+                        <FormItem>
+                        <FormLabel>Process</FormLabel>
+                        {isManager ? (
+                            <Select onValueChange={field.onChange} defaultValue={field.value}>
+                                <FormControl>
+                                <SelectTrigger>
+                                    <SelectValue placeholder="Select a process" />
+                                </SelectTrigger>
+                                </FormControl>
+                                <SelectContent>
+                                    {processes.map(p => <SelectItem key={p} value={p}>{p}</SelectItem>)}
+                                </SelectContent>
+                            </Select>
+                        ) : (
+                            <Input {...field} disabled />
+                        )}
                         <FormMessage />
                         </FormItem>
                     )}
@@ -360,7 +416,7 @@ export function ProjectForm({ project, onFormSubmit, onCancel, role, setOpen }: 
                 render={({ field }) => (
                     <FormItem>
                     <FormLabel>Status</FormLabel>
-                    <Select onValueChange={field.onChange} value={field.value} disabled={isManager}>
+                    <Select onValueChange={field.onChange} value={field.value} disabled={!isProcessor && !isQA}>
                         <FormControl>
                         <SelectTrigger>
                             <SelectValue placeholder="Select status" />
@@ -370,7 +426,7 @@ export function ProjectForm({ project, onFormSubmit, onCancel, role, setOpen }: 
                             {isProcessor && <SelectItem value="Processing">Processing</SelectItem>}
                             {isProcessor && <SelectItem value="On Hold">On Hold</SelectItem>}
                             {isQA && <SelectItem value="QA">QA</SelectItem>}
-                             {isQA && <SelectItem value="On Hold">On Hold</SelectItem>}
+                            {isQA && <SelectItem value="On Hold">On Hold</SelectItem>}
                         </SelectContent>
                     </Select>
                     <FormMessage />
@@ -382,13 +438,13 @@ export function ProjectForm({ project, onFormSubmit, onCancel, role, setOpen }: 
                 {onCancel && <Button variant="outline" onClick={onCancel} disabled={isSubmitting}>Cancel</Button>}
                 
                 {isProcessor && project?.status === "Processing" && (
-                    <Button type="submit" onClick={form.handleSubmit(d => onSubmit({...d, status: 'QA', submitAction: 'process'}))} disabled={isSubmitting}>
+                    <Button type="submit" onClick={form.handleSubmit(d => onSubmit({...d, submitAction: 'process'}))} disabled={isSubmitting}>
                         {isSubmitting && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
                         Submit for QA
                     </Button>
                 )}
                 {isQA && project?.status === "QA" && (
-                     <Button type="submit" onClick={form.handleSubmit(d => onSubmit({...d, status: 'Complete', submitAction: 'qa_complete'}))} disabled={isSubmitting}>
+                     <Button type="submit" onClick={form.handleSubmit(d => onSubmit({...d, submitAction: 'qa_complete'}))} disabled={isSubmitting}>
                         {isSubmitting && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
                         QA Complete
                     </Button>

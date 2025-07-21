@@ -3,8 +3,8 @@
 import * as React from "react"
 import type { DateRange } from "react-day-picker"
 import { ChevronsUpDown, Download, PlusCircle, Search, UserCircle, Workflow } from "lucide-react"
-import type { Project, Role } from "@/lib/data"
-import { roles } from "@/lib/data"
+import type { Project, Role, ProcessType } from "@/lib/data"
+import { roles, clientNames, processes } from "@/lib/data"
 import { Button } from "@/components/ui/button"
 import {
   DropdownMenu,
@@ -17,10 +17,10 @@ import {
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu"
 import { Input } from "@/components/ui/input"
-import { DateRangePicker } from "@/components/date-range-picker"
 import { ProjectForm } from "./project-form"
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "./ui/dialog"
 import { TabsList, TabsTrigger } from "./ui/tabs"
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "./ui/select"
 
 interface HeaderProps {
     search: string;
@@ -28,9 +28,13 @@ interface HeaderProps {
     role: Role;
     setRole: (role: Role) => void;
     onProjectUpdate: (project: Project) => void;
+    clientNameFilter: string;
+    setClientNameFilter: (client: string) => void;
+    processFilter: ProcessType | 'all';
+    setProcessFilter: (process: ProcessType | 'all') => void;
 }
 
-export function Header({ search, setSearch, role, setRole, onProjectUpdate }: HeaderProps) {
+export function Header({ search, setSearch, role, setRole, onProjectUpdate, clientNameFilter, setClientNameFilter, processFilter, setProcessFilter }: HeaderProps) {
   const [isFormOpen, setIsFormOpen] = React.useState(false);
 
   return (
@@ -78,6 +82,28 @@ export function Header({ search, setSearch, role, setRole, onProjectUpdate }: He
                     onChange={(e) => setSearch(e.target.value)}
                 />
             </div>
+            <Select value={clientNameFilter} onValueChange={setClientNameFilter}>
+                <SelectTrigger className="w-[180px]">
+                    <SelectValue placeholder="Filter by Client" />
+                </SelectTrigger>
+                <SelectContent>
+                    <SelectItem value="all">All Clients</SelectItem>
+                    {clientNames.map(name => (
+                        <SelectItem key={name} value={name}>{name}</SelectItem>
+                    ))}
+                </SelectContent>
+            </Select>
+            <Select value={processFilter} onValueChange={(value) => setProcessFilter(value as ProcessType | 'all')}>
+                <SelectTrigger className="w-[180px]">
+                    <SelectValue placeholder="Filter by Process" />
+                </SelectTrigger>
+                <SelectContent>
+                    <SelectItem value="all">All Processes</SelectItem>
+                     {processes.map(p => (
+                        <SelectItem key={p} value={p}>{p}</SelectItem>
+                    ))}
+                </SelectContent>
+            </Select>
         </div>
       </div>
     </div>

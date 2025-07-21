@@ -1,6 +1,7 @@
 export type Role = 'Admin' | 'Manager' | 'Processor' | 'QA';
 
 export type ProjectStatus = 'Pending' | 'Processing' | 'QA' | 'Complete' | 'On Hold';
+export type ProcessType = 'Patent' | 'TM' | 'IDS' | 'Project';
 
 export type Project = {
   id: string;
@@ -8,6 +9,8 @@ export type Project = {
   patentNumber: string;
   refNumber: string;
   subject: string;
+  clientName: string;
+  process: ProcessType;
   actionTaken: string;
   documentName: string;
   emailDate: string;
@@ -23,6 +26,9 @@ export const roles: Role[] = ['Admin', 'Manager', 'Processor', 'QA'];
 
 export const processors = ['Alice', 'Bob', 'Charlie'];
 export const qas = ['David', 'Eve', 'Anil', 'Ankit', 'Rahul'];
+export const clientNames = ['Client A', 'Client B', 'Client C'];
+export const processes: ProcessType[] = ['Patent', 'TM', 'IDS', 'Project'];
+
 
 export const projects: Project[] = [
   {
@@ -31,6 +37,8 @@ export const projects: Project[] = [
     patentNumber: '10,123,456',
     refNumber: 'REF001',
     subject: 'Invention Disclosure - AI in Healthcare',
+    clientName: 'Client A',
+    process: 'Patent',
     actionTaken: 'First Office Action',
     documentName: 'Response_To_OA.pdf',
     emailDate: '2023-10-01',
@@ -47,6 +55,8 @@ export const projects: Project[] = [
     patentNumber: '10,234,567',
     refNumber: 'REF002',
     subject: 'New Patent Application Filing',
+    clientName: 'Client B',
+    process: 'Patent',
     actionTaken: '',
     documentName: '',
     emailDate: '2023-10-03',
@@ -63,6 +73,8 @@ export const projects: Project[] = [
     patentNumber: '',
     refNumber: 'REF003',
     subject: 'Follow-up on Application XYZ',
+    clientName: 'Client C',
+    process: 'TM',
     actionTaken: '',
     documentName: '',
     emailDate: '2023-10-10',
@@ -79,6 +91,8 @@ export const projects: Project[] = [
     patentNumber: '',
     refNumber: 'REF004',
     subject: 'Urgent: Client Request',
+    clientName: 'Client A',
+    process: 'Project',
     actionTaken: '',
     documentName: '',
     emailDate: '2023-10-15',
@@ -95,6 +109,8 @@ export const projects: Project[] = [
     patentNumber: '10,567,890',
     refNumber: 'REF005',
     subject: 'Biotech Patent Documents',
+    clientName: 'Client B',
+    process: 'IDS',
     actionTaken: 'Filed Amendment',
     documentName: 'Amendment.pdf',
     emailDate: '2023-09-20',
@@ -111,6 +127,8 @@ export const projects: Project[] = [
     patentNumber: '',
     refNumber: 'REF006',
     subject: 'Query from Patent Office',
+    clientName: 'Client C',
+    process: 'Patent',
     actionTaken: '',
     documentName: '',
     emailDate: '2023-10-20',
@@ -127,6 +145,8 @@ export const projects: Project[] = [
     patentNumber: '',
     refNumber: 'REF007',
     subject: 'New Submission for Review',
+    clientName: 'Client A',
+    process: 'Patent',
     actionTaken: '',
     documentName: '',
     emailDate: '2023-11-01',

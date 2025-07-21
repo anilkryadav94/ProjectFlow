@@ -19,6 +19,14 @@ export const columns = [
     header: "Ref Number",
   },
   {
+    key: "clientName" as const,
+    header: "Client Name",
+  },
+  {
+    key: "process" as const,
+    header: "Process",
+  },
+  {
     key: "subject" as const,
     header: "Subject",
   },
