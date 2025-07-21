@@ -21,11 +21,11 @@ export function LoginForm() {
   }, [state?.success, router]);
 
   return (
-    <Card className="w-full max-w-sm">
+    <Card className="w-full max-w-sm shadow-xl">
       <CardHeader className="text-center">
         <div className="flex justify-center items-center gap-2 mb-4">
             <Workflow className="h-8 w-8 text-primary" />
-            <h1 className="text-3xl font-bold">SmartFlow</h1>
+            <h1 className="text-3xl font-bold tracking-tight text-foreground">ProjectFlow</h1>
         </div>
         <CardTitle className="text-2xl">Login</CardTitle>
         <CardDescription>Enter your credentials to access your dashboard.</CardDescription>
