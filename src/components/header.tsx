@@ -38,8 +38,8 @@ interface HeaderProps {
     isDownloadDisabled?: boolean;
     isManagerOrAdmin: boolean;
     hasSearchResults: boolean;
-    onAmendSearch: () => void;
-    onResetSearch: () => void;
+    onAmendSearch?: () => void;
+    onResetSearch?: () => void;
     clientNameFilter: string;
     setClientNameFilter?: (value: string) => void;
     processFilter: string | 'all';
