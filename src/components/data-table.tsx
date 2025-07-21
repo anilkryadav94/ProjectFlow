@@ -2,8 +2,7 @@
 "use client"
 
 import * as React from "react"
-import Papa from "papaparse"
-import { ArrowDown, ArrowUp, FileSpreadsheet } from "lucide-react"
+import { ArrowDown, ArrowUp } from "lucide-react"
 import type { Project } from "@/lib/data"
 import {
   Table,
@@ -14,47 +13,26 @@ import {
   TableRow,
 } from "@/components/ui/table"
 import { cn } from "@/lib/utils"
-import { Button } from "./ui/button"
 
 interface DataTableProps {
   data: Project[];
   columns: {
-    key: keyof Project | 'subject' | 'clientName' | 'process';
+    key: keyof Project | 'subject' | 'clientName' | 'process' | 'actions';
     header: string;
     render?: (project: Project, isClickable?: boolean) => React.ReactNode;
     isClickable?: boolean;
   }[];
   sort: { key: keyof Project; direction: 'asc' | 'desc' } | null;
   setSort: (sort: { key: keyof Project; direction: 'asc' | 'desc' } | null) => void;
-  onRowClick?: (project: Project) => void;
-  activeProjectId?: string;
-  projectsToDownload: Project[];
-  isRowClickable?: boolean;
 }
 
-export function DataTable({ data, columns, sort, setSort, onRowClick, activeProjectId, projectsToDownload, isRowClickable }: DataTableProps) {
+export function DataTable({ data, columns, sort, setSort }: DataTableProps) {
   const handleSort = (key: keyof Project) => {
     if (sort && sort.key === key) {
       setSort({ key, direction: sort.direction === 'asc' ? 'desc' : 'asc' });
     } else {
       setSort({ key, direction: 'asc' });
     }
-  };
-  
-  const handleDownload = () => {
-    if (!projectsToDownload || projectsToDownload.length === 0) {
-      return;
-    }
-    const csv = Papa.unparse(projectsToDownload);
-    const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
-    const link = document.createElement("a");
-    const url = URL.createObjectURL(blob);
-    link.setAttribute("href", url);
-    link.setAttribute("download", `projects_export_${new Date().toISOString().split('T')[0]}.csv`);
-    link.style.visibility = 'hidden';
-    document.body.appendChild(link);
-    link.click();
-    document.body.removeChild(link);
   };
 
   return (
@@ -66,8 +44,8 @@ export function DataTable({ data, columns, sort, setSort, onRowClick, activeProj
               {columns.map((column) => (
                 <TableHead key={column.key} className="text-primary-foreground/90">
                     <div
-                      className="flex items-center gap-2 cursor-pointer"
-                      onClick={() => handleSort(column.key as keyof Project)}
+                      className={cn("flex items-center gap-2", column.key !== 'actions' && "cursor-pointer")}
+                      onClick={() => column.key !== 'actions' && handleSort(column.key as keyof Project)}
                     >
                       {column.header}
                       {sort?.key === column.key && (
@@ -76,12 +54,6 @@ export function DataTable({ data, columns, sort, setSort, onRowClick, activeProj
                     </div>
                 </TableHead>
               ))}
-              <TableHead className="text-right">
-                  <Button variant="ghost" size="icon" onClick={handleDownload} disabled={projectsToDownload.length === 0} className="h-8 w-8 text-primary-foreground/90 hover:text-primary-foreground hover:bg-primary/40">
-                    <FileSpreadsheet className="h-4 w-4" />
-                    <span className="sr-only">Download CSV</span>
-                  </Button>
-              </TableHead>
             </TableRow>
           </TableHeader>
           <TableBody>
@@ -89,16 +61,13 @@ export function DataTable({ data, columns, sort, setSort, onRowClick, activeProj
               data.map((row) => (
                 <TableRow 
                   key={row.id}
-                  onClick={() => onRowClick?.(row)}
-                  className={cn(isRowClickable && "cursor-pointer")}
-                  data-state={activeProjectId === row.id ? 'selected' : undefined}
+                  data-state={undefined}
                 >
                   {columns.map((column) => (
                     <TableCell key={column.key}>
                       {column.render ? column.render(row, column.isClickable) : (row[column.key as keyof Project] ?? 'N/A')}
                     </TableCell>
                   ))}
-                  <TableCell></TableCell>
                 </TableRow>
               ))
             ) : (
@@ -114,5 +83,3 @@ export function DataTable({ data, columns, sort, setSort, onRowClick, activeProj
     </div>
   )
 }
-
-  

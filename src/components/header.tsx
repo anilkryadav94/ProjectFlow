@@ -2,9 +2,9 @@
 "use client"
 
 import * as React from "react"
-import { LogOut, Search, Settings, FileSpreadsheet, Workflow, Home } from "lucide-react"
-import type { ProcessType, Role, User } from "@/lib/data"
-import { clientNames, processes, roleHierarchy } from "@/lib/data"
+import { LogOut, Search, Settings, FileSpreadsheet, Workflow, X } from "lucide-react"
+import type { ProcessType, Role, User, ProjectStatus } from "@/lib/data"
+import { clientNames, processes, projectStatuses, roleHierarchy } from "@/lib/data"
 import { Button } from "@/components/ui/button"
 import {
   DropdownMenu,
@@ -23,17 +23,49 @@ import { useRouter } from "next/navigation"
 import { ThemeToggle } from "./theme-toggle";
 import { Separator } from "./ui/separator";
 import { Label } from "@/components/ui/label";
+import { DateRangePicker } from "./date-range-picker"
+import type { DateRange } from "react-day-picker"
 
 interface HeaderProps {
     user: User;
     activeRole: Role;
     setActiveRole: (role: Role) => void;
+    search: string;
+    setSearch: (search: string) => void;
+    clientNameFilter: string;
+    setClientNameFilter: (client: string) => void;
+    processFilter: ProcessType | 'all';
+    setProcessFilter: (process: ProcessType | 'all') => void;
+    statusFilter: ProjectStatus | 'all';
+    setStatusFilter: (status: ProjectStatus | 'all') => void;
+    emailDateFilter: DateRange | undefined;
+    setEmailDateFilter: (date: DateRange | undefined) => void;
+    allocationDateFilter: DateRange | undefined;
+    setAllocationDateFilter: (date: DateRange | undefined) => void;
+    onResetFilters: () => void;
+    handleDownload: () => void;
+    isDownloadDisabled: boolean;
 }
 
 export function Header({ 
   user, 
   activeRole,
   setActiveRole,
+  search,
+  setSearch,
+  clientNameFilter,
+  setClientNameFilter,
+  processFilter,
+  setProcessFilter,
+  statusFilter,
+  setStatusFilter,
+  emailDateFilter,
+  setEmailDateFilter,
+  allocationDateFilter,
+  setAllocationDateFilter,
+  onResetFilters,
+  handleDownload,
+  isDownloadDisabled,
 }: HeaderProps) {
   const router = useRouter();
 
@@ -63,13 +95,13 @@ export function Header({
     if (!user.roles) return [];
     return user.roles.sort((a, b) => roleHierarchy.indexOf(a) - roleHierarchy.indexOf(b));
   }, [user.roles]);
+  
+  const showFilters = activeRole === 'Manager' || activeRole === 'Processor' || activeRole === 'QA';
 
   return (
+    <>
     <div className="flex items-center justify-between bg-primary text-primary-foreground p-2 px-4 shadow-md h-16 shrink-0">
         <div className="flex items-center gap-4">
-          <Button variant="ghost" size="icon" className="h-8 w-8 hover:bg-primary/80" onClick={() => router.push('/')}>
-            <Home className="h-5 w-5" />
-          </Button>
           <div className="flex items-center gap-2">
             <Workflow className="h-6 w-6" />
             <h2 className="text-xl font-bold tracking-tight">ProjectFlow</h2>
@@ -79,6 +111,10 @@ export function Header({
         </div>
         
         <div className="flex items-center space-x-2">
+            <Button variant="ghost" size="icon" onClick={handleDownload} disabled={isDownloadDisabled} className="h-8 w-8 hover:bg-primary/80">
+              <FileSpreadsheet className="h-5 w-5" />
+              <span className="sr-only">Download CSV</span>
+            </Button>
             <DropdownMenu>
                 <DropdownMenuTrigger asChild>
                     <Button variant="outline" className="w-auto h-9 text-foreground text-xs px-2">
@@ -117,5 +153,56 @@ export function Header({
             </DropdownMenu>
         </div>
     </div>
+    {showFilters && (
+      <div className="flex items-center gap-2 bg-background border-b p-2">
+        <div className="relative flex-1 max-w-xs">
+          <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+          <Input 
+            placeholder="Quick search..."
+            className="pl-9 h-9"
+            value={search}
+            onChange={(e) => setSearch(e.target.value)}
+          />
+        </div>
+        <Select value={clientNameFilter} onValueChange={setClientNameFilter}>
+          <SelectTrigger className="h-9 w-[150px]">
+            <SelectValue placeholder="Client" />
+          </SelectTrigger>
+          <SelectContent>
+            <SelectItem value="all">All Clients</SelectItem>
+            {clientNames.map(name => <SelectItem key={name} value={name}>{name}</SelectItem>)}
+          </SelectContent>
+        </Select>
+        <Select value={processFilter} onValueChange={(value) => setProcessFilter(value as ProcessType | 'all')}>
+          <SelectTrigger className="h-9 w-[150px]">
+            <SelectValue placeholder="Process" />
+          </SelectTrigger>
+          <SelectContent>
+            <SelectItem value="all">All Processes</SelectItem>
+            {processes.map(p => <SelectItem key={p} value={p}>{p}</SelectItem>)}
+          </SelectContent>
+        </Select>
+        <Select value={statusFilter} onValueChange={(value) => setStatusFilter(value as ProjectStatus | 'all')}>
+          <SelectTrigger className="h-9 w-[150px]">
+            <SelectValue placeholder="Status" />
+          </SelectTrigger>
+          <SelectContent>
+            <SelectItem value="all">All Statuses</SelectItem>
+            {projectStatuses.map(s => <SelectItem key={s} value={s}>{s}</SelectItem>)}
+          </SelectContent>
+        </Select>
+        <div className="w-[250px]">
+            <DateRangePicker date={emailDateFilter} setDate={setEmailDateFilter} />
+        </div>
+         <div className="w-[250px]">
+            <DateRangePicker date={allocationDateFilter} setDate={setAllocationDateFilter} />
+        </div>
+        <Button variant="ghost" onClick={onResetFilters} size="sm">
+          <X className="mr-2 h-4 w-4" />
+          Reset
+        </Button>
+      </div>
+    )}
+    </>
   )
 }

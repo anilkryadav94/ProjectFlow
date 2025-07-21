@@ -130,19 +130,6 @@ export function ProjectForm({ project, onFormSubmit, role, setOpen }: ProjectFor
     }
   }, [project, form]);
   
-  if (!project && (role === 'Processor' || role === 'QA')) {
-    return (
-        <div className="animated-border shadow-xl h-full">
-            <Card className="h-full flex items-center justify-center">
-                <CardHeader>
-                    <CardTitle className="text-xl">No Task Selected</CardTitle>
-                    <CardDescription>Select a task from the dashboard to view its details.</CardDescription>
-                </CardHeader>
-            </Card>
-        </div>
-    )
-  }
-
   async function onSubmit(data: ProjectFormValues) {
     setIsSubmitting(true);
     try {
@@ -176,13 +163,12 @@ export function ProjectForm({ project, onFormSubmit, role, setOpen }: ProjectFor
       <Form {...form}>
         <form onSubmit={(e) => e.preventDefault()} className="h-full flex flex-col">
             <Card className="border-0 shadow-none flex flex-col flex-grow h-full">
-              <CardHeader className="bg-muted p-3 flex-row items-center justify-between">
+              <CardHeader className="bg-muted/50 p-3 flex-row items-center justify-between">
                 <div>
                     <CardTitle className="text-lg">{project ? `Task: ${project.refNumber}`: 'New Project'}</CardTitle>
                     {project && <CardDescription className="text-xs">Subject: {project.subject}</CardDescription>}
                 </div>
                 <div className="flex items-center space-x-2">
-                    
                     {project && (
                         <Dialog open={isMMFormOpen} onOpenChange={setIsMMFormOpen}>
                             <DialogTrigger asChild>

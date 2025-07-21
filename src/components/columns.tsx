@@ -1,11 +1,9 @@
 
 "use client";
 
-import Link from "next/link";
 import type { Project, ProjectStatus } from "@/lib/data";
 import { Badge } from "@/components/ui/badge";
 import { cn } from "@/lib/utils";
-import { Button } from "./ui/button";
 
 const statusColors: Record<ProjectStatus, string> = {
   Pending: "bg-yellow-500/20 text-yellow-700 border-yellow-500/30",
@@ -19,9 +17,8 @@ export const columns = [
   {
     key: "refNumber" as const,
     header: "Ref Number",
-    isClickable: false,
-    render: (project: Project, isClickable?: boolean) => (
-        <span className={cn("font-medium text-primary", isClickable && "hover:underline")}>
+    render: (project: Project) => (
+        <span className="font-medium text-primary">
           {project.refNumber}
         </span>
     )
@@ -72,5 +69,3 @@ export const columns = [
     )
   },
 ];
-
-  
