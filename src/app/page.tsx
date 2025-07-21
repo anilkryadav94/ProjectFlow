@@ -1,6 +1,6 @@
 
 import * as React from 'react';
-import Dashboard from '@/components/dashboard';
+import Dashboard, { DashboardWrapper } from '@/components/dashboard';
 import { redirect } from 'next/navigation';
 import { getSession } from '@/lib/auth';
 import type { Project } from '@/lib/data';
@@ -21,7 +21,7 @@ export default async function Home() {
   
   return (
     <main>
-      <Dashboard 
+      <DashboardWrapper 
         user={session.user} 
         initialProjects={initialProjects}
       />

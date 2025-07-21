@@ -14,11 +14,21 @@ import { useToast } from '@/hooks/use-toast';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from './ui/select';
 import { Loader2 } from 'lucide-react';
 import { AdvancedSearchForm, type SearchCriteria } from './advanced-search-form';
+import { useSearchParams } from 'next/navigation';
 
 interface DashboardProps {
   user: User;
   initialProjects: Project[];
 }
+
+export function DashboardWrapper(props: DashboardProps) {
+    return (
+        <React.Suspense fallback={<div>Loading...</div>}>
+            <Dashboard {...props} />
+        </React.Suspense>
+    )
+}
+
 
 export type SearchableColumn = 'refNumber' | 'applicationNumber' | 'patentNumber' | 'subject' | 'status' | 'allocationDate' | 'emailDate';
 
@@ -32,6 +42,9 @@ export default function Dashboard({
   user, 
   initialProjects,
 }: DashboardProps) {
+  const searchParams = useSearchParams();
+  const urlRole = searchParams.get('role') as Role;
+
   const [activeRole, setActiveRole] = React.useState<Role | null>(null);
   const [projects, setProjects] = React.useState<Project[]>(initialProjects);
   const [search, setSearch] = React.useState('');
@@ -57,11 +70,15 @@ export default function Dashboard({
   const { toast } = useToast();
 
   React.useEffect(() => {
-    if (user?.roles?.length > 0) {
+    // If a role is specified in the URL and the user has that role, use it.
+    if (urlRole && user.roles.includes(urlRole)) {
+        setActiveRole(urlRole);
+    } else if (user?.roles?.length > 0) {
+      // Otherwise, fall back to the highest role in the hierarchy.
       const highestRole = roleHierarchy.find(role => user.roles.includes(role));
       setActiveRole(highestRole || user.roles[0]);
     }
-  }, [user.roles]);
+  }, [user.roles, urlRole]);
   
   const handleDownload = () => {
     const dataToExport = filteredProjects ?? dashboardProjects;
@@ -207,7 +224,7 @@ export default function Dashboard({
 
 
   if (!activeRole) {
-    return null;
+    return null; // Or a loading spinner
   }
   
   const isManagerOrAdmin = activeRole === 'Manager' || activeRole === 'Admin';

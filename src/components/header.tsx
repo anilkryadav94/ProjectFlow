@@ -37,7 +37,7 @@ interface HeaderProps {
     handleDownload?: () => void;
     isDownloadDisabled?: boolean;
     isManagerOrAdmin: boolean;
-    hasSearchResults: boolean;
+    hasSearchResults?: boolean;
     onAmendSearch?: () => void;
     onResetSearch?: () => void;
     clientNameFilter?: string;
@@ -83,9 +83,8 @@ export function Header({
       setActiveRole(role);
     } else {
       // If on a page without setActiveRole (like task page), redirect to home
-      // This will effectively switch the role for the whole dashboard context.
-      router.push('/');
-      router.refresh();
+      // with the selected role as a query parameter.
+      router.push(`/?role=${role}`);
     }
   }
 
@@ -112,6 +111,7 @@ export function Header({
   }, [user.roles]);
 
   const dashboardName = getDashboardName();
+  const dashboardLink = activeRole ? `/?role=${activeRole}` : '/';
 
   return (
     <>
@@ -122,7 +122,7 @@ export function Header({
             <h2 className="text-xl font-bold tracking-tight">ProjectFlow</h2>
           </div>
           <Separator orientation="vertical" className="h-6 bg-primary-foreground/50" />
-            <Link href="/" className="text-md font-semibold hover:underline">
+            <Link href={dashboardLink} className="text-md font-semibold hover:underline">
                 {dashboardName}
             </Link>
         </div>
