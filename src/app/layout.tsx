@@ -15,7 +15,7 @@ export default function RootLayout({
   return (
     <html lang="en" suppressHydrationWarning>
       <head>
-        <link rel="icon" href="data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 100 100%22><path fill=%22%232563eb%22 d=%22M50,0A50,50,0,1,0,100,50,50,50,0,0,0,50,0Zm0,90A40,40,0,1,1,90,50,40,40,0,0,1,50,90Z%22/><path fill=%22%23ffffff%22 d=%22M62.5,45h-25a2.5,2.5,0,0,1,0-5h25a2.5,2.5,0,0,1,0,5Z%22/><path fill=%22%23ffffff%22 d=%22M62.5,60h-25a2.5,2.5,0,0,1,0-5h25a2.5,2.5,0,0,1,0,5Z%22/><path fill=%22%23ffffff%22 d=%22M42.5,75h-5a2.5,2.5,0,0,1,0-5h5a2.5,2.5,0,0,1,0,5Z%22/><path fill=%22%23ffffff%22 d=%22M62.5,30h-25a2.5,2.5,0,0,1,0-5h25a2.5,2.5,0,0,1,0,5Z%22/></svg>" />
+        <link rel="icon" href="data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 100 100%22><path fill=%22%232563eb%22 d=%22M65,10H35a5,5,0,0,0-5,5V85a5,5,0,0,0,5,5H65a5,5,0,0,0,5-5V15A5,5,0,0,0,65,10Zm-5,70H40V70H60ZM60,60H40V50H60Z%22/><circle fill=%22%232563eb%22 cx=%2260%22 cy=%2230%22 r=%2212%22/><path fill=%22white%22 d=%22M63.5,29.5h-7a1,1,0,0,1,0-2h7a1,1,0,0,1,0,2Zm0,5h-7a1,1,0,0,1,0-2h7a1,1,0,0,1,0,2Z%22/></svg>" />
         <link rel="preconnect" href="https://fonts.googleapis.com" />
         <link rel="preconnect" href="https://fonts.gstatic.com" crossOrigin="" />
         <link href="https://fonts.googleapis.com/css2?family=Inter&display=swap" rel="stylesheet"></link>
