@@ -115,7 +115,7 @@ export default function Dashboard({
 
 
   return (
-    <div className="flex flex-col h-screen p-4 md:p-8 pt-2">
+    <div className="flex flex-col h-screen p-4 md:p-8 pt-0">
         <Header 
           search={search}
           setSearch={setSearch}
@@ -142,7 +142,7 @@ export default function Dashboard({
                         role={activeRole}
                     />
                 </div>
-                <div className="flex-grow flex-shrink min-h-0 h-[calc(50%-0.5rem)]">
+                <div className="flex-grow flex-shrink min-h-0 h-[calc(50%-0.5rem)] overflow-y-auto">
                     <DataTable 
                         data={filteredProjects}
                         columns={columns}
@@ -169,5 +169,3 @@ export default function Dashboard({
     </div>
   );
 }
-
-    
