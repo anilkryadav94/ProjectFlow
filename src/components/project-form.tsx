@@ -483,14 +483,14 @@ export function ProjectForm({ project, onFormSubmit, onCancel, role, setOpen }: 
                     </div>
                 </CardContent>
               </ScrollArea>
-              <CardFooter className="p-4">
+              <CardFooter className="px-4 py-2 bg-muted">
                 <div className="flex justify-end space-x-2 w-full">
-                    {onCancel && <Button variant="outline" onClick={onCancel} disabled={isSubmitting}>Cancel</Button>}
+                    {onCancel && <Button size="sm" variant="outline" onClick={onCancel} disabled={isSubmitting}>Cancel</Button>}
 
                     {project && (
                         <Dialog open={isMMFormOpen} onOpenChange={setIsMMFormOpen}>
                             <DialogTrigger asChild>
-                                <Button variant="outline" disabled={isSubmitting}>
+                                <Button size="sm" variant="outline" disabled={isSubmitting}>
                                     <PlusSquare className="mr-2 h-4 w-4" />
                                     Add MM Records
                                 </Button>
@@ -505,18 +505,18 @@ export function ProjectForm({ project, onFormSubmit, onCancel, role, setOpen }: 
                     )}
                     
                     {isProcessor && project?.status === "Processing" && (
-                        <Button type="submit" onClick={form.handleSubmit(d => onSubmit({...d, submitAction: 'process'}))} disabled={isSubmitting}>
+                        <Button size="sm" type="submit" onClick={form.handleSubmit(d => onSubmit({...d, submitAction: 'process'}))} disabled={isSubmitting}>
                             {isSubmitting && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
                             Submit for QA
                         </Button>
                     )}
                     {isQA && project?.status === "QA" && (
-                        <Button type="submit" onClick={form.handleSubmit(d => onSubmit({...d, submitAction: 'qa_complete'}))} disabled={isSubmitting}>
+                        <Button size="sm" type="submit" onClick={form.handleSubmit(d => onSubmit({...d, submitAction: 'qa_complete'}))} disabled={isSubmitting}>
                             {isSubmitting && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
                             QA Complete
                         </Button>
                     )}
-                    <Button type="submit" onClick={form.handleSubmit(d => onSubmit({...d, submitAction: 'save'}))} disabled={isSubmitting || (isProcessor && project?.status !== 'Processing') || (isQA && project?.status !== 'QA')}>
+                    <Button size="sm" type="submit" onClick={form.handleSubmit(d => onSubmit({...d, submitAction: 'save'}))} disabled={isSubmitting || (isProcessor && project?.status !== 'Processing') || (isQA && project?.status !== 'QA')}>
                         {isSubmitting && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
                         {isManager && !project ? 'Create Project' : 'Save Changes'}
                     </Button>
@@ -528,3 +528,5 @@ export function ProjectForm({ project, onFormSubmit, onCancel, role, setOpen }: 
     </div>
   )
 }
+
+    
