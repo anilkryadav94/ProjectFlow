@@ -135,7 +135,7 @@ export default function Dashboard() {
         <TabsContent value="projects" className="space-y-4">
           {isTaskView ? (
              <div className="flex flex-col h-[calc(100vh-230px)] gap-4">
-                <ScrollArea className="h-[70%] pr-4">
+                <ScrollArea className="h-[80%] pr-4">
                     <ProjectForm 
                         project={activeProject} 
                         onFormSubmit={handleProjectUpdate}
@@ -143,7 +143,7 @@ export default function Dashboard() {
                         role={role}
                     />
                 </ScrollArea>
-                <div className="h-[30%]">
+                <div className="h-[20%]">
                     <DataTable 
                         data={filteredProjects}
                         columns={columns}
