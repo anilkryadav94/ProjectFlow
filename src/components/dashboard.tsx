@@ -2,14 +2,15 @@
 "use client";
 
 import * as React from 'react';
-import { type Project, type Role, ProcessType, type User } from '@/lib/data';
+import { type Project, type Role, ProcessType, type User, users as allUsers } from '@/lib/data';
 import { DataTable } from '@/components/data-table';
 import { columns } from '@/components/columns';
 import { Header } from '@/components/header';
-import { ManagerView } from '@/components/manager-view';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { ProjectForm } from './project-form';
 import { ScrollArea } from './ui/scroll-area';
+import { UserManagementTable } from './user-management-table';
+
 
 interface DashboardProps {
   user: User;
@@ -125,7 +126,7 @@ export default function Dashboard({
         <TabsContent value="projects" className="flex-grow mt-4 overflow-hidden">
           {isTaskView ? (
              <div className="flex flex-col h-full gap-4">
-                <ScrollArea className="flex-grow pr-4">
+                <ScrollArea className="flex-grow pr-4 h-[calc(100%-320px)]">
                     <ProjectForm 
                         project={activeProject} 
                         onFormSubmit={onProjectUpdate}
@@ -157,9 +158,9 @@ export default function Dashboard({
               />
           )}
         </TabsContent>
-        {(user.role === 'Admin' || user.role === 'Manager') && (
-            <TabsContent value="manager" className="space-y-4">
-                <ManagerView />
+        {(user.role === 'Admin') && (
+            <TabsContent value="users" className="space-y-4">
+                <UserManagementTable users={allUsers} />
             </TabsContent>
         )}
        </Tabs>

@@ -19,7 +19,6 @@ import { TabsList, TabsTrigger } from "./ui/tabs"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "./ui/select"
 import { logout } from "@/lib/auth"
 import { useRouter } from "next/navigation"
-import Link from "next/link"
 
 interface HeaderProps {
     search: string;
@@ -80,14 +79,6 @@ export function Header({
                 <DropdownMenuContent className="w-48">
                     <DropdownMenuLabel>{user.role}</DropdownMenuLabel>
                     <DropdownMenuSeparator />
-                    {user.role === 'Admin' && (
-                       <DropdownMenuItem asChild>
-                          <Link href="/admin">
-                            <Settings className="mr-2 h-4 w-4" />
-                            Admin Panel
-                          </Link>
-                       </DropdownMenuItem>
-                    )}
                     <DropdownMenuItem onSelect={handleLogout}>
                         <LogOut className="mr-2 h-4 w-4" />
                         Logout
@@ -99,8 +90,8 @@ export function Header({
       <div className="flex items-center justify-between">
         <TabsList>
             <TabsTrigger value="projects">{getDashboardName()}</TabsTrigger>
-            {(user.role === 'Admin' || user.role === 'Manager') && (
-              <TabsTrigger value="manager">Manager Tools</TabsTrigger>
+            {(user.role === 'Admin') && (
+              <TabsTrigger value="users">User Management</TabsTrigger>
             )}
         </TabsList>
         <div className="flex items-center space-x-2">

@@ -1,13 +1,14 @@
+
 import { NextRequest, NextResponse } from 'next/server';
 import { getSession } from '@/lib/auth';
 
 // 1. Specify protected and public routes
-const protectedRoutes = ['/', '/admin'];
+const protectedRoutes = ['/'];
 const publicRoutes = ['/login'];
 
 export default async function middleware(req: NextRequest) {
   const path = req.nextUrl.pathname;
-  const isProtectedRoute = protectedRoutes.includes(path);
+  const isProtectedRoute = protectedRoutes.some(p => path.startsWith(p)) && path !== '/login';
 
   // 2. Check if the current route is protected or public
   const session = await getSession();
@@ -24,11 +25,6 @@ export default async function middleware(req: NextRequest) {
     publicRoutes.includes(path) &&
     session?.user
   ) {
-    return NextResponse.redirect(new URL('/', req.nextUrl));
-  }
-
-  // Redirect non-admins trying to access the admin page
-  if (path === '/admin' && session?.user.role !== 'Admin') {
     return NextResponse.redirect(new URL('/', req.nextUrl));
   }
 
