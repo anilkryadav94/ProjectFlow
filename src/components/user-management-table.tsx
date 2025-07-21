@@ -16,22 +16,29 @@ import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { type User, roles, type Role } from "@/lib/data";
 import { useToast } from "@/hooks/use-toast";
-import { updateUser, addUser, addBulkUsers } from "@/lib/auth";
+import { updateUser, addUser, addBulkUsers, getUsers } from "@/lib/auth";
 import { ChevronsUpDown, Loader2, PlusCircle, Upload } from "lucide-react";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "./ui/card";
 import { AddUserDialog } from "./add-user-dialog";
 import { cn } from "@/lib/utils";
 
-interface UserManagementTableProps {
-    users: User[];
-}
-
-export function UserManagementTable({ users: initialUsers }: UserManagementTableProps) {
-    const [users, setUsers] = React.useState(initialUsers);
+export function UserManagementTable() {
+    const [users, setUsers] = React.useState<User[]>([]);
+    const [isLoading, setIsLoading] = React.useState(true);
     const [isSubmitting, setIsSubmitting] = React.useState<Record<string, boolean>>({});
     const [isAddUserDialogOpen, setIsAddUserDialogOpen] = React.useState(false);
     const fileInputRef = React.useRef<HTMLInputElement>(null);
     const { toast } = useToast();
+
+    React.useEffect(() => {
+        async function fetchUsers() {
+            setIsLoading(true);
+            const userList = await getUsers();
+            setUsers(userList);
+            setIsLoading(false);
+        }
+        fetchUsers();
+    }, []);
 
     const handleInputChange = (userId: string, field: keyof User, value: any) => {
         setUsers(prevUsers => 
@@ -72,7 +79,6 @@ export function UserManagementTable({ users: initialUsers }: UserManagementTable
                 description: `Failed to update user. ${error instanceof Error ? error.message : ''}`,
                 variant: "destructive",
             });
-            // Optionally revert state on error
         } finally {
             setIsSubmitting(prev => ({ ...prev, [user.id]: false }));
         }
@@ -82,7 +88,7 @@ export function UserManagementTable({ users: initialUsers }: UserManagementTable
         try {
             const result = await addUser(newUser);
             if(result.success && result.user) {
-                setUsers(prev => [result.user, ...prev]);
+                setUsers(prev => [result.user!, ...prev]);
                 toast({
                     title: "User Added",
                     description: `User ${result.user.name} has been successfully added.`,
@@ -134,7 +140,6 @@ export function UserManagementTable({ users: initialUsers }: UserManagementTable
             }
         });
 
-        // Reset file input
         event.target.value = '';
     }
 
@@ -180,67 +185,75 @@ export function UserManagementTable({ users: initialUsers }: UserManagementTable
                                     </TableRow>
                                 </TableHeader>
                                 <TableBody>
-                                    {users.map((user) => (
-                                        <TableRow key={user.id}>
-                                            <TableCell>
-                                                <Input
-                                                    value={user.name}
-                                                    onChange={(e) => handleInputChange(user.id, 'name', e.target.value)}
-                                                    disabled={isSubmitting[user.id]}
-                                                />
-                                            </TableCell>
-                                            <TableCell>
-                                                <Input
-                                                    type="email"
-                                                    value={user.email}
-                                                    onChange={(e) => handleInputChange(user.id, 'email', e.target.value)}
-                                                    disabled={isSubmitting[user.id]}
-                                                />
-                                            </TableCell>
-                                            <TableCell>
-                                                <Input
-                                                    value={user.password || ''}
-                                                    onChange={(e) => handleInputChange(user.id, 'password', e.target.value)}
-                                                    disabled={isSubmitting[user.id]}
-                                                    placeholder="Set new password"
-                                                />
-                                            </TableCell>
-                                            <TableCell>
-                                                <DropdownMenu>
-                                                    <DropdownMenuTrigger asChild>
-                                                        <Button variant="outline" className="w-full justify-between" disabled={isSubmitting[user.id]}>
-                                                            <span className="truncate">{user.roles?.join(', ') || 'Select roles'}</span>
-                                                            <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
-                                                        </Button>
-                                                    </DropdownMenuTrigger>
-                                                    <DropdownMenuContent className="w-56">
-                                                        <DropdownMenuLabel>Assign Roles</DropdownMenuLabel>
-                                                        <DropdownMenuSeparator />
-                                                        {roles.map((role) => (
-                                                            <DropdownMenuCheckboxItem
-                                                                key={role}
-                                                                checked={user.roles?.includes(role)}
-                                                                onCheckedChange={(checked) => handleRoleChange(user.id, role, !!checked)}
-                                                                onSelect={(e) => e.preventDefault()}
-                                                            >
-                                                                {role}
-                                                            </DropdownMenuCheckboxItem>
-                                                        ))}
-                                                    </DropdownMenuContent>
-                                                </DropdownMenu>
-                                            </TableCell>
-                                            <TableCell>
-                                                <Button 
-                                                    onClick={() => handleUpdateUser(user.id)} 
-                                                    disabled={isSubmitting[user.id]}
-                                                    size="sm"
-                                                >
-                                                    {isSubmitting[user.id] && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
-                                                    Update
-                                                </Button>
+                                    {isLoading ? (
+                                        <TableRow>
+                                            <TableCell colSpan={5} className="h-24 text-center">
+                                                <Loader2 className="mx-auto h-8 w-8 animate-spin text-primary" />
                                             </TableCell>
                                         </TableRow>
-                                    ))}
+                                    ) : (
+                                        users.map((user) => (
+                                            <TableRow key={user.id}>
+                                                <TableCell>
+                                                    <Input
+                                                        value={user.name}
+                                                        onChange={(e) => handleInputChange(user.id, 'name', e.target.value)}
+                                                        disabled={isSubmitting[user.id]}
+                                                    />
+                                                </TableCell>
+                                                <TableCell>
+                                                    <Input
+                                                        type="email"
+                                                        value={user.email}
+                                                        onChange={(e) => handleInputChange(user.id, 'email', e.target.value)}
+                                                        disabled={true}
+                                                    />
+                                                </TableCell>
+                                                <TableCell>
+                                                    <Input
+                                                        onChange={(e) => handleInputChange(user.id, 'password', e.target.value)}
+                                                        disabled={isSubmitting[user.id]}
+                                                        placeholder="Set new password"
+                                                        type="password"
+                                                    />
+                                                </TableCell>
+                                                <TableCell>
+                                                    <DropdownMenu>
+                                                        <DropdownMenuTrigger asChild>
+                                                            <Button variant="outline" className="w-full justify-between" disabled={isSubmitting[user.id]}>
+                                                                <span className="truncate">{user.roles?.join(', ') || 'Select roles'}</span>
+                                                                <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
+                                                            </Button>
+                                                        </DropdownMenuTrigger>
+                                                        <DropdownMenuContent className="w-56">
+                                                            <DropdownMenuLabel>Assign Roles</DropdownMenuLabel>
+                                                            <DropdownMenuSeparator />
+                                                            {roles.map((role) => (
+                                                                <DropdownMenuCheckboxItem
+                                                                    key={role}
+                                                                    checked={user.roles?.includes(role)}
+                                                                    onCheckedChange={(checked) => handleRoleChange(user.id, role, !!checked)}
+                                                                    onSelect={(e) => e.preventDefault()}
+                                                                >
+                                                                    {role}
+                                                                </DropdownMenuCheckboxItem>
+                                                            ))}
+                                                        </DropdownMenuContent>
+                                                    </DropdownMenu>
+                                                </TableCell>
+                                                <TableCell>
+                                                    <Button 
+                                                        onClick={() => handleUpdateUser(user.id)} 
+                                                        disabled={isSubmitting[user.id]}
+                                                        size="sm"
+                                                    >
+                                                        {isSubmitting[user.id] && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
+                                                        Update
+                                                    </Button>
+                                                </TableCell>
+                                            </TableRow>
+                                        ))
+                                    )}
                                 </TableBody>
                             </Table>
                         </div>

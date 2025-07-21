@@ -1,7 +1,10 @@
 "use server";
 
 import { z } from "zod";
-import { projects } from "@/lib/data";
+import { db } from "@/lib/firebase";
+import { collection, doc, addDoc, updateDoc, getDoc, serverTimestamp, Timestamp } from "firebase/firestore";
+import type { Project } from "@/lib/data";
+
 
 const formSchema = z.object({
   id: z.string().optional(),
@@ -23,14 +26,35 @@ const formSchema = z.object({
 
 type ProjectFormValues = z.infer<typeof formSchema>;
 
-export async function saveProject(data: ProjectFormValues) {
+function toISOString(date: Date | string | null | undefined): string | null {
+    if (!date) return null;
+    if (typeof date === 'string') return date;
+    return date.toISOString().split('T')[0];
+}
+
+
+export async function saveProject(data: ProjectFormValues): Promise<Project> {
     const validatedData = formSchema.parse(data);
 
     let projectToSave;
-    const existingProject = validatedData.id ? projects.find(p => p.id === validatedData.id) : null;
+    let existingProjectData: Partial<Project> = {};
 
-    let processingDate = existingProject?.processingDate || null;
-    let qaDate = existingProject?.qaDate || null;
+    if (validatedData.id) {
+        const projectDoc = await getDoc(doc(db, "projects", validatedData.id));
+        if (projectDoc.exists()) {
+            const fetchedData = projectDoc.data();
+            existingProjectData = {
+                ...fetchedData,
+                emailDate: fetchedData.emailDate ? toISOString(new Timestamp(fetchedData.emailDate.seconds, fetchedData.emailDate.nanoseconds).toDate()) : new Date().toISOString().split('T')[0],
+                allocationDate: fetchedData.allocationDate ? toISOString(new Timestamp(fetchedData.allocationDate.seconds, fetchedData.allocationDate.nanoseconds).toDate()) : new Date().toISOString().split('T')[0],
+                processingDate: fetchedData.processingDate ? toISOString(new Timestamp(fetchedData.processingDate.seconds, fetchedData.processingDate.nanoseconds).toDate()) : null,
+                qaDate: fetchedData.qaDate ? toISOString(new Timestamp(fetchedData.qaDate.seconds, fetchedData.qaDate.nanoseconds).toDate()) : null,
+            };
+        }
+    }
+
+    let processingDate = existingProjectData?.processingDate || null;
+    let qaDate = existingProjectData?.qaDate || null;
     let status = validatedData.status;
 
     if (validatedData.submitAction === 'process') {
@@ -41,42 +65,41 @@ export async function saveProject(data: ProjectFormValues) {
         status = 'Complete';
     }
 
-    if (existingProject) {
-        projectToSave = {
-            ...existingProject,
-            ...validatedData,
-            applicationNumber: validatedData.applicationNumber || '',
-            patentNumber: validatedData.patentNumber || '',
-            subject: validatedData.subject || '',
-            actionTaken: validatedData.actionTaken || '',
-            documentName: validatedData.documentName || '',
-            emailDate: validatedData.emailDate.toISOString().split('T')[0],
-            allocationDate: validatedData.allocationDate.toISOString().split('T')[0],
-            processingDate,
-            qaDate,
-            status,
-        };
+    const commonData = {
+        ...validatedData,
+        applicationNumber: validatedData.applicationNumber || '',
+        patentNumber: validatedData.patentNumber || '',
+        subject: validatedData.subject || '',
+        actionTaken: validatedData.actionTaken || '',
+        documentName: validatedData.documentName || '',
+        emailDate: Timestamp.fromDate(validatedData.emailDate),
+        allocationDate: Timestamp.fromDate(validatedData.allocationDate),
+        processingDate: processingDate ? Timestamp.fromDate(new Date(processingDate)) : null,
+        qaDate: qaDate ? Timestamp.fromDate(new Date(qaDate)) : null,
+        status,
+    };
+    
+    delete (commonData as any).submitAction;
+
+
+    if (validatedData.id) {
+        const projectRef = doc(db, "projects", validatedData.id);
+        await updateDoc(projectRef, commonData);
+        projectToSave = { ...commonData, id: validatedData.id };
     } else {
-        projectToSave = {
-            id: String(Date.now()), // Create a new ID for new projects
-            ...validatedData,
-            applicationNumber: validatedData.applicationNumber || '',
-            patentNumber: validatedData.patentNumber || '',
-            subject: validatedData.subject || '',
-            actionTaken: validatedData.actionTaken || '',
-            documentName: validatedData.documentName || '',
-            emailDate: validatedData.emailDate.toISOString().split('T')[0],
-            allocationDate: validatedData.allocationDate.toISOString().split('T')[0],
-            processingDate,
-            qaDate,
-            status,
-        };
+        const docRef = await addDoc(collection(db, "projects"), {
+            ...commonData,
+            createdAt: serverTimestamp()
+        });
+        projectToSave = { ...commonData, id: docRef.id };
     }
     
-    // Here you would typically save to a database.
-    // For this demo, we'll just return the updated/new project object.
-    console.log("Saving project:", projectToSave);
-    await new Promise(resolve => setTimeout(resolve, 1000)); // Simulate network delay
-
-    return projectToSave;
+    // Return a serializable Project object
+    return {
+        ...projectToSave,
+        emailDate: toISOString(validatedData.emailDate)!,
+        allocationDate: toISOString(validatedData.allocationDate)!,
+        processingDate: processingDate,
+        qaDate: qaDate,
+    };
 }

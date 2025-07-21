@@ -1,4 +1,5 @@
 
+
 export type Role = 'Admin' | 'Manager' | 'Processor' | 'QA';
 export const roles: Role[] = ['Admin', 'Manager', 'Processor', 'QA'];
 
@@ -15,6 +16,7 @@ export type User = {
 };
 
 // In a real application, this would come from a database.
+// This data can now be used to seed the database for the first time.
 export const users: User[] = [
     { id: '1', email: 'admin@example.com', password: 'password', name: 'Admin User', roles: ['Admin'] },
     { id: '2', email: 'manager@example.com', password: 'password', name: 'Manager User', roles: ['Manager'] },
@@ -37,7 +39,7 @@ export type Project = {
   applicationNumber: string;
   patentNumber: string;
   refNumber: string;
-  from: string;
+  from?: string;
   subject: string;
   clientName: string;
   process: ProcessType;
