@@ -28,9 +28,9 @@ export default function Dashboard({
   const [search, setSearch] = React.useState('');
   const [searchColumn, setSearchColumn] = React.useState<SearchableColumn>('refNumber');
   const [sort, setSort] = React.useState<{ key: keyof Project; direction: 'asc' | 'desc' } | null>({ key: 'allocationDate', direction: 'desc' });
-  const [clientNameFilter, setClientNameFilter] = React.useState<string>('all');
-  const [processFilter, setProcessFilter] = React.useState<ProcessType | 'all'>('all');
-  const [statusFilter, setStatusFilter] = React.useState<ProjectStatus | 'all'>('all');
+  const [clientNameFilter, setClientNameFilter] = React.useState<string[]>([]);
+  const [processFilter, setProcessFilter] = React.useState<string[]>([]);
+  const [statusFilter, setStatusFilter] = React.useState<string[]>([]);
   const [emailDateFilter, setEmailDateFilter] = React.useState<DateRange | undefined>();
   const [allocationDateFilter, setAllocationDateFilter] = React.useState<DateRange | undefined>();
   
@@ -63,9 +63,9 @@ export default function Dashboard({
   
   const resetFilters = () => {
     setSearch('');
-    setClientNameFilter('all');
-    setProcessFilter('all');
-    setStatusFilter('all');
+    setClientNameFilter([]);
+    setProcessFilter([]);
+    setStatusFilter([]);
     setEmailDateFilter(undefined);
     setAllocationDateFilter(undefined);
     setSearchColumn('refNumber');
@@ -103,16 +103,16 @@ export default function Dashboard({
         });
     }
     
-    if (clientNameFilter !== 'all') {
-      filteredProjects = filteredProjects.filter(p => p.clientName === clientNameFilter);
+    if (clientNameFilter.length > 0) {
+      filteredProjects = filteredProjects.filter(p => clientNameFilter.includes(p.clientName));
     }
 
-    if (processFilter !== 'all') {
-      filteredProjects = filteredProjects.filter(p => p.process === processFilter);
+    if (processFilter.length > 0) {
+      filteredProjects = filteredProjects.filter(p => processFilter.includes(p.process));
     }
 
-    if (statusFilter !== 'all') {
-        filteredProjects = filteredProjects.filter(p => p.status === statusFilter);
+    if (statusFilter.length > 0) {
+        filteredProjects = filteredProjects.filter(p => statusFilter.includes(p.status));
     }
 
     if (emailDateFilter?.from) {

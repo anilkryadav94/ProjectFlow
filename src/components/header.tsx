@@ -27,6 +27,7 @@ import { DateRangePicker } from "./date-range-picker"
 import type { DateRange } from "react-day-picker"
 import type { SearchableColumn } from "./dashboard"
 import { cn } from "@/lib/utils"
+import { MultiSelect } from "./ui/multi-select"
 
 interface HeaderProps {
     user: User;
@@ -36,12 +37,12 @@ interface HeaderProps {
     setSearch: (search: string) => void;
     searchColumn: SearchableColumn;
     setSearchColumn: (column: SearchableColumn) => void;
-    clientNameFilter: string;
-    setClientNameFilter: (client: string) => void;
-    processFilter: ProcessType | 'all';
-    setProcessFilter: (process: ProcessType | 'all') => void;
-    statusFilter: ProjectStatus | 'all';
-    setStatusFilter: (status: ProjectStatus | 'all') => void;
+    clientNameFilter: string[];
+    setClientNameFilter: (client: string[]) => void;
+    processFilter: string[];
+    setProcessFilter: (process: string[]) => void;
+    statusFilter: string[];
+    setStatusFilter: (status: string[]) => void;
     emailDateFilter: DateRange | undefined;
     setEmailDateFilter: (date: DateRange | undefined) => void;
     allocationDateFilter: DateRange | undefined;
@@ -111,6 +112,10 @@ export function Header({
   
   const showFilters = activeRole === 'Manager' || activeRole === 'Processor' || activeRole === 'QA' || activeRole === 'Admin';
 
+  const clientOptions = clientNames.map(name => ({ value: name, label: name }));
+  const processOptions = processes.map(p => ({ value: p, label: p }));
+  const statusOptions = projectStatuses.map(s => ({ value: s, label: s }));
+
   return (
     <>
     <div className="flex items-center justify-between bg-primary text-primary-foreground p-2 px-4 shadow-md h-16 shrink-0 gap-4">
@@ -124,7 +129,7 @@ export function Header({
         </div>
         
         {showFilters && (
-            <div className="flex-grow flex items-center justify-center">
+             <div className="flex-grow flex items-center justify-center">
                  <div className="w-full max-w-xl">
                     <div className="relative flex items-center">
                         <div className="absolute left-0">
@@ -139,7 +144,7 @@ export function Header({
                         </div>
                         <Input 
                             placeholder="Search..."
-                            className="pl-[120px] h-9 text-foreground"
+                            className="pl-[120px] h-9"
                             value={search}
                             onChange={(e) => setSearch(e.target.value)}
                         />
@@ -194,33 +199,27 @@ export function Header({
     </div>
     {showFilters && (
       <div className="flex items-center gap-2 bg-background border-b p-2">
-        <Select value={clientNameFilter} onValueChange={setClientNameFilter}>
-          <SelectTrigger className="h-9 w-[150px]">
-            <SelectValue placeholder="Client" />
-          </SelectTrigger>
-          <SelectContent>
-            <SelectItem value="all">All Clients</SelectItem>
-            {clientNames.map(name => <SelectItem key={name} value={name}>{name}</SelectItem>)}
-          </SelectContent>
-        </Select>
-        <Select value={processFilter} onValueChange={(value) => setProcessFilter(value as ProcessType | 'all')}>
-          <SelectTrigger className="h-9 w-[150px]">
-            <SelectValue placeholder="Process" />
-          </SelectTrigger>
-          <SelectContent>
-            <SelectItem value="all">All Processes</SelectItem>
-            {processes.map(p => <SelectItem key={p} value={p}>{p}</SelectItem>)}
-          </SelectContent>
-        </Select>
-        <Select value={statusFilter} onValueChange={(value) => setStatusFilter(value as ProjectStatus | 'all')}>
-          <SelectTrigger className="h-9 w-[150px]">
-            <SelectValue placeholder="Status" />
-          </SelectTrigger>
-          <SelectContent>
-            <SelectItem value="all">All Statuses</SelectItem>
-            {projectStatuses.map(s => <SelectItem key={s} value={s}>{s}</SelectItem>)}
-          </SelectContent>
-        </Select>
+         <MultiSelect
+            options={clientOptions}
+            selected={clientNameFilter}
+            onChange={setClientNameFilter}
+            placeholder="All Clients"
+            className="w-[180px]"
+          />
+         <MultiSelect
+            options={processOptions}
+            selected={processFilter}
+            onChange={setProcessFilter}
+            placeholder="All Processes"
+            className="w-[180px]"
+          />
+         <MultiSelect
+            options={statusOptions}
+            selected={statusFilter}
+            onChange={setStatusFilter}
+            placeholder="All Statuses"
+            className="w-[180px]"
+          />
         <div className="w-[250px]">
             <Label className="text-xs font-medium text-muted-foreground ml-1">Email Date</Label>
             <DateRangePicker date={emailDateFilter} setDate={setEmailDateFilter} />
