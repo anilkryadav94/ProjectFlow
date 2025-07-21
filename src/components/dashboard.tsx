@@ -154,7 +154,7 @@ export default function Dashboard({
                 <div className="flex-shrink-0" style={{ height: 'calc(70% - 0.5rem)' }}>
                     <ProjectForm 
                         project={activeProject} 
-                        onFormSubmit={onProjectUpdate}
+                        onFormSubmit={handleProjectUpdate}
                         onCancel={() => setActiveProject(null)}
                         role={activeRole}
                     />
@@ -165,7 +165,7 @@ export default function Dashboard({
                         columns={columns}
                         sort={sort}
                         setSort={setSort}
-                        onProjectUpdate={onProjectUpdate}
+                        onProjectUpdate={handleProjectUpdate}
                         onRowClick={handleRowClick}
                         activeProjectId={activeProject?.id}
                         isTaskView={true}
@@ -178,7 +178,7 @@ export default function Dashboard({
                 columns={columns}
                 sort={sort}
                 setSort={setSort}
-                onProjectUpdate={onProjectUpdate}
+                onProjectUpdate={handleProjectUpdate}
                 isTaskView={false}
               />
           )}
