@@ -16,6 +16,9 @@ interface DashboardProps {
   initialProjects: Project[];
 }
 
+export type SearchableColumn = 'refNumber' | 'applicationNumber' | 'patentNumber' | 'subject';
+
+
 export default function Dashboard({ 
   user, 
   initialProjects,
@@ -23,6 +26,7 @@ export default function Dashboard({
   const [activeRole, setActiveRole] = React.useState<Role | null>(null);
   const [projects, setProjects] = React.useState<Project[]>(initialProjects);
   const [search, setSearch] = React.useState('');
+  const [searchColumn, setSearchColumn] = React.useState<SearchableColumn>('refNumber');
   const [sort, setSort] = React.useState<{ key: keyof Project; direction: 'asc' | 'desc' } | null>({ key: 'allocationDate', direction: 'desc' });
   const [clientNameFilter, setClientNameFilter] = React.useState<string>('all');
   const [processFilter, setProcessFilter] = React.useState<ProcessType | 'all'>('all');
@@ -64,6 +68,7 @@ export default function Dashboard({
     setStatusFilter('all');
     setEmailDateFilter(undefined);
     setAllocationDateFilter(undefined);
+    setSearchColumn('refNumber');
   }
 
   const handleDownload = () => {
@@ -88,13 +93,14 @@ export default function Dashboard({
       filteredProjects = filteredProjects.filter(p => p.qa === user.name);
     }
     
-    if (search) {
-      filteredProjects = filteredProjects.filter(project =>
-        (project.refNumber || '').toLowerCase().includes(search.toLowerCase()) ||
-        (project.clientName || '').toLowerCase().includes(search.toLowerCase()) ||
-        (project.applicationNumber || '').toLowerCase().includes(search.toLowerCase()) ||
-        (project.patentNumber || '').toLowerCase().includes(search.toLowerCase())
-      );
+    if (search && searchColumn) {
+        filteredProjects = filteredProjects.filter(project => {
+            const projectValue = project[searchColumn];
+            if (typeof projectValue === 'string') {
+                return projectValue.toLowerCase().includes(search.toLowerCase());
+            }
+            return false;
+        });
     }
     
     if (clientNameFilter !== 'all') {
@@ -135,7 +141,7 @@ export default function Dashboard({
     }
 
     return filteredProjects;
-  }, [search, clientNameFilter, processFilter, statusFilter, emailDateFilter, allocationDateFilter, activeRole, user.name, projects, sort]);
+  }, [search, searchColumn, clientNameFilter, processFilter, statusFilter, emailDateFilter, allocationDateFilter, activeRole, user.name, projects, sort]);
 
 
   if (!activeRole) {
@@ -150,6 +156,8 @@ export default function Dashboard({
             setActiveRole={setActiveRole}
             search={search}
             setSearch={setSearch}
+            searchColumn={searchColumn}
+            setSearchColumn={setSearchColumn}
             clientNameFilter={clientNameFilter}
             setClientNameFilter={setClientNameFilter}
             processFilter={processFilter}

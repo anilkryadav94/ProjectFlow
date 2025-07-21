@@ -25,6 +25,8 @@ import { Separator } from "./ui/separator";
 import { Label } from "@/components/ui/label";
 import { DateRangePicker } from "./date-range-picker"
 import type { DateRange } from "react-day-picker"
+import type { SearchableColumn } from "./dashboard"
+import { cn } from "@/lib/utils"
 
 interface HeaderProps {
     user: User;
@@ -32,6 +34,8 @@ interface HeaderProps {
     setActiveRole: (role: Role) => void;
     search: string;
     setSearch: (search: string) => void;
+    searchColumn: SearchableColumn;
+    setSearchColumn: (column: SearchableColumn) => void;
     clientNameFilter: string;
     setClientNameFilter: (client: string) => void;
     processFilter: ProcessType | 'all';
@@ -47,12 +51,21 @@ interface HeaderProps {
     isDownloadDisabled: boolean;
 }
 
+const searchColumns: { value: SearchableColumn; label: string }[] = [
+    { value: 'refNumber', label: 'Ref No.' },
+    { value: 'applicationNumber', label: 'App No.' },
+    { value: 'patentNumber', label: 'Patent No.' },
+    { value: 'subject', label: 'Subject' },
+];
+
 export function Header({ 
   user, 
   activeRole,
   setActiveRole,
   search,
   setSearch,
+  searchColumn,
+  setSearchColumn,
   clientNameFilter,
   setClientNameFilter,
   processFilter,
@@ -100,8 +113,8 @@ export function Header({
 
   return (
     <>
-    <div className="flex items-center justify-between bg-primary text-primary-foreground p-2 px-4 shadow-md h-16 shrink-0">
-        <div className="flex items-center gap-4">
+    <div className="flex items-center justify-between bg-primary text-primary-foreground p-2 px-4 shadow-md h-16 shrink-0 gap-4">
+        <div className="flex items-center gap-4 flex-shrink-0">
           <div className="flex items-center gap-2">
             <Workflow className="h-6 w-6" />
             <h2 className="text-xl font-bold tracking-tight">ProjectFlow</h2>
@@ -110,7 +123,33 @@ export function Header({
           <h3 className="text-md font-semibold">{getDashboardName()}</h3>
         </div>
         
-        <div className="flex items-center space-x-2">
+        {showFilters && (
+            <div className="flex-grow flex items-center justify-center">
+                 <div className="w-full max-w-xl">
+                    <div className="relative flex items-center">
+                        <div className="absolute left-0">
+                             <Select value={searchColumn} onValueChange={(value) => setSearchColumn(value as SearchableColumn)}>
+                                <SelectTrigger className="h-9 w-[110px] rounded-r-none border-r-0 focus:ring-0">
+                                    <SelectValue placeholder="Search by" />
+                                </SelectTrigger>
+                                <SelectContent>
+                                    {searchColumns.map(col => <SelectItem key={col.value} value={col.value}>{col.label}</SelectItem>)}
+                                </SelectContent>
+                            </Select>
+                        </div>
+                        <Input 
+                            placeholder="Search..."
+                            className="pl-[120px] h-9 text-foreground"
+                            value={search}
+                            onChange={(e) => setSearch(e.target.value)}
+                        />
+                         <Search className="absolute right-3 h-4 w-4 text-muted-foreground" />
+                    </div>
+                </div>
+            </div>
+        )}
+
+        <div className="flex items-center space-x-2 flex-shrink-0">
             <Button variant="ghost" size="icon" onClick={handleDownload} disabled={isDownloadDisabled} className="h-8 w-8 hover:bg-primary/80">
               <FileSpreadsheet className="h-5 w-5" />
               <span className="sr-only">Download CSV</span>
@@ -155,15 +194,6 @@ export function Header({
     </div>
     {showFilters && (
       <div className="flex items-center gap-2 bg-background border-b p-2">
-        <div className="relative flex-1 max-w-xs">
-          <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-          <Input 
-            placeholder="Quick search..."
-            className="pl-9 h-9"
-            value={search}
-            onChange={(e) => setSearch(e.target.value)}
-          />
-        </div>
         <Select value={clientNameFilter} onValueChange={setClientNameFilter}>
           <SelectTrigger className="h-9 w-[150px]">
             <SelectValue placeholder="Client" />
@@ -192,9 +222,11 @@ export function Header({
           </SelectContent>
         </Select>
         <div className="w-[250px]">
+            <Label className="text-xs font-medium text-muted-foreground ml-1">Email Date</Label>
             <DateRangePicker date={emailDateFilter} setDate={setEmailDateFilter} />
         </div>
          <div className="w-[250px]">
+             <Label className="text-xs font-medium text-muted-foreground ml-1">Allocation Date</Label>
             <DateRangePicker date={allocationDateFilter} setDate={setAllocationDateFilter} />
         </div>
         <Button variant="ghost" onClick={onResetFilters} size="sm">
