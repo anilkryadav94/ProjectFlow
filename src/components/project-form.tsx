@@ -177,7 +177,7 @@ export function ProjectForm({ project, onFormSubmit, onCancel, role, setOpen }: 
       <Form {...form}>
         <form onSubmit={(e) => e.preventDefault()} className="h-full flex flex-col">
             <Card className="border-0 shadow-none flex flex-col flex-grow h-full">
-              <CardHeader>
+              <CardHeader className="bg-muted">
                 <CardTitle className="text-lg">{project ? `Task: ${project.refNumber}`: 'New Project'}</CardTitle>
                 {project && <CardDescription>Subject: {project.subject}</CardDescription>}
               </CardHeader>
