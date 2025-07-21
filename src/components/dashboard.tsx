@@ -143,7 +143,7 @@ export default function Dashboard() {
                         role={role}
                     />
                 </ScrollArea>
-                <div className="flex-shrink-0 h-[200px]">
+                <div className="flex-shrink-0 h-[300px]">
                     <DataTable 
                         data={filteredProjects}
                         columns={columns}
