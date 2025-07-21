@@ -2,31 +2,29 @@
 
 import * as React from "react"
 import type { DateRange } from "react-day-picker"
-import { ChevronsUpDown, Download, PlusCircle, Search, UserCircle, Workflow } from "lucide-react"
-import type { Project, Role, ProcessType } from "@/lib/data"
-import { roles, clientNames, processes } from "@/lib/data"
+import { ChevronsUpDown, LogOut, PlusCircle, Search, UserCircle, Workflow, Settings } from "lucide-react"
+import type { Project, Role, ProcessType, User } from "@/lib/data"
+import { clientNames, processes } from "@/lib/data"
 import { Button } from "@/components/ui/button"
 import {
   DropdownMenu,
   DropdownMenuContent,
   DropdownMenuItem,
   DropdownMenuLabel,
-  DropdownMenuRadioGroup,
-  DropdownMenuRadioItem,
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu"
 import { Input } from "@/components/ui/input"
-import { ProjectForm } from "./project-form"
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "./ui/dialog"
 import { TabsList, TabsTrigger } from "./ui/tabs"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "./ui/select"
+import { logout } from "@/lib/auth"
+import { useRouter } from "next/navigation"
+import Link from "next/link"
 
 interface HeaderProps {
     search: string;
     setSearch: (search: string) => void;
-    role: Role;
-    setRole: (role: Role) => void;
+    user: User;
     onProjectUpdate: (project: Project) => void;
     clientNameFilter: string;
     setClientNameFilter: (client: string) => void;
@@ -34,11 +32,16 @@ interface HeaderProps {
     setProcessFilter: (process: ProcessType | 'all') => void;
 }
 
-export function Header({ search, setSearch, role, setRole, onProjectUpdate, clientNameFilter, setClientNameFilter, processFilter, setProcessFilter }: HeaderProps) {
-  const [isFormOpen, setIsFormOpen] = React.useState(false);
+export function Header({ search, setSearch, user, onProjectUpdate, clientNameFilter, setClientNameFilter, processFilter, setProcessFilter }: HeaderProps) {
+  const router = useRouter();
+
+  const handleLogout = async () => {
+    await logout();
+    router.push('/login');
+  };
 
   const getDashboardName = () => {
-    switch(role) {
+    switch(user.role) {
       case 'Processor':
         return 'Processor Dashboard';
       case 'QA':
@@ -53,7 +56,7 @@ export function Header({ search, setSearch, role, setRole, onProjectUpdate, clie
   }
 
   return (
-    <div className="flex flex-col gap-2">
+    <div className="flex flex-col gap-1">
       <div className="flex items-center justify-between">
         <div className="flex items-center gap-2">
           <Workflow className="h-6 w-6 text-primary" />
@@ -64,18 +67,25 @@ export function Header({ search, setSearch, role, setRole, onProjectUpdate, clie
                 <DropdownMenuTrigger asChild>
                     <Button variant="outline" className="w-48 justify-between">
                        <UserCircle className="mr-2 h-4 w-4" />
-                        {role}
-                        <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
+                       <span className="truncate">{user.name}</span>
+                       <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
                     </Button>
                 </DropdownMenuTrigger>
                 <DropdownMenuContent className="w-48">
-                    <DropdownMenuLabel>Select Role</DropdownMenuLabel>
+                    <DropdownMenuLabel>{user.role}</DropdownMenuLabel>
                     <DropdownMenuSeparator />
-                    <DropdownMenuRadioGroup value={role} onValueChange={(value) => setRole(value as Role)}>
-                        {roles.map((r) => (
-                             <DropdownMenuRadioItem key={r} value={r}>{r}</DropdownMenuRadioItem>
-                        ))}
-                    </DropdownMenuRadioGroup>
+                    {user.role === 'Admin' && (
+                       <DropdownMenuItem asChild>
+                          <Link href="/admin">
+                            <Settings className="mr-2 h-4 w-4" />
+                            Admin Panel
+                          </Link>
+                       </DropdownMenuItem>
+                    )}
+                    <DropdownMenuItem onSelect={handleLogout}>
+                        <LogOut className="mr-2 h-4 w-4" />
+                        Logout
+                    </DropdownMenuItem>
                 </DropdownMenuContent>
             </DropdownMenu>
         </div>
@@ -83,7 +93,7 @@ export function Header({ search, setSearch, role, setRole, onProjectUpdate, clie
       <div className="flex items-center justify-between">
         <TabsList>
             <TabsTrigger value="projects">{getDashboardName()}</TabsTrigger>
-            {(role === 'Admin' || role === 'Manager') && (
+            {(user.role === 'Admin' || user.role === 'Manager') && (
               <TabsTrigger value="manager">Manager Tools</TabsTrigger>
             )}
         </TabsList>

@@ -33,7 +33,7 @@ import {
   SelectValue,
 } from "@/components/ui/select"
 import { saveProject } from "@/app/actions"
-import { type Project, processors, qas, clientNames, processes, ProcessType } from "@/lib/data"
+import { type Project, processors, qas, clientNames, processes, type Role } from "@/lib/data"
 import { Textarea } from "./ui/textarea"
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "./ui/card"
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "./ui/dialog"
@@ -63,7 +63,7 @@ interface ProjectFormProps {
   project?: Project | null;
   onFormSubmit: (project: Project) => void;
   onCancel?: () => void;
-  role: 'Processor' | 'QA' | 'Admin' | 'Manager';
+  role: Role;
   setOpen?: (open: boolean) => void;
 }
 
@@ -512,7 +512,7 @@ export function ProjectForm({ project, onFormSubmit, onCancel, role, setOpen }: 
                 )}
                  <Button type="submit" onClick={form.handleSubmit(d => onSubmit({...d, submitAction: 'save'}))} disabled={isSubmitting || (isProcessor && project?.status !== 'Processing') || (isQA && project?.status !== 'QA')}>
                     {isSubmitting && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
-                    {isManager ? 'Create Project' : 'Save Changes'}
+                    {isManager && !project ? 'Create Project' : 'Save Changes'}
                 </Button>
             </div>
           </form>

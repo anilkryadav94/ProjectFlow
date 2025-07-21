@@ -3,7 +3,7 @@
 
 import * as React from 'react';
 import { useToast } from "@/hooks/use-toast"
-import { type Project, projects as initialProjects, type Role, ProcessType } from '@/lib/data';
+import { type Project, projects as initialProjects, type Role, ProcessType, type User } from '@/lib/data';
 import { DataTable } from '@/components/data-table';
 import { columns } from '@/components/columns';
 import { Header } from '@/components/header';
@@ -11,31 +11,40 @@ import { ManagerView } from '@/components/manager-view';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { ProjectForm } from './project-form';
 import { ScrollArea } from './ui/scroll-area';
+import { redirect } from 'next/navigation';
 
-export default function Dashboard() {
+interface DashboardProps {
+  user: User;
+}
+
+export default function Dashboard({ user }: DashboardProps) {
   const [projects, setProjects] = React.useState<Project[]>(initialProjects);
   const [filteredProjects, setFilteredProjects] = React.useState<Project[]>(initialProjects);
   const [activeProject, setActiveProject] = React.useState<Project | null>(null);
 
   const [search, setSearch] = React.useState('');
-  const [role, setRole] = React.useState<Role>('Processor'); // Default to processor for demo
+  const [role, setRole] = React.useState<Role>(user.role); 
   const [sort, setSort] = React.useState<{ key: keyof Project; direction: 'asc' | 'desc' } | null>({ key: 'allocationDate', direction: 'desc' });
   const [clientNameFilter, setClientNameFilter] = React.useState<string>('all');
   const [processFilter, setProcessFilter] = React.useState<ProcessType | 'all'>('all');
 
   const { toast } = useToast();
 
+  React.useEffect(() => {
+    setRole(user.role);
+    if (user.role === 'Admin' && window.location.pathname !== '/admin') {
+      // Optional: redirect to admin page if user is Admin and not there already
+      // This might be better handled in middleware, but for simplicity's sake...
+    }
+  }, [user.role]);
+
   const userQueue = React.useMemo(() => {
     let userProjects = [...projects];
     // Role-based filtering
     if (role === 'Processor') {
-      // For demo, let's assume the processor is 'Alice'
-      // Show projects that are 'Pending' or 'Processing' and assigned to Alice
-      userProjects = userProjects.filter(p => p.processor === 'Alice' && (p.status === 'Processing' || p.status === 'Pending' || p.status === 'On Hold'));
+      userProjects = userProjects.filter(p => p.processor === user.name && (p.status === 'Processing' || p.status === 'Pending' || p.status === 'On Hold'));
     } else if (role === 'QA') {
-        // For demo, let's assume the QA is 'Anil'
-        // Show projects that are in 'QA' status and assigned to Anil
-        userProjects = userProjects.filter(p => p.qa === 'Anil' && p.status === 'QA');
+        userProjects = userProjects.filter(p => p.qa === user.name && p.status === 'QA');
     } else if (role === 'Manager' || role === 'Admin') {
       // No filter, show all
     }
@@ -43,9 +52,9 @@ export default function Dashboard() {
     // Search filtering
     if (search) {
         userProjects = userProjects.filter(project =>
-        project.applicationNumber.toLowerCase().includes(search.toLowerCase()) ||
-        project.patentNumber.toLowerCase().includes(search.toLowerCase()) ||
-        project.refNumber.toLowerCase().includes(search.toLowerCase())
+        (project.applicationNumber || '').toLowerCase().includes(search.toLowerCase()) ||
+        (project.patentNumber || '').toLowerCase().includes(search.toLowerCase()) ||
+        (project.refNumber || '').toLowerCase().includes(search.toLowerCase())
       );
     }
     
@@ -80,7 +89,7 @@ export default function Dashboard() {
     }
 
     return userProjects;
-  }, [search, sort, projects, role, clientNameFilter, processFilter]);
+  }, [search, sort, projects, role, user.name, clientNameFilter, processFilter]);
 
   React.useEffect(() => {
     setFilteredProjects(userQueue);
@@ -124,15 +133,14 @@ export default function Dashboard() {
         <Header 
           search={search}
           setSearch={setSearch}
-          role={role}
-          setRole={setRole}
+          user={user}
           clientNameFilter={clientNameFilter}
           setClientNameFilter={setClientNameFilter}
           processFilter={processFilter}
           setProcessFilter={setProcessFilter}
           onProjectUpdate={handleProjectUpdate}
         />
-        <TabsContent value="projects" className="flex-grow mt-4">
+        <TabsContent value="projects" className="flex-grow mt-4 overflow-hidden">
           {isTaskView ? (
              <div className="flex flex-col h-full gap-4">
                 <ScrollArea className="flex-grow pr-4">
