@@ -6,7 +6,7 @@ import { zodResolver } from "@hookform/resolvers/zod"
 import { useForm } from "react-hook-form"
 import { z } from "zod"
 import { format } from "date-fns"
-import { CalendarIcon, Loader2 } from "lucide-react"
+import { CalendarIcon, Loader2, PlusSquare } from "lucide-react"
 
 import { cn } from "@/lib/utils"
 import { Button } from "@/components/ui/button"
@@ -36,6 +36,8 @@ import { saveProject } from "@/app/actions"
 import { type Project, processors, qas, clientNames, processes, ProcessType } from "@/lib/data"
 import { Textarea } from "./ui/textarea"
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "./ui/card"
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "./ui/dialog"
+import { MultiMattersForm } from "./multi-matters-form"
 
 const formSchema = z.object({
   id: z.string().optional(),
@@ -67,25 +69,27 @@ interface ProjectFormProps {
 
 export function ProjectForm({ project, onFormSubmit, onCancel, role, setOpen }: ProjectFormProps) {
   const [isSubmitting, setIsSubmitting] = React.useState(false);
+  const [isMMFormOpen, setIsMMFormOpen] = React.useState(false);
   
   const form = useForm<ProjectFormValues>({
     resolver: zodResolver(formSchema),
     // This key ensures the form re-initializes when the project changes
     key: project?.id || 'new',
     defaultValues: {
-      refNumber: "",
-      applicationNumber: "",
-      patentNumber: "",
-      subject: "",
-      actionTaken: "",
-      documentName: "",
-      processor: "",
-      qa: "",
-      status: "Pending",
-      emailDate: new Date(),
-      allocationDate: new Date(),
-      clientName: clientNames[0],
-      process: "Patent",
+      id: project?.id,
+      refNumber: project?.refNumber || "",
+      applicationNumber: project?.applicationNumber || "",
+      patentNumber: project?.patentNumber || "",
+      subject: project?.subject || "",
+      actionTaken: project?.actionTaken || "",
+      documentName: project?.documentName || "",
+      processor: project?.processor || "",
+      qa: project?.qa || "",
+      status: project?.status || "Pending",
+      emailDate: project ? new Date(project.emailDate) : new Date(),
+      allocationDate: project ? new Date(project.allocationDate) : new Date(),
+      clientName: project?.clientName || clientNames[0],
+      process: project?.process || "Patent",
     }
   })
 
@@ -476,6 +480,23 @@ export function ProjectForm({ project, onFormSubmit, onCancel, role, setOpen }: 
             
             <div className="flex justify-end space-x-2 pt-4">
                 {onCancel && <Button variant="outline" onClick={onCancel} disabled={isSubmitting}>Cancel</Button>}
+
+                {project && (
+                    <Dialog open={isMMFormOpen} onOpenChange={setIsMMFormOpen}>
+                        <DialogTrigger asChild>
+                             <Button variant="outline" disabled={isSubmitting}>
+                                <PlusSquare className="mr-2 h-4 w-4" />
+                                Add MM Records
+                            </Button>
+                        </DialogTrigger>
+                        <DialogContent className="sm:max-w-[725px]">
+                            <DialogHeader>
+                                <DialogTitle>Add Multimatters Records</DialogTitle>
+                            </DialogHeader>
+                            <MultiMattersForm project={project} setOpen={setIsMMFormOpen} />
+                        </DialogContent>
+                    </Dialog>
+                )}
                 
                 {isProcessor && project?.status === "Processing" && (
                     <Button type="submit" onClick={form.handleSubmit(d => onSubmit({...d, submitAction: 'process'}))} disabled={isSubmitting}>
@@ -500,3 +521,5 @@ export function ProjectForm({ project, onFormSubmit, onCancel, role, setOpen }: 
     </Card>
   )
 }
+
+    
