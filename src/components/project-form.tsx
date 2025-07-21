@@ -133,7 +133,7 @@ export function ProjectForm({ project, onFormSubmit, onCancel, role, setOpen }: 
   
   if (!project && (role === 'Processor' || role === 'QA')) {
     return (
-        <div className="animated-border shadow-md h-full">
+        <div className="animated-border shadow-xl h-full">
             <Card className="h-full">
                 <CardHeader>
                     <CardTitle>No Task in Queue</CardTitle>
@@ -173,7 +173,7 @@ export function ProjectForm({ project, onFormSubmit, onCancel, role, setOpen }: 
   }
 
   return (
-    <div className="animated-border shadow-md h-full">
+    <div className="animated-border shadow-xl h-full">
       <Form {...form}>
         <form onSubmit={(e) => e.preventDefault()} className="h-full flex flex-col">
             <Card className="border-0 shadow-none flex flex-col flex-grow h-full">

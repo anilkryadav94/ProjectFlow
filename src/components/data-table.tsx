@@ -44,7 +44,7 @@ export function DataTable({ data, columns, sort, setSort, onProjectUpdate, onRow
 
 
   return (
-    <div className={cn("animated-border shadow-md", maxHeightClass)}>
+    <div className={cn("animated-border shadow-xl", maxHeightClass)}>
       <div className={cn("rounded-md border bg-card overflow-y-auto relative h-full")}>
         <Table>
           <TableHeader className="sticky top-0 z-10 bg-muted/95 backdrop-blur-sm">
