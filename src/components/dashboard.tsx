@@ -117,21 +117,19 @@ export default function Dashboard({
   return (
     <div className="flex flex-col h-screen bg-background w-full">
         <div className="flex flex-col flex-grow overflow-hidden px-4 py-2 gap-2">
-            <div className="animated-border shadow-xl">
-              <Header 
-                search={search}
-                setSearch={setSearch}
-                user={user}
-                clientNameFilter={clientNameFilter}
-                setClientNameFilter={setClientNameFilter}
-                processFilter={processFilter}
-                setProcessFilter={setProcessFilter}
-                onProjectUpdate={onProjectUpdate}
-                activeRole={activeRole}
-                setActiveRole={setActiveRole}
-                projectsToDownload={filteredProjects}
-              />
-            </div>
+            <Header 
+              search={search}
+              setSearch={setSearch}
+              user={user}
+              clientNameFilter={clientNameFilter}
+              setClientNameFilter={setClientNameFilter}
+              processFilter={processFilter}
+              setProcessFilter={setProcessFilter}
+              onProjectUpdate={onProjectUpdate}
+              activeRole={activeRole}
+              setActiveRole={setActiveRole}
+              projectsToDownload={filteredProjects}
+            />
           {isAdminView ? (
             <UserManagementTable users={allUsers} />
           ) : isTaskView ? (
