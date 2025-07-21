@@ -41,9 +41,9 @@ interface HeaderProps {
     onAmendSearch: () => void;
     onResetSearch: () => void;
     clientNameFilter: string;
-    setClientNameFilter: (value: string) => void;
+    setClientNameFilter?: (value: string) => void;
     processFilter: string | 'all';
-    setProcessFilter: (value: string | 'all') => void;
+    setProcessFilter?: (value: string | 'all') => void;
     clientNames: string[];
     processes: ProcessType[];
     children?: React.ReactNode;
@@ -123,7 +123,7 @@ export function Header({
         <div className="flex-grow flex items-center justify-center px-8">
             {children ? (
                 children
-            ) : !isManagerOrAdmin && setSearch && setSearchColumn && (
+            ) : !isManagerOrAdmin && setSearch && setSearchColumn && setClientNameFilter && setProcessFilter && (
               <div className="flex w-full max-w-2xl items-center space-x-2">
                 <div className="flex items-center space-x-0 w-1/2">
                     <Select value={searchColumn} onValueChange={(v) => setSearchColumn(v as SearchableColumn)}>

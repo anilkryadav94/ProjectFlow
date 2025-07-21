@@ -4,7 +4,7 @@ import { redirect } from 'next/navigation';
 import Link from 'next/link';
 import { getSession } from '@/lib/auth';
 import type { Project, Role } from '@/lib/data';
-import { projects, roleHierarchy } from '@/lib/data';
+import { projects, roleHierarchy, clientNames, processes } from '@/lib/data';
 import { ProjectForm } from '@/components/project-form';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -118,11 +118,9 @@ export default async function TaskPage({ params, searchParams }: { params: { id:
             onAmendSearch={() => {}}
             onResetSearch={() => {}}
             clientNameFilter=""
-            setClientNameFilter={() => {}}
             processFilter="all"
-            setProcessFilter={() => {}}
-            clientNames={[]}
-            processes={[]}
+            clientNames={clientNames}
+            processes={processes}
          >
              <div className="flex items-center gap-4 text-sm font-medium">
                  <span>{`Result ${projectIndex + 1} of ${userProjects.length}`}</span>
