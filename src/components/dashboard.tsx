@@ -129,11 +129,11 @@ export default function Dashboard({
           setActiveRole={setActiveRole}
           projectsToDownload={filteredProjects}
         />
-        <div className="flex-grow mt-4 overflow-hidden">
+        <div className="flex-grow mt-2 overflow-hidden">
           {isAdminView ? (
             <UserManagementTable users={allUsers} />
           ) : isTaskView ? (
-             <div className="flex flex-col h-full space-y-4">
+             <div className="flex flex-col h-full space-y-2">
                 <div className="flex-shrink-0" style={{ height: 'calc(70% - 0.5rem)' }}>
                     <ProjectForm 
                         project={activeProject} 
