@@ -132,7 +132,7 @@ export function ProjectForm({ project, onFormSubmit, onCancel, role, setOpen }: 
   
   if (!project && (role === 'Processor' || role === 'QA')) {
     return (
-        <Card>
+        <Card className="shadow-md">
             <CardHeader>
                 <CardTitle>No Task in Queue</CardTitle>
                 <CardDescription>You have no pending tasks. New tasks will appear here when assigned.</CardDescription>
@@ -170,7 +170,7 @@ export function ProjectForm({ project, onFormSubmit, onCancel, role, setOpen }: 
   }
 
   return (
-    <Card>
+    <Card className="shadow-md">
       <CardHeader>
         <CardTitle className="text-xl">{project ? `Task: ${project.refNumber}`: 'New Project'}</CardTitle>
         {project && <CardDescription>Subject: {project.subject}</CardDescription>}

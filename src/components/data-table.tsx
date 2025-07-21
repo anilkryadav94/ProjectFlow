@@ -44,9 +44,9 @@ export function DataTable({ data, columns, sort, setSort, onProjectUpdate, onRow
 
 
   return (
-    <div className={cn("rounded-md border bg-card overflow-y-auto relative", maxHeightClass)}>
+    <div className={cn("rounded-md border bg-card overflow-y-auto relative shadow-md", maxHeightClass)}>
       <Table>
-        <TableHeader className="sticky top-0 z-10 bg-card/95 backdrop-blur-sm">
+        <TableHeader className="sticky top-0 z-10 bg-muted/95 backdrop-blur-sm">
           <TableRow>
             {columns.map((column) => (
               <TableHead key={column.key}>

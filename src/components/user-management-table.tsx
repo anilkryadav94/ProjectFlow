@@ -139,7 +139,7 @@ export function UserManagementTable({ users: initialUsers }: UserManagementTable
 
     return (
         <>
-            <Card>
+            <Card className="shadow-md">
                 <CardHeader>
                     <CardTitle>User Management</CardTitle>
                     <CardDescription>Manage user details, roles, and permissions for the application.</CardDescription>
@@ -147,7 +147,7 @@ export function UserManagementTable({ users: initialUsers }: UserManagementTable
                 <CardContent>
                     <div className="rounded-md border overflow-y-auto max-h-[calc(100vh-350px)]">
                         <Table>
-                            <TableHeader className="sticky top-0 bg-card z-10">
+                            <TableHeader className="sticky top-0 bg-muted z-10">
                                 <TableRow>
                                     <TableHead>Username</TableHead>
                                     <TableHead>Email</TableHead>
