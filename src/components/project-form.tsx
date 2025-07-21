@@ -35,7 +35,7 @@ import {
 import { saveProject } from "@/app/actions"
 import { type Project, processors, qas, clientNames, processes, type Role } from "@/lib/data"
 import { Textarea } from "./ui/textarea"
-import { Card, CardContent, CardHeader, CardTitle, CardDescription, CardFooter } from "./ui/card"
+import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "./ui/card"
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "./ui/dialog"
 import { MultiMattersForm } from "./multi-matters-form"
 import { ScrollArea } from "./ui/scroll-area"
@@ -177,9 +177,48 @@ export function ProjectForm({ project, onFormSubmit, onCancel, role, setOpen }: 
       <Form {...form}>
         <form onSubmit={(e) => e.preventDefault()} className="h-full flex flex-col">
             <Card className="border-0 shadow-none flex flex-col flex-grow h-full">
-              <CardHeader className="bg-muted px-4 py-2">
-                <CardTitle className="text-lg">{project ? `Task: ${project.refNumber}`: 'New Project'}</CardTitle>
-                {project && <CardDescription>Subject: {project.subject}</CardDescription>}
+              <CardHeader className="bg-muted p-3 flex-row items-center justify-between">
+                <div>
+                    <CardTitle className="text-lg">{project ? `Task: ${project.refNumber}`: 'New Project'}</CardTitle>
+                    {project && <CardDescription className="text-xs">Subject: {project.subject}</CardDescription>}
+                </div>
+                <div className="flex items-center space-x-2">
+                    {onCancel && <Button size="sm" variant="outline" onClick={onCancel} disabled={isSubmitting}>Cancel</Button>}
+
+                    {project && (
+                        <Dialog open={isMMFormOpen} onOpenChange={setIsMMFormOpen}>
+                            <DialogTrigger asChild>
+                                <Button size="sm" variant="outline" disabled={isSubmitting}>
+                                    <PlusSquare className="mr-2 h-4 w-4" />
+                                    Add MM Records
+                                </Button>
+                            </DialogTrigger>
+                            <DialogContent className="sm:max-w-[725px]">
+                                <DialogHeader>
+                                    <DialogTitle>Add Multimatters Records</DialogTitle>
+                                </DialogHeader>
+                                <MultiMattersForm project={project} setOpen={setIsMMFormOpen} />
+                            </DialogContent>
+                        </Dialog>
+                    )}
+                    
+                    {isProcessor && project?.status === "Processing" && (
+                        <Button size="sm" type="submit" onClick={form.handleSubmit(d => onSubmit({...d, submitAction: 'process'}))} disabled={isSubmitting}>
+                            {isSubmitting && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
+                            Submit for QA
+                        </Button>
+                    )}
+                    {isQA && project?.status === "QA" && (
+                        <Button size="sm" type="submit" onClick={form.handleSubmit(d => onSubmit({...d, submitAction: 'qa_complete'}))} disabled={isSubmitting}>
+                            {isSubmitting && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
+                            QA Complete
+                        </Button>
+                    )}
+                    <Button size="sm" type="submit" onClick={form.handleSubmit(d => onSubmit({...d, submitAction: 'save'}))} disabled={isSubmitting || (isProcessor && project?.status !== 'Processing') || (isQA && project?.status !== 'QA')}>
+                        {isSubmitting && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
+                        {isManager && !project ? 'Create Project' : 'Save Changes'}
+                    </Button>
+                </div>
               </CardHeader>
               <ScrollArea className="flex-grow">
                 <CardContent className="p-4">
@@ -483,52 +522,9 @@ export function ProjectForm({ project, onFormSubmit, onCancel, role, setOpen }: 
                     </div>
                 </CardContent>
               </ScrollArea>
-              <CardFooter className="px-4 py-2 bg-muted">
-                <div className="flex justify-end space-x-2 w-full">
-                    {onCancel && <Button size="sm" variant="outline" onClick={onCancel} disabled={isSubmitting}>Cancel</Button>}
-
-                    {project && (
-                        <Dialog open={isMMFormOpen} onOpenChange={setIsMMFormOpen}>
-                            <DialogTrigger asChild>
-                                <Button size="sm" variant="outline" disabled={isSubmitting}>
-                                    <PlusSquare className="mr-2 h-4 w-4" />
-                                    Add MM Records
-                                </Button>
-                            </DialogTrigger>
-                            <DialogContent className="sm:max-w-[725px]">
-                                <DialogHeader>
-                                    <DialogTitle>Add Multimatters Records</DialogTitle>
-                                </DialogHeader>
-                                <MultiMattersForm project={project} setOpen={setIsMMFormOpen} />
-                            </DialogContent>
-                        </Dialog>
-                    )}
-                    
-                    {isProcessor && project?.status === "Processing" && (
-                        <Button size="sm" type="submit" onClick={form.handleSubmit(d => onSubmit({...d, submitAction: 'process'}))} disabled={isSubmitting}>
-                            {isSubmitting && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
-                            Submit for QA
-                        </Button>
-                    )}
-                    {isQA && project?.status === "QA" && (
-                        <Button size="sm" type="submit" onClick={form.handleSubmit(d => onSubmit({...d, submitAction: 'qa_complete'}))} disabled={isSubmitting}>
-                            {isSubmitting && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
-                            QA Complete
-                        </Button>
-                    )}
-                    <Button size="sm" type="submit" onClick={form.handleSubmit(d => onSubmit({...d, submitAction: 'save'}))} disabled={isSubmitting || (isProcessor && project?.status !== 'Processing') || (isQA && project?.status !== 'QA')}>
-                        {isSubmitting && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
-                        {isManager && !project ? 'Create Project' : 'Save Changes'}
-                    </Button>
-                </div>
-              </CardFooter>
             </Card>
         </form>
       </Form>
     </div>
   )
 }
-
-    
-
-    
