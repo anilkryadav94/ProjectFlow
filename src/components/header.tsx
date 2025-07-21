@@ -90,7 +90,7 @@ export function Header({
                     </Button>
                 </DropdownMenuTrigger>
                 <DropdownMenuContent className="w-48">
-                    <DropdownMenuLabel>{user.roles.join(', ')}</DropdownMenuLabel>
+                    <DropdownMenuLabel>{user.roles ? user.roles.join(', ') : 'Loading...'}</DropdownMenuLabel>
                     <DropdownMenuSeparator />
                     <DropdownMenuItem onSelect={handleLogout}>
                         <LogOut className="mr-2 h-4 w-4" />
