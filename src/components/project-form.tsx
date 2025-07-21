@@ -72,6 +72,21 @@ export function ProjectForm({ project, onFormSubmit, onCancel, role, setOpen }: 
     resolver: zodResolver(formSchema),
     // This key ensures the form re-initializes when the project changes
     key: project?.id || 'new',
+    defaultValues: {
+      refNumber: "",
+      applicationNumber: "",
+      patentNumber: "",
+      subject: "",
+      actionTaken: "",
+      documentName: "",
+      processor: "",
+      qa: "",
+      status: "Pending",
+      emailDate: new Date(),
+      allocationDate: new Date(),
+      clientName: clientNames[0],
+      process: "Patent",
+    }
   })
 
   React.useEffect(() => {
@@ -94,6 +109,15 @@ export function ProjectForm({ project, onFormSubmit, onCancel, role, setOpen }: 
         });
     } else {
         form.reset({
+            refNumber: "",
+            applicationNumber: "",
+            patentNumber: "",
+            subject: "",
+            actionTaken: "",
+            documentName: "",
+            processor: "",
+            qa: "",
+            status: "Pending",
             emailDate: new Date(),
             allocationDate: new Date(),
             clientName: clientNames[0],
@@ -186,7 +210,7 @@ export function ProjectForm({ project, onFormSubmit, onCancel, role, setOpen }: 
                         <FormItem>
                         <FormLabel>Client Name</FormLabel>
                           {isManager ? (
-                            <Select onValueChange={field.onChange} defaultValue={field.value} disabled={!isFieldEditable('clientName')}>
+                            <Select onValueChange={field.onChange} value={field.value} disabled={!isFieldEditable('clientName')}>
                                 <FormControl>
                                 <SelectTrigger>
                                     <SelectValue placeholder="Select a client" />
@@ -210,7 +234,7 @@ export function ProjectForm({ project, onFormSubmit, onCancel, role, setOpen }: 
                         <FormItem>
                         <FormLabel>Process</FormLabel>
                         {isManager ? (
-                            <Select onValueChange={field.onChange} defaultValue={field.value} disabled={!isFieldEditable('process')}>
+                            <Select onValueChange={field.onChange} value={field.value} disabled={!isFieldEditable('process')}>
                                 <FormControl>
                                 <SelectTrigger>
                                     <SelectValue placeholder="Select a process" />
@@ -325,7 +349,7 @@ export function ProjectForm({ project, onFormSubmit, onCancel, role, setOpen }: 
                                 </PopoverContent>
                             </Popover>
                         ) : (
-                           <Input value={field.value ? format(field.value, "PPP") : 'N/A'} disabled />
+                           <Input value={field.value ? format(field.value, "PPP") : ''} disabled />
                         )}
                         </FormItem>
                 )}
@@ -371,7 +395,7 @@ export function ProjectForm({ project, onFormSubmit, onCancel, role, setOpen }: 
                                 </PopoverContent>
                             </Popover>
                         ) : (
-                           <Input value={field.value ? format(field.value, "PPP") : 'N/A'} disabled />
+                           <Input value={field.value ? format(field.value, "PPP") : ''} disabled />
                         )}
                         </FormItem>
                 )}
@@ -383,7 +407,7 @@ export function ProjectForm({ project, onFormSubmit, onCancel, role, setOpen }: 
                     <FormItem>
                         <FormLabel>Processor</FormLabel>
                          {isManager ? (
-                            <Select onValueChange={field.onChange} defaultValue={field.value} disabled={!isFieldEditable('processor')}>
+                            <Select onValueChange={field.onChange} value={field.value} disabled={!isFieldEditable('processor')}>
                                 <FormControl>
                                 <SelectTrigger>
                                     <SelectValue placeholder="Select a processor" />
@@ -406,7 +430,7 @@ export function ProjectForm({ project, onFormSubmit, onCancel, role, setOpen }: 
                      <FormItem>
                         <FormLabel>QA</FormLabel>
                          {isManager ? (
-                            <Select onValueChange={field.onChange} defaultValue={field.value} disabled={!isFieldEditable('qa')}>
+                            <Select onValueChange={field.onChange} value={field.value} disabled={!isFieldEditable('qa')}>
                                 <FormControl>
                                 <SelectTrigger>
                                     <SelectValue placeholder="Select a QA" />
@@ -476,5 +500,3 @@ export function ProjectForm({ project, onFormSubmit, onCancel, role, setOpen }: 
     </Card>
   )
 }
-
-    
