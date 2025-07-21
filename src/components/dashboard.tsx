@@ -8,15 +8,12 @@ import { DataTable } from '@/components/data-table';
 import { getColumns } from '@/components/columns';
 import { Header } from '@/components/header';
 import { UserManagementTable } from './user-management-table';
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
 import { Button } from './ui/button';
 import { bulkUpdateProjects } from '@/app/actions';
 import { useToast } from '@/hooks/use-toast';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from './ui/select';
 import { Loader2 } from 'lucide-react';
 import { AdvancedSearchForm, type SearchCriteria } from './advanced-search-form';
-import { DataTableRowActions } from './data-table-row-actions';
-import { ProjectForm } from './project-form';
 
 interface DashboardProps {
   user: User;
@@ -214,7 +211,14 @@ export default function Dashboard({
   }
   
   const isManagerOrAdmin = activeRole === 'Manager' || activeRole === 'Admin';
-  const columns = getColumns(isManagerOrAdmin, rowSelection, setRowSelection, dashboardProjects);
+  const columns = getColumns(
+      isManagerOrAdmin, 
+      rowSelection, 
+      setRowSelection, 
+      dashboardProjects,
+      activeRole,
+      { search, searchColumn, clientName: clientNameFilter, process: processFilter }
+  );
   const selectedBulkUpdateField = bulkUpdateFields.find(f => f.value === bulkUpdateField);
 
   return (

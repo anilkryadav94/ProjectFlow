@@ -24,6 +24,7 @@ import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "./ui/select";
 import { Input } from "./ui/input";
 import type { SearchableColumn } from "./dashboard"
+import Link from "next/link"
 
 interface HeaderProps {
     user: User;
@@ -45,6 +46,7 @@ interface HeaderProps {
     setProcessFilter: (value: string | 'all') => void;
     clientNames: string[];
     processes: ProcessType[];
+    children?: React.ReactNode;
 }
 
 export function Header({ 
@@ -66,7 +68,8 @@ export function Header({
   processFilter,
   setProcessFilter,
   clientNames,
-  processes
+  processes,
+  children,
 }: HeaderProps) {
   const router = useRouter();
 
@@ -97,6 +100,8 @@ export function Header({
     return user.roles.sort((a, b) => roleHierarchy.indexOf(a) - roleHierarchy.indexOf(b));
   }, [user.roles]);
 
+  const dashboardName = getDashboardName();
+
   return (
     <>
     <div className="flex items-center justify-between bg-primary text-primary-foreground p-2 px-4 shadow-md h-16 shrink-0 gap-4">
@@ -106,11 +111,19 @@ export function Header({
             <h2 className="text-xl font-bold tracking-tight">ProjectFlow</h2>
           </div>
           <Separator orientation="vertical" className="h-6 bg-primary-foreground/50" />
-          <h3 className="text-md font-semibold">{getDashboardName()}</h3>
+            {setActiveRole ? (
+                 <Link href="/" className="text-md font-semibold hover:underline">
+                    {dashboardName}
+                </Link>
+            ) : (
+                 <h3 className="text-md font-semibold">{dashboardName}</h3>
+            )}
         </div>
         
         <div className="flex-grow flex items-center justify-center px-8">
-            {!isManagerOrAdmin && setSearch && setSearchColumn && (
+            {children ? (
+                children
+            ) : !isManagerOrAdmin && setSearch && setSearchColumn && (
               <div className="flex w-full max-w-2xl items-center space-x-2">
                 <div className="flex items-center space-x-0 w-1/2">
                     <Select value={searchColumn} onValueChange={(v) => setSearchColumn(v as SearchableColumn)}>

@@ -1,7 +1,7 @@
 
 "use client";
 
-import type { Project, ProjectStatus } from "@/lib/data";
+import type { Project, ProjectStatus, Role } from "@/lib/data";
 import { Badge } from "@/components/ui/badge";
 import { cn } from "@/lib/utils";
 import Link from "next/link";
@@ -20,14 +20,30 @@ export const getColumns = (
   isManagerOrAdmin: boolean,
   rowSelection: Record<string, boolean>,
   setRowSelection: (selection: Record<string, boolean>) => void,
-  allProjectsOnPage: Project[]
+  allProjectsOnPage: Project[],
+  // Add these to get context for navigation
+  activeRole: Role,
+  searchParams: { search: string, searchColumn: string, clientName: string, process: string }
 ) => {
+
+  const navigationSearchParams = new URLSearchParams();
+  if (searchParams.search) navigationSearchParams.set('search', searchParams.search);
+  if (searchParams.searchColumn) navigationSearchParams.set('searchColumn', searchParams.searchColumn);
+  if (searchParams.clientName) navigationSearchParams.set('clientName', searchParams.clientName);
+  if (searchParams.process) navigationSearchParams.set('process', searchParams.process);
+  navigationSearchParams.set('role', activeRole);
+  const queryString = navigationSearchParams.toString();
+
+
   const baseColumns = [
     {
       key: "refNumber" as const,
       header: "Ref Number",
       render: (project: Project) => (
-         <Link href={`/task/${project.id}`} className={cn(buttonVariants({ variant: 'link' }), "p-0 h-auto font-medium text-primary")}>
+         <Link 
+              href={`/task/${project.id}?${queryString}`} 
+              className={cn(buttonVariants({ variant: 'link' }), "p-0 h-auto font-medium text-primary")}
+          >
               {project.refNumber}
           </Link>
       )
@@ -123,5 +139,3 @@ export const getColumns = (
 
   return baseColumns;
 };
-
-    
