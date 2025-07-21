@@ -119,8 +119,8 @@ export default function Dashboard() {
   const isTaskView = role === 'Processor' || role === 'QA';
 
   return (
-    <div className="flex-1 space-y-4 p-4 md:p-8 pt-6">
-       <Tabs defaultValue="projects" className="space-y-4">
+    <div className="flex flex-col h-screen p-4 md:p-8 pt-6">
+       <Tabs defaultValue="projects" className="flex flex-col h-full">
         <Header 
           search={search}
           setSearch={setSearch}
@@ -132,10 +132,10 @@ export default function Dashboard() {
           setProcessFilter={setProcessFilter}
           onProjectUpdate={handleProjectUpdate}
         />
-        <TabsContent value="projects" className="space-y-4">
+        <TabsContent value="projects" className="flex-grow mt-4">
           {isTaskView ? (
-             <div className="flex flex-col h-[calc(100vh-230px)] gap-4">
-                <ScrollArea className="h-[80%] pr-4">
+             <div className="flex flex-col h-full gap-4">
+                <ScrollArea className="flex-grow pr-4">
                     <ProjectForm 
                         project={activeProject} 
                         onFormSubmit={handleProjectUpdate}
@@ -143,7 +143,7 @@ export default function Dashboard() {
                         role={role}
                     />
                 </ScrollArea>
-                <div className="h-[20%]">
+                <div className="flex-shrink-0 h-[200px]">
                     <DataTable 
                         data={filteredProjects}
                         columns={columns}
