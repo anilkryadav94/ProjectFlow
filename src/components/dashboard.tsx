@@ -2,8 +2,7 @@
 "use client";
 
 import * as React from 'react';
-import { useToast } from "@/hooks/use-toast"
-import { type Project, projects as initialProjects, type Role, ProcessType, type User } from '@/lib/data';
+import { type Project, type Role, ProcessType, type User } from '@/lib/data';
 import { DataTable } from '@/components/data-table';
 import { columns } from '@/components/columns';
 import { Header } from '@/components/header';
@@ -11,41 +10,44 @@ import { ManagerView } from '@/components/manager-view';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { ProjectForm } from './project-form';
 import { ScrollArea } from './ui/scroll-area';
-import { redirect } from 'next/navigation';
 
 interface DashboardProps {
   user: User;
+  projects: Project[];
+  search: string;
+  setSearch: (search: string) => void;
+  sort: { key: keyof Project; direction: 'asc' | 'desc' } | null;
+  setSort: (sort: { key: keyof Project; direction: 'asc' | 'desc' } | null) => void;
+  clientNameFilter: string;
+  setClientNameFilter: (client: string) => void;
+  processFilter: ProcessType | 'all';
+  setProcessFilter: (process: ProcessType | 'all') => void;
+  onProjectUpdate: (project: Project) => void;
 }
 
-export default function Dashboard({ user }: DashboardProps) {
-  const [projects, setProjects] = React.useState<Project[]>(initialProjects);
-  const [filteredProjects, setFilteredProjects] = React.useState<Project[]>(initialProjects);
+export default function Dashboard({ 
+  user, 
+  projects,
+  search,
+  setSearch,
+  sort,
+  setSort,
+  clientNameFilter,
+  setClientNameFilter,
+  processFilter,
+  setProcessFilter,
+  onProjectUpdate 
+}: DashboardProps) {
   const [activeProject, setActiveProject] = React.useState<Project | null>(null);
 
-  const [search, setSearch] = React.useState('');
-  const [role, setRole] = React.useState<Role>(user.role); 
-  const [sort, setSort] = React.useState<{ key: keyof Project; direction: 'asc' | 'desc' } | null>({ key: 'allocationDate', direction: 'desc' });
-  const [clientNameFilter, setClientNameFilter] = React.useState<string>('all');
-  const [processFilter, setProcessFilter] = React.useState<ProcessType | 'all'>('all');
-
-  const { toast } = useToast();
-
-  React.useEffect(() => {
-    setRole(user.role);
-    if (user.role === 'Admin' && window.location.pathname !== '/admin') {
-      // Optional: redirect to admin page if user is Admin and not there already
-      // This might be better handled in middleware, but for simplicity's sake...
-    }
-  }, [user.role]);
-
-  const userQueue = React.useMemo(() => {
+  const filteredProjects = React.useMemo(() => {
     let userProjects = [...projects];
     // Role-based filtering
-    if (role === 'Processor') {
+    if (user.role === 'Processor') {
       userProjects = userProjects.filter(p => p.processor === user.name && (p.status === 'Processing' || p.status === 'Pending' || p.status === 'On Hold'));
-    } else if (role === 'QA') {
+    } else if (user.role === 'QA') {
         userProjects = userProjects.filter(p => p.qa === user.name && p.status === 'QA');
-    } else if (role === 'Manager' || role === 'Admin') {
+    } else if (user.role === 'Manager' || user.role === 'Admin') {
       // No filter, show all
     }
 
@@ -89,43 +91,23 @@ export default function Dashboard({ user }: DashboardProps) {
     }
 
     return userProjects;
-  }, [search, sort, projects, role, user.name, clientNameFilter, processFilter]);
+  }, [search, sort, projects, user.role, user.name, clientNameFilter, processFilter]);
 
   React.useEffect(() => {
-    setFilteredProjects(userQueue);
-    // Always set the active project to the first one in the queue
-    if (userQueue.length > 0) {
-      setActiveProject(userQueue[0]);
+    if (filteredProjects.length > 0) {
+      if (!activeProject || !filteredProjects.find(p => p.id === activeProject.id)) {
+        setActiveProject(filteredProjects[0]);
+      }
     } else {
       setActiveProject(null);
     }
-  }, [userQueue]);
-
-
-  const handleProjectUpdate = (updatedProject: Project) => {
-    let newProjects : Project[];
-    const existingProjectIndex = projects.findIndex(p => p.id === updatedProject.id);
-
-    if (existingProjectIndex > -1) {
-        newProjects = [...projects];
-        newProjects[existingProjectIndex] = updatedProject;
-    } else {
-        newProjects = [updatedProject, ...projects];
-    }
-    
-    setProjects(newProjects);
-
-    toast({
-        title: "Project Saved",
-        description: `Project ${updatedProject.refNumber} has been updated.`,
-    })
-  };
+  }, [filteredProjects, activeProject]);
 
   const handleRowClick = (project: Project) => {
     setActiveProject(project);
   }
 
-  const isTaskView = role === 'Processor' || role === 'QA';
+  const isTaskView = user.role === 'Processor' || user.role === 'QA';
 
   return (
     <div className="flex flex-col h-screen p-4 md:p-8 pt-6">
@@ -138,7 +120,7 @@ export default function Dashboard({ user }: DashboardProps) {
           setClientNameFilter={setClientNameFilter}
           processFilter={processFilter}
           setProcessFilter={setProcessFilter}
-          onProjectUpdate={handleProjectUpdate}
+          onProjectUpdate={onProjectUpdate}
         />
         <TabsContent value="projects" className="flex-grow mt-4 overflow-hidden">
           {isTaskView ? (
@@ -146,9 +128,9 @@ export default function Dashboard({ user }: DashboardProps) {
                 <ScrollArea className="flex-grow pr-4">
                     <ProjectForm 
                         project={activeProject} 
-                        onFormSubmit={handleProjectUpdate}
+                        onFormSubmit={onProjectUpdate}
                         onCancel={() => setActiveProject(null)}
-                        role={role}
+                        role={user.role}
                     />
                 </ScrollArea>
                 <div className="flex-shrink-0 h-[300px]">
@@ -157,7 +139,7 @@ export default function Dashboard({ user }: DashboardProps) {
                         columns={columns}
                         sort={sort}
                         setSort={setSort}
-                        onProjectUpdate={handleProjectUpdate}
+                        onProjectUpdate={onProjectUpdate}
                         onRowClick={handleRowClick}
                         activeProjectId={activeProject?.id}
                         isTaskView={true}
@@ -170,12 +152,12 @@ export default function Dashboard({ user }: DashboardProps) {
                 columns={columns}
                 sort={sort}
                 setSort={setSort}
-                onProjectUpdate={handleProjectUpdate}
+                onProjectUpdate={onProjectUpdate}
                 isTaskView={false}
               />
           )}
         </TabsContent>
-        {(role === 'Admin' || role === 'Manager') && (
+        {(user.role === 'Admin' || user.role === 'Manager') && (
             <TabsContent value="manager" className="space-y-4">
                 <ManagerView />
             </TabsContent>

@@ -1,9 +1,9 @@
+
 "use client"
 
 import * as React from "react"
-import type { DateRange } from "react-day-picker"
 import { ChevronsUpDown, LogOut, PlusCircle, Search, UserCircle, Workflow, Settings } from "lucide-react"
-import type { Project, Role, ProcessType, User } from "@/lib/data"
+import type { Project, ProcessType, User } from "@/lib/data"
 import { clientNames, processes } from "@/lib/data"
 import { Button } from "@/components/ui/button"
 import {
@@ -25,14 +25,20 @@ interface HeaderProps {
     search: string;
     setSearch: (search: string) => void;
     user: User;
-    onProjectUpdate: (project: Project) => void;
     clientNameFilter: string;
     setClientNameFilter: (client: string) => void;
     processFilter: ProcessType | 'all';
     setProcessFilter: (process: ProcessType | 'all') => void;
+    onProjectUpdate: (project: Project) => void;
 }
 
-export function Header({ search, setSearch, user, onProjectUpdate, clientNameFilter, setClientNameFilter, processFilter, setProcessFilter }: HeaderProps) {
+export function Header({ 
+  search, setSearch, 
+  user, 
+  clientNameFilter, setClientNameFilter, 
+  processFilter, setProcessFilter,
+  onProjectUpdate
+}: HeaderProps) {
   const router = useRouter();
 
   const handleLogout = async () => {
