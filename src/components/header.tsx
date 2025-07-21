@@ -3,8 +3,8 @@
 
 import * as React from "react"
 import Papa from "papaparse";
-import { Check, ChevronsUpDown, LogOut, PlusCircle, Search, UserCircle, Workflow, Settings, Download, FileSpreadsheet } from "lucide-react"
-import type { Project, ProcessType, User, Role } from "@/lib/data"
+import { ChevronsUpDown, LogOut, Search, Settings, FileSpreadsheet, User, Workflow } from "lucide-react"
+import type { Project, ProcessType, Role } from "@/lib/data"
 import { clientNames, processes, roleHierarchy } from "@/lib/data"
 import { Button } from "@/components/ui/button"
 import {
@@ -26,27 +26,25 @@ import { Separator } from "./ui/separator";
 import { Label } from "@/components/ui/label";
 
 interface HeaderProps {
+    user: User;
+    activeRole: Role;
+    setActiveRole: (role: Role) => void;
     search: string;
     setSearch: (search: string) => void;
-    user: User;
     clientNameFilter: string;
     setClientNameFilter: (client: string) => void;
     processFilter: ProcessType | 'all';
     setProcessFilter: (process: ProcessType | 'all') => void;
-    onProjectUpdate: (project: Project) => void;
-    activeRole: Role;
-    setActiveRole: (role: Role) => void;
     projectsToDownload: Project[];
 }
 
 export function Header({ 
-  search, setSearch, 
   user, 
-  clientNameFilter, setClientNameFilter, 
-  processFilter, setProcessFilter,
-  onProjectUpdate,
   activeRole,
   setActiveRole,
+  search, setSearch, 
+  clientNameFilter, setClientNameFilter, 
+  processFilter, setProcessFilter,
   projectsToDownload
 }: HeaderProps) {
   const router = useRouter();
@@ -148,10 +146,8 @@ export function Header({
             
             <DropdownMenu>
                 <DropdownMenuTrigger asChild>
-                    <Button variant="outline" className="w-40 justify-between h-9 text-foreground text-xs">
-                       <UserCircle className="mr-2 h-4 w-4" />
-                       <span className="truncate">{user.name}</span>
-                       <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
+                    <Button variant="outline" className="w-auto h-9 text-foreground text-xs px-2">
+                       <Settings className="h-4 w-4" />
                     </Button>
                 </DropdownMenuTrigger>
                 <DropdownMenuContent className="w-56">

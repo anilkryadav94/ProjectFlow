@@ -2,59 +2,103 @@
 "use client";
 
 import * as React from 'react';
-import { type Project, type Role, ProcessType, type User, users as allUsers } from '@/lib/data';
+import { type Project, type Role, ProcessType, type User, roleHierarchy } from '@/lib/data';
 import { DataTable } from '@/components/data-table';
 import { columns } from '@/components/columns';
 import { Header } from '@/components/header';
 import { ProjectForm } from './project-form';
 import { ScrollArea } from './ui/scroll-area';
 import { UserManagementTable } from './user-management-table';
+import { useToast } from "@/hooks/use-toast";
+import { collection, onSnapshot, query, orderBy, Timestamp } from 'firebase/firestore';
+import { db } from '@/lib/firebase';
 
 interface DashboardProps {
   user: User;
-  projects: Project[];
-  search: string;
-  setSearch: (search: string) => void;
-  sort: { key: keyof Project; direction: 'asc' | 'desc' } | null;
-  setSort: (sort: { key: keyof Project; direction: 'asc' | 'desc' } | null) => void;
-  clientNameFilter: string;
-  setClientNameFilter: (client: string) => void;
-  processFilter: ProcessType | 'all';
-  setProcessFilter: (process: ProcessType | 'all') => void;
-  onProjectUpdate: (project: Project) => void;
-  activeRole: Role;
-  setActiveRole: (role: Role) => void;
+  initialProjects: Project[];
+}
+
+function toISOString(date: Date | string | Timestamp | null | undefined): string | null {
+    if (!date) return null;
+    if (typeof date === 'string') return date;
+    if (date instanceof Timestamp) return date.toDate().toISOString().split('T')[0];
+    return date.toISOString().split('T')[0];
 }
 
 export default function Dashboard({ 
   user, 
-  projects,
-  search,
-  setSearch,
-  sort,
-  setSort,
-  clientNameFilter,
-  setClientNameFilter,
-  processFilter,
-  setProcessFilter,
-  onProjectUpdate,
-  activeRole,
-  setActiveRole
+  initialProjects,
 }: DashboardProps) {
   const [activeProject, setActiveProject] = React.useState<Project | null>(null);
+  const [activeRole, setActiveRole] = React.useState<Role | null>(null);
+
+  const [projects, setProjects] = React.useState<Project[]>(initialProjects);
+  const [search, setSearch] = React.useState('');
+  const [sort, setSort] = React.useState<{ key: keyof Project; direction: 'asc' | 'desc' } | null>({ key: 'allocationDate', direction: 'desc' });
+  const [clientNameFilter, setClientNameFilter] = React.useState<string>('all');
+  const [processFilter, setProcessFilter] = React.useState<ProcessType | 'all'>('all');
+  const { toast } = useToast();
+  
+  React.useEffect(() => {
+    if (user?.roles?.length > 0) {
+      for (const role of roleHierarchy) {
+          if (user.roles.includes(role)) {
+              setActiveRole(role);
+              break;
+          }
+      }
+    }
+  }, [user.roles]);
+
+  React.useEffect(() => {
+    // Set up real-time listener for projects
+    const q = query(collection(db, "projects"), orderBy("allocationDate", "desc"));
+    const unsubscribe = onSnapshot(q, (querySnapshot) => {
+        const updatedProjects = querySnapshot.docs.map(doc => {
+            const data = doc.data();
+            return {
+                id: doc.id,
+                ...data,
+                emailDate: toISOString(data.emailDate)!,
+                allocationDate: toISOString(data.allocationDate)!,
+                processingDate: toISOString(data.processingDate),
+                qaDate: toISOString(data.qaDate),
+            } as Project;
+        });
+        setProjects(updatedProjects);
+    });
+
+    return () => unsubscribe();
+  }, []);
+
+  const handleProjectUpdate = (updatedProject: Project) => {
+    const existingProjectIndex = projects.findIndex(p => p.id === updatedProject.id);
+
+    if (existingProjectIndex > -1) {
+        const newProjects = [...projects];
+        newProjects[existingProjectIndex] = updatedProject;
+        setProjects(newProjects);
+    } else {
+        setProjects(prev => [updatedProject, ...prev]);
+    }
+    
+    toast({
+        title: "Project Saved",
+        description: `Project ${updatedProject.refNumber} has been updated.`,
+    });
+  };
 
   const filteredProjects = React.useMemo(() => {
     let userProjects = [...projects];
 
-    // Role-based filtering
-    if (activeRole === 'Processor') {
+    if (activeRole === 'Manager' || activeRole === 'Admin') {
+        // Managers and Admins see all projects initially
+    } else if (activeRole === 'Processor') {
       userProjects = userProjects.filter(p => p.processor === user.name);
     } else if (activeRole === 'QA') {
       userProjects = userProjects.filter(p => p.qa === user.name);
     }
-    // For Manager and Admin, we start with all projects.
-
-    // Search filtering (applies to all roles)
+    
     if (search) {
       userProjects = userProjects.filter(project =>
         (project.applicationNumber || '').toLowerCase().includes(search.toLowerCase()) ||
@@ -63,17 +107,14 @@ export default function Dashboard({
       );
     }
     
-    // Client Name filter (applies to all roles)
     if (clientNameFilter !== 'all') {
       userProjects = userProjects.filter(p => p.clientName === clientNameFilter);
     }
 
-    // Process filter (applies to all roles)
     if (processFilter !== 'all') {
       userProjects = userProjects.filter(p => p.process === processFilter);
     }
 
-    // Sorting (applies to all roles)
     if (sort) {
       userProjects.sort((a, b) => {
         const valA = a[sort.key];
@@ -108,24 +149,27 @@ export default function Dashboard({
   const handleRowClick = (project: Project) => {
     setActiveProject(project);
   }
+  
+  if (!activeRole) {
+    // This can be a loading spinner as well
+    return null;
+  }
 
   const isTaskView = activeRole === 'Processor' || activeRole === 'QA';
   const isAdminView = activeRole === 'Admin';
 
-
   return (
     <div className="flex flex-col h-screen bg-background w-full">
         <Header 
+            user={user}
+            activeRole={activeRole}
+            setActiveRole={setActiveRole}
             search={search}
             setSearch={setSearch}
-            user={user}
             clientNameFilter={clientNameFilter}
             setClientNameFilter={setClientNameFilter}
             processFilter={processFilter}
             setProcessFilter={setProcessFilter}
-            onProjectUpdate={onProjectUpdate}
-            activeRole={activeRole}
-            setActiveRole={setActiveRole}
             projectsToDownload={filteredProjects}
         />
         <div className="flex flex-col flex-grow overflow-hidden py-2 gap-2">
