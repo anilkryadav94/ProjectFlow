@@ -1,3 +1,4 @@
+
 "use client"
 
 import * as React from "react"
@@ -25,9 +26,10 @@ interface DataTableProps {
   onProjectUpdate: (project: Project) => void;
   onRowClick?: (project: Project) => void;
   activeProjectId?: string;
+  isTaskView: boolean;
 }
 
-export function DataTable({ data, columns, sort, setSort, onProjectUpdate, onRowClick, activeProjectId }: DataTableProps) {
+export function DataTable({ data, columns, sort, setSort, onProjectUpdate, onRowClick, activeProjectId, isTaskView }: DataTableProps) {
   const handleSort = (key: keyof Project) => {
     if (sort && sort.key === key) {
       setSort({ key, direction: sort.direction === 'asc' ? 'desc' : 'asc' });
@@ -36,8 +38,13 @@ export function DataTable({ data, columns, sort, setSort, onProjectUpdate, onRow
     }
   };
 
+  const maxHeightClass = isTaskView
+    ? "max-h-[100%]"
+    : "max-h-[calc(100vh-280px)]";
+
+
   return (
-    <div className="rounded-md border bg-card overflow-y-auto relative max-h-[calc(100vh-420px)]">
+    <div className={cn("rounded-md border bg-card overflow-y-auto relative", maxHeightClass)}>
       <Table>
         <TableHeader className="sticky top-0 z-10 bg-card/95 backdrop-blur-sm">
           <TableRow>

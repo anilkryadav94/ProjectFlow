@@ -10,6 +10,7 @@ import { Header } from '@/components/header';
 import { ManagerView } from '@/components/manager-view';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { ProjectForm } from './project-form';
+import { ScrollArea } from './ui/scroll-area';
 
 export default function Dashboard() {
   const [projects, setProjects] = React.useState<Project[]>(initialProjects);
@@ -132,25 +133,39 @@ export default function Dashboard() {
           onProjectUpdate={handleProjectUpdate}
         />
         <TabsContent value="projects" className="space-y-4">
-          {isTaskView && (
-            <div className="mb-8">
-              <ProjectForm 
-                project={activeProject} 
-                onFormSubmit={handleProjectUpdate}
-                onCancel={() => setActiveProject(null)}
-                role={role}
-              />
+          {isTaskView ? (
+             <div className="flex flex-col h-[calc(100vh-230px)] gap-4">
+                <ScrollArea className="h-[70%] pr-4">
+                    <ProjectForm 
+                        project={activeProject} 
+                        onFormSubmit={handleProjectUpdate}
+                        onCancel={() => setActiveProject(null)}
+                        role={role}
+                    />
+                </ScrollArea>
+                <div className="h-[30%]">
+                    <DataTable 
+                        data={filteredProjects}
+                        columns={columns}
+                        sort={sort}
+                        setSort={setSort}
+                        onProjectUpdate={handleProjectUpdate}
+                        onRowClick={handleRowClick}
+                        activeProjectId={activeProject?.id}
+                        isTaskView={true}
+                    />
+                </div>
             </div>
+          ) : (
+             <DataTable 
+                data={filteredProjects}
+                columns={columns}
+                sort={sort}
+                setSort={setSort}
+                onProjectUpdate={handleProjectUpdate}
+                isTaskView={false}
+              />
           )}
-          <DataTable 
-            data={filteredProjects}
-            columns={columns}
-            sort={sort}
-            setSort={setSort}
-            onProjectUpdate={handleProjectUpdate}
-            onRowClick={isTaskView ? handleRowClick : undefined}
-            activeProjectId={activeProject?.id}
-          />
         </TabsContent>
         {(role === 'Admin' || role === 'Manager') && (
             <TabsContent value="manager" className="space-y-4">
