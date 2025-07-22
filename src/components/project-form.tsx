@@ -64,25 +64,25 @@ const formSchema = z.object({
   documentName: z.string().optional(),
 
   submitAction: z.enum(['save', 'submit_for_qa', 'submit_qa', 'send_for_rework'])
-}).refine(data => {
-    // When sending for rework, only the rework reason is required.
+}).superRefine((data, ctx) => {
     if (data.submitAction === 'send_for_rework') {
-        return !!data.reworkReason && data.reworkReason.trim().length > 0;
+        if (!data.reworkReason || data.reworkReason.trim().length === 0) {
+            ctx.addIssue({
+                code: z.ZodIssueCode.custom,
+                message: "Rework reason is required when sending for rework.",
+                path: ["reworkReason"],
+            });
+        }
     }
-    return true;
-}, {
-    message: "Rework reason is required when sending for rework.",
-    path: ["reworkReason"],
-})
-.refine(data => {
-    // When submitting QA (but not for rework), QA status is required.
     if (data.submitAction === 'submit_qa') {
-        return !!data.qaStatus;
+         if (!data.qaStatus || !qaSubmissionStatuses.includes(data.qaStatus)) {
+             ctx.addIssue({
+                code: z.ZodIssueCode.custom,
+                message: "A valid submission status is required for QA.",
+                path: ["qaStatus"],
+            });
+         }
     }
-    return true;
-}, {
-    message: "QA Status is required when completing QA.",
-    path: ["qaStatus"]
 });
 
 
@@ -200,7 +200,6 @@ export function ProjectForm({ project: initialProject, role, setOpen, nextProjec
   const handleQAComplete = () => form.handleSubmit((data) => handleFormSubmit(data, 'submit_qa'))();
   const handleSendForRework = () => form.handleSubmit((data) => handleFormSubmit(data, 'send_for_rework'))();
 
-
   const isProcessor = role === 'Processor';
   const isQA = role === 'QA';
   const isManager = role === 'Manager' || role === 'Admin';
@@ -214,7 +213,7 @@ export function ProjectForm({ project: initialProject, role, setOpen, nextProjec
         return ['qaStatus', 'reworkReason'].includes(fieldName);
     }
     return false;
-  }
+  };
 
   const canProcessorSubmit = isProcessor && project?.workflowStatus === 'With Processor';
   const canQASubmit = isQA && project?.workflowStatus === 'With QA';
