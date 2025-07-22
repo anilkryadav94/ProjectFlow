@@ -82,7 +82,7 @@ export async function saveProject(data: ProjectFormValues, nextProjectId?: strin
         projects[projectIndex] = savedProject;
     } else {
         // Create new project
-        const newId = (Math.max(...projects.map(p => parseInt(p.id, 10))) + 1).toString();
+        const newId = (Math.max(0, ...projects.map(p => parseInt(p.id, 10))) + 1).toString();
         savedProject = {
             id: newId,
             ...formData,
