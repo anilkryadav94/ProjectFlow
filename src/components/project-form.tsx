@@ -73,7 +73,6 @@ const formSchema = z.object({
     message: "Rework reason is required when sending for rework.",
     path: ["reworkReason"],
 }).refine(data => {
-    // QA status is only required when submitting QA, not when sending for rework
     if (data.submitAction === 'submit_qa') {
         return !!data.qaStatus;
     }
@@ -127,7 +126,21 @@ export function ProjectForm({ project: initialProject, role, setOpen, nextProjec
             reworkReason: project.reworkReason || "",
         });
     } else {
-        form.reset(); 
+        form.reset({
+            refNumber: '',
+            clientName: '',
+            process: 'Patent',
+            applicationNumber: '',
+            patentNumber: '',
+            processor: '',
+            qa: '',
+            subject: '',
+            actionTaken: '',
+            documentName: '',
+            processorStatus: 'Pending',
+            qaStatus: 'Pending',
+            reworkReason: '',
+        }); 
     }
   }, [project, form]);
   
@@ -317,7 +330,7 @@ export function ProjectForm({ project: initialProject, role, setOpen, nextProjec
                       </div>
 
                        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                         {(isProcessor || isManager) ? (
+                         {(isProcessor || isManager) && (
                             <FormField
                                 control={form.control}
                                 name="processorStatus"
@@ -344,10 +357,9 @@ export function ProjectForm({ project: initialProject, role, setOpen, nextProjec
                                 <FormMessage />
                                 </FormItem>
                             )}
-                         />
-                         ) : null}
+                         )}
                          
-                         {(isQA || isManager) && project?.workflowStatus === 'With QA' ? (
+                         {(isQA || isManager) && project?.workflowStatus === 'With QA' && (
                              <FormField
                                 control={form.control}
                                 name="qaStatus"
@@ -367,7 +379,7 @@ export function ProjectForm({ project: initialProject, role, setOpen, nextProjec
                                 <FormMessage />
                                 </FormItem>
                             )}
-                         ) : null}
+                         )}
                        </div>
                        
                         {canQASubmit && (
@@ -604,5 +616,3 @@ export function ProjectForm({ project: initialProject, role, setOpen, nextProjec
     </div>
   )
 }
-
-    
