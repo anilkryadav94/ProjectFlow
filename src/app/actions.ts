@@ -3,7 +3,7 @@
 
 import { z } from "zod";
 import type { Project } from "@/lib/data";
-import { projects, processorSubmissionStatuses, qaSubmissionStatuses } from "@/lib/data";
+import { projects } from "@/lib/data";
 import { redirect } from "next/navigation";
 import { revalidatePath } from "next/cache";
 
@@ -32,105 +32,97 @@ function toISOString(date: Date | string | null | undefined): string | null {
     return date.toISOString().split('T')[0];
 }
 
-
 export async function saveProject(data: ProjectFormValues, nextProjectId?: string): Promise<Project | void> {
     const validatedData = formSchema.parse(data);
+    const { id, submitAction, ...formData } = validatedData;
 
-    let projectToSave: Project;
-    let projectIndex = -1;
+    const projectIndex = id ? projects.findIndex(p => p.id === id) : -1;
 
-    if (validatedData.id) {
-        projectIndex = projects.findIndex(p => p.id === validatedData.id);
+    if (id && projectIndex === -1) {
+        throw new Error("Project not found for update");
     }
 
-    if (projectIndex === -1 && validatedData.id) {
-         throw new Error("Project not found for update");
-    }
-    
-    const existingProjectData = projectIndex !== -1 ? projects[projectIndex] : {};
-    
-    let workflowStatus = existingProjectData?.workflowStatus || 'With Processor';
-    let processingDate = existingProjectData?.processingDate || null;
-    let qaDate = existingProjectData?.qaDate || null;
-    let processorStatus = validatedData.processorStatus;
-    let qaStatus = validatedData.qaStatus;
+    const existingProject = projectIndex !== -1 ? projects[projectIndex] : {};
 
-    switch(validatedData.submitAction) {
+    let workflowStatus = existingProject?.workflowStatus || 'With Processor';
+    let processingDate = existingProject?.processingDate || null;
+    let qaDate = existingProject?.qaDate || null;
+    let processorStatus = formData.processorStatus;
+    let qaStatus = formData.qaStatus;
+
+    switch(submitAction) {
         case 'submit_for_qa':
             workflowStatus = 'With QA';
             processingDate = new Date().toISOString().split('T')[0];
+            processorStatus = 'Processed';
             qaStatus = 'Pending';
-            if (!processorSubmissionStatuses.includes(processorStatus)) {
-                processorStatus = 'Processed';
-            }
             break;
         case 'submit_qa':
             workflowStatus = 'Completed';
             qaDate = new Date().toISOString().split('T')[0];
+            qaStatus = 'Complete';
             break;
         case 'save':
-            // Statuses are taken directly from the form data
+            // Keep statuses from form data
             break;
     }
 
-    const commonData = {
-        ...validatedData,
-        applicationNumber: validatedData.applicationNumber || '',
-        patentNumber: validatedData.patentNumber || '',
-        emailDate: toISOString(validatedData.emailDate)!,
-        allocationDate: toISOString(validatedData.allocationDate)!,
-        processingDate,
-        qaDate,
-        workflowStatus,
-        processorStatus,
-        qaStatus,
-    };
-    
-    delete (commonData as any).submitAction;
+    let savedProject: Project;
 
     if (projectIndex !== -1) {
-        projects[projectIndex] = { 
-            ...projects[projectIndex], 
-            ...commonData,
-            // Keep existing values for fields not on the form
-            subject: projects[projectIndex].subject,
-            from: projects[projectIndex].from,
-            country: projects[projectIndex].country,
-            actionTaken: projects[projectIndex].actionTaken,
-            documentName: projects[projectIndex].documentName,
-            reworkReason: projects[projectIndex].reworkReason,
+        // Update existing project
+        const updatedProject: Project = {
+            ...projects[projectIndex],
+            ...formData,
+            emailDate: toISOString(formData.emailDate)!,
+            allocationDate: toISOString(formData.allocationDate)!,
+            workflowStatus,
+            processorStatus,
+            qaStatus,
+            processingDate,
+            qaDate,
         };
-        projectToSave = projects[projectIndex];
+        projects[projectIndex] = updatedProject;
+        savedProject = updatedProject;
     } else {
+        // Create new project
         const newId = (Math.max(...projects.map(p => parseInt(p.id, 10))) + 1).toString();
-        projectToSave = {
-            ...commonData,
-            from: "new.user@example.com", 
+        const newProject: Project = {
             id: newId,
+            ...formData,
+            emailDate: toISOString(formData.emailDate)!,
+            allocationDate: toISOString(formData.allocationDate)!,
+            workflowStatus,
+            processorStatus,
+            qaStatus,
+            processingDate,
+            qaDate,
+            // Provide default values for fields not on the form to match Project type
+            from: "new.user@example.com", 
             country: 'USA',
             actionTaken: '',
             documentName: '',
             subject: 'Newly Created Project',
             reworkReason: '',
         };
-        projects.unshift(projectToSave);
+        projects.unshift(newProject);
+        savedProject = newProject;
     }
     
     revalidatePath('/');
-    revalidatePath(`/task/${projectToSave.id}`);
+    revalidatePath(`/task/${savedProject.id}`);
 
-    if (validatedData.submitAction === 'save') {
-      return projectToSave;
+    if (submitAction === 'save') {
+      return savedProject;
     }
     
-    if (validatedData.submitAction === 'submit_for_qa' || validatedData.submitAction === 'submit_qa') {
-      if (nextProjectId) {
-        redirect(`/task/${nextProjectId}`);
-      } else {
-        redirect('/');
-      }
+    if (nextProjectId) {
+      redirect(`/task/${nextProjectId}`);
+    } else {
+      redirect('/');
     }
 }
+
 
 const bulkUpdateSchema = z.object({
   projectIds: z.array(z.string()),
