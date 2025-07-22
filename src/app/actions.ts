@@ -3,7 +3,7 @@
 
 import { z } from "zod";
 import type { Project } from "@/lib/data";
-import { projects, processorSubmissionStatuses } from "@/lib/data";
+import { projects, processorSubmissionStatuses, qaSubmissionStatuses } from "@/lib/data";
 import { redirect } from "next/navigation";
 import { revalidatePath } from "next/cache";
 
@@ -27,14 +27,21 @@ const formSchema = z.object({
   actionTaken: z.string().optional(),
   documentName: z.string().optional(),
   submitAction: z.enum(['save', 'submit_for_qa', 'submit_qa', 'send_for_rework'])
-}).refine(data => {
-    if (data.submitAction === 'send_for_rework') {
-        return !!data.reworkReason && data.reworkReason.length > 0;
+}).superRefine((data, ctx) => {
+    if (data.submitAction === 'send_for_rework' && (!data.reworkReason || data.reworkReason.trim().length === 0)) {
+        ctx.addIssue({
+            code: z.ZodIssueCode.custom,
+            message: "Rework reason is required.",
+            path: ["reworkReason"],
+        });
     }
-    return true;
-}, {
-    message: "Rework reason is required.",
-    path: ["reworkReason"],
+    if (data.submitAction === 'submit_qa' && !qaSubmissionStatuses.includes(data.qaStatus)) {
+         ctx.addIssue({
+            code: z.ZodIssueCode.custom,
+            message: "A valid submission status is required for QA.",
+            path: ["qaStatus"],
+        });
+    }
 });
 
 
@@ -84,9 +91,6 @@ export async function saveProject(data: ProjectFormValues, nextProjectId?: strin
             qaDate = new Date().toISOString().split('T')[0];
             break;
         case 'send_for_rework':
-            if (!validatedData.reworkReason) {
-                throw new Error("Rework reason is required.");
-            }
             workflowStatus = 'With Processor';
             processorStatus = 'Re-Work';
             qaStatus = 'Pending'; 
