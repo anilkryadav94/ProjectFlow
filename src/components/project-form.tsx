@@ -1,3 +1,4 @@
+
 "use client"
 
 import * as React from "react"
@@ -32,6 +33,7 @@ import { useToast } from "@/hooks/use-toast"
 import { cn } from "@/lib/utils"
 import type { Project, Role } from "@/lib/data"
 import { processors, qas, clientNames, processes, processorStatuses, qaStatuses, processorSubmissionStatuses, qaSubmissionStatuses } from "@/lib/data"
+import { useRouter } from "next/navigation"
 
 const formSchema = z.object({
     id: z.string(),
@@ -60,10 +62,12 @@ interface ProjectFormProps {
   project: Project
   userRole: Role
   nextProjectId: string | null;
+  filteredIds?: string;
 }
 
-export function ProjectForm({ project, userRole, nextProjectId }: ProjectFormProps) {
+export function ProjectForm({ project, userRole, nextProjectId, filteredIds }: ProjectFormProps) {
   const { toast } = useToast()
+  const router = useRouter();
   const [isSubmitting, setIsSubmitting] = React.useState(false);
   const [submitAction, setSubmitAction] = React.useState<'save' | 'submit_for_qa' | 'submit_qa' | 'send_rework' | null>(null);
 
@@ -91,12 +95,18 @@ export function ProjectForm({ project, userRole, nextProjectId }: ProjectFormPro
     await form.handleSubmit(async (data) => {
       setIsSubmitting(true);
       try {
-        await saveProject(data, action, nextProjectId);
+        const nextUrl = nextProjectId 
+          ? `/task/${nextProjectId}?role=${userRole}${filteredIds ? `&filteredIds=${filteredIds}`: ''}` 
+          : `/?role=${userRole}`;
+          
+        await saveProject(data, action, nextProjectId, filteredIds, userRole);
         toast({
           title: "Success",
           description: `Project has been ${action === 'save' ? 'saved' : 'submitted'}.`,
         });
-        // Redirect is handled in server action
+        
+        router.push(nextUrl);
+
       } catch (error) {
         toast({
           title: "Error",

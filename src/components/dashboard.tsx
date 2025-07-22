@@ -224,12 +224,16 @@ function Dashboard({
   }
   
   const isManagerOrAdmin = activeRole === 'Manager' || activeRole === 'Admin';
+  
+  const filteredIds = isManagerOrAdmin ? filteredProjects?.map(p => p.id) : dashboardProjects.map(p => p.id);
+
   const columns = getColumns(
       isManagerOrAdmin, 
       rowSelection, 
       setRowSelection, 
       dashboardProjects,
-      activeRole
+      activeRole,
+      filteredIds
   );
   const selectedBulkUpdateField = bulkUpdateFields.find(f => f.value === bulkUpdateField);
 

@@ -31,6 +31,7 @@ interface TaskPagination {
     total: number;
     nextId: string | null;
     prevId: string | null;
+    filteredIds?: string;
 }
 
 interface HeaderProps {
@@ -94,6 +95,13 @@ export function Header({
     }
     router.push(targetUrl, { scroll: false });
   }
+  
+  const handlePagination = (id: string | null) => {
+    if (!id) return;
+    const filteredIdsParam = taskPagination?.filteredIds ? `&filteredIds=${taskPagination.filteredIds}` : '';
+    router.push(`/task/${id}?role=${activeRole}${filteredIdsParam}`);
+  }
+
 
   const getDashboardName = () => {
     if (!activeRole) return 'Dashboard';
@@ -210,11 +218,11 @@ export function Header({
 
             {taskPagination && (
                  <div className="flex items-center gap-2 text-sm font-medium">
-                    <Button variant="outline" size="icon" className="h-8 w-8 text-foreground" disabled={!taskPagination.prevId} onClick={() => router.push(`/task/${taskPagination.prevId}?role=${activeRole}`)}>
+                    <Button variant="outline" size="icon" className="h-8 w-8 text-foreground" disabled={!taskPagination.prevId} onClick={() => handlePagination(taskPagination.prevId)}>
                         <ChevronLeft className="h-4 w-4" />
                     </Button>
-                    <span>{taskPagination.currentIndex + 1} of {taskPagination.total}</span>
-                    <Button variant="outline" size="icon" className="h-8 w-8 text-foreground" disabled={!taskPagination.nextId} onClick={() => router.push(`/task/${taskPagination.nextId}?role=${activeRole}`)}>
+                    <span>{taskPagination.total > 0 ? taskPagination.currentIndex + 1 : 0} of {taskPagination.total}</span>
+                    <Button variant="outline" size="icon" className="h-8 w-8 text-foreground" disabled={!taskPagination.nextId} onClick={() => handlePagination(taskPagination.nextId)}>
                         <ChevronRight className="h-4 w-4" />
                     </Button>
                 </div>

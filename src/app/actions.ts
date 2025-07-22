@@ -1,7 +1,8 @@
+
 "use server";
 
 import { z } from "zod";
-import type { Project } from "@/lib/data";
+import type { Project, Role } from "@/lib/data";
 import { projects } from "@/lib/data";
 import { redirect } from "next/navigation";
 import { revalidatePath } from "next/cache";
@@ -57,7 +58,9 @@ const projectSchema = z.object({
 export async function saveProject(
   data: z.infer<typeof projectSchema>, 
   submitAction: 'save' | 'submit_for_qa' | 'submit_qa' | 'send_rework',
-  nextProjectId?: string | null
+  nextProjectId?: string | null,
+  filteredIds?: string | undefined,
+  activeRole?: Role | undefined,
 ): Promise<Project | void> {
     
     const validatedData = projectSchema.parse(data);
@@ -101,16 +104,20 @@ export async function saveProject(
     revalidatePath('/');
     revalidatePath(`/task/${savedProject.id}`);
     
-    if (submitAction === 'save') {
-        if(nextProjectId) {
-            redirect(`/task/${nextProjectId}`);
-        }
-        return savedProject;
-    } else {
-        if (nextProjectId) {
-            redirect(`/task/${nextProjectId}`);
-        } else {
-            redirect('/');
-        }
-    }
+    // Server-side redirect is no longer needed as client handles it
+    
+    // if (submitAction === 'save') {
+    //     if(nextProjectId) {
+    //         const nextUrl = `/task/${nextProjectId}?role=${activeRole}${filteredIds ? `&filteredIds=${filteredIds}`: ''}`;
+    //         redirect(nextUrl);
+    //     }
+    //     return savedProject;
+    // } else {
+    //     if (nextProjectId) {
+    //         const nextUrl = `/task/${nextProjectId}?role=${activeRole}${filteredIds ? `&filteredIds=${filteredIds}`: ''}`;
+    //         redirect(nextUrl);
+    //     } else {
+    //         redirect(`/?role=${activeRole}`);
+    //     }
+    // }
 }

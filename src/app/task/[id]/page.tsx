@@ -23,11 +23,11 @@ async function getProjectsForUser(user: { name: string; roles: Role[] }, activeR
     // Sort by allocation date
     userProjects.sort((a, b) => new Date(b.allocationDate).getTime() - new Date(a.allocationDate).getTime());
     
-    return userProjects;
+    return JSON.parse(JSON.stringify(userProjects));
 }
 
 
-export default async function TaskPage({ params, searchParams }: { params: { id: string }, searchParams: { role?: Role } }) {
+export default async function TaskPage({ params, searchParams }: { params: { id: string }, searchParams: { role?: Role, filteredIds?: string } }) {
   const session = await getSession();
   if (!session) {
     redirect('/login');
@@ -48,7 +48,16 @@ export default async function TaskPage({ params, searchParams }: { params: { id:
     ? urlRole
     : getHighestRole(session.user.roles);
   
-  const userProjectList = await getProjectsForUser(session.user, activeRole);
+  const allProjectsForRole = await getProjectsForUser(session.user, activeRole);
+
+  let userProjectList: Project[];
+  
+  if (searchParams.filteredIds) {
+    const filteredIdSet = new Set(searchParams.filteredIds.split(','));
+    userProjectList = allProjectsForRole.filter(p => filteredIdSet.has(p.id));
+  } else {
+    userProjectList = allProjectsForRole;
+  }
   
   const currentProjectIndex = userProjectList.findIndex(p => p.id === params.id);
 
@@ -83,11 +92,13 @@ export default async function TaskPage({ params, searchParams }: { params: { id:
                 total: userProjectList.length,
                 nextId: nextProjectId,
                 prevId: prevProjectId,
+                filteredIds: searchParams.filteredIds,
             }}
         />
         <main className="flex-1 h-full overflow-y-auto p-4 md:p-6">
-            <ProjectForm project={project} userRole={activeRole} nextProjectId={nextProjectId}/>
+            <ProjectForm project={project} userRole={activeRole} nextProjectId={nextProjectId} filteredIds={searchParams.filteredIds}/>
         </main>
     </div>
   );
 }
+

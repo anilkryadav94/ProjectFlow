@@ -43,14 +43,16 @@ export const getColumns = (
   setRowSelection: (selection: Record<string, boolean>) => void,
   allProjectsOnPage: Project[],
   activeRole: Role,
+  filteredIds?: string[]
 ) => {
+  const filteredIdsQueryParam = filteredIds && filteredIds.length > 0 ? `&filteredIds=${filteredIds.join(',')}` : '';
 
   const baseColumns = [
     {
       key: "refNumber" as const,
       header: "Ref Number",
       render: (project: Project) => (
-         <Link href={`/task/${project.id}?role=${activeRole}`} className="font-medium text-primary hover:underline">
+         <Link href={`/task/${project.id}?role=${activeRole}${filteredIdsQueryParam}`} className="font-medium text-primary hover:underline">
             {project.refNumber}
          </Link>
       )
@@ -157,30 +159,6 @@ export const getColumns = (
       ),
     };
     columns.unshift(selectionColumn);
-  } else {
-     const actionsColumn = {
-        key: 'actions',
-        header: 'Actions',
-        render: (project: Project) => (
-            <DropdownMenu>
-              <DropdownMenuTrigger asChild>
-                <Button
-                  variant="ghost"
-                  className="flex h-8 w-8 p-0 data-[state=open]:bg-muted"
-                >
-                  <MoreHorizontal className="h-4 w-4" />
-                  <span className="sr-only">Open menu</span>
-                </Button>
-              </DropdownMenuTrigger>
-              <DropdownMenuContent align="end" className="w-[160px]">
-                <DropdownMenuItem asChild>
-                  <Link href={`/task/${project.id}?role=${activeRole}`}>View Task</Link>
-                </DropdownMenuItem>
-              </DropdownMenuContent>
-            </DropdownMenu>
-        )
-     }
-     columns.push(actionsColumn);
   }
 
   return columns;
