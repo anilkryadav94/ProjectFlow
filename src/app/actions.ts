@@ -3,7 +3,7 @@
 
 import { z } from "zod";
 import type { Project } from "@/lib/data";
-import { projects, processorSubmissionStatuses, qaSubmissionStatuses, processes } from "@/lib/data";
+import { projects, processorSubmissionStatuses, qaSubmissionStatuses } from "@/lib/data";
 import { redirect } from "next/navigation";
 import { revalidatePath } from "next/cache";
 
@@ -21,9 +21,6 @@ const formSchema = z.object({
   
   processorStatus: z.enum(["Pending", "On Hold", "Re-Work", "Processed", "NTP", "Client Query", "Already Processed"]),
   qaStatus: z.enum(["Pending", "Complete", "NTP", "Client Query", "Already Processed"]),
-  subject: z.string().optional(),
-  actionTaken: z.string().optional(),
-  documentName: z.string().optional(),
 
   submitAction: z.enum(['save', 'submit_for_qa', 'submit_qa'])
 }).superRefine((data, ctx) => {
@@ -90,9 +87,6 @@ export async function saveProject(data: ProjectFormValues, nextProjectId?: strin
         ...validatedData,
         applicationNumber: validatedData.applicationNumber || '',
         patentNumber: validatedData.patentNumber || '',
-        subject: validatedData.subject || '',
-        actionTaken: validatedData.actionTaken || '',
-        documentName: validatedData.documentName || '',
         emailDate: toISOString(validatedData.emailDate)!,
         allocationDate: toISOString(validatedData.allocationDate)!,
         processingDate,
@@ -101,6 +95,9 @@ export async function saveProject(data: ProjectFormValues, nextProjectId?: strin
         processorStatus,
         qaStatus,
         reworkReason: '',
+        subject: existingProjectData?.subject || '',
+        actionTaken: existingProjectData?.actionTaken || '',
+        documentName: existingProjectData?.documentName || '',
     };
     
     delete (commonData as any).submitAction;
