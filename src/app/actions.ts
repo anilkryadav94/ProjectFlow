@@ -18,13 +18,11 @@ const formSchema = z.object({
   allocationDate: z.date({ required_error: "Allocation date is required." }),
   processor: z.string().min(1, "Processor is required."),
   qa: z.string().min(1, "QA is required."),
-  
   processorStatus: z.enum(["Pending", "On Hold", "Re-Work", "Processed", "NTP", "Client Query", "Already Processed"]),
   qaStatus: z.enum(["Pending", "Complete", "NTP", "Client Query", "Already Processed"]),
-
   submitAction: z.enum(['save', 'submit_for_qa', 'submit_qa'])
 }).superRefine((data, ctx) => {
-    if (data.submitAction === 'submit_qa' && !["Complete", "NTP", "Client Query", "Already Processed"].includes(data.qaStatus)) {
+    if (data.submitAction === 'submit_qa' && !qaSubmissionStatuses.includes(data.qaStatus)) {
          ctx.addIssue({
             code: z.ZodIssueCode.custom,
             message: "A valid submission status is required for QA.",
@@ -94,16 +92,19 @@ export async function saveProject(data: ProjectFormValues, nextProjectId?: strin
         workflowStatus,
         processorStatus,
         qaStatus,
-        reworkReason: '',
-        subject: existingProjectData?.subject || '',
-        actionTaken: existingProjectData?.actionTaken || '',
-        documentName: existingProjectData?.documentName || '',
     };
     
     delete (commonData as any).submitAction;
 
     if (projectIndex !== -1) {
-        projects[projectIndex] = { ...projects[projectIndex], ...commonData };
+        projects[projectIndex] = { 
+            ...projects[projectIndex], 
+            ...commonData,
+            subject: projects[projectIndex].subject,
+            actionTaken: projects[projectIndex].actionTaken,
+            documentName: projects[projectIndex].documentName,
+            reworkReason: projects[projectIndex].reworkReason,
+        };
         projectToSave = projects[projectIndex];
     } else {
         const newId = (Math.max(...projects.map(p => parseInt(p.id, 10))) + 1).toString();
@@ -112,6 +113,10 @@ export async function saveProject(data: ProjectFormValues, nextProjectId?: strin
             from: "new.user@example.com", 
             id: newId,
             country: 'USA',
+            actionTaken: '',
+            documentName: '',
+            subject: 'Newly Created Project',
+            reworkReason: '',
         };
         projects.unshift(projectToSave);
     }

@@ -58,9 +58,6 @@ const formSchema = z.object({
   
   processorStatus: z.enum(["Pending", "On Hold", "Re-Work", "Processed", "NTP", "Client Query", "Already Processed"]),
   qaStatus: z.enum(["Pending", "Complete", "NTP", "Client Query", "Already Processed"]),
-  subject: z.string().optional(),
-  actionTaken: z.string().optional(),
-  documentName: z.string().optional(),
 
   submitAction: z.enum(['save', 'submit_for_qa', 'submit_qa'])
 }).superRefine((data, ctx) => {
@@ -104,9 +101,6 @@ export function ProjectForm({ project: initialProject, role, setOpen, nextProjec
       allocationDate: project ? new Date(project.allocationDate) : new Date(),
       processor: project?.processor || "",
       qa: project?.qa || "",
-      subject: project?.subject || "",
-      actionTaken: project?.actionTaken || "",
-      documentName: project?.documentName || "",
       processorStatus: project?.processorStatus || "Pending",
       qaStatus: project?.qaStatus || "Pending",
     },
@@ -128,9 +122,6 @@ export function ProjectForm({ project: initialProject, role, setOpen, nextProjec
             allocationDate: new Date(currentProject.allocationDate),
             processor: currentProject.processor || "",
             qa: currentProject.qa || "",
-            subject: currentProject.subject || "",
-            actionTaken: currentProject.actionTaken || "",
-            documentName: currentProject.documentName || "",
             processorStatus: currentProject.processorStatus || "Pending",
             qaStatus: currentProject.qaStatus || "Pending",
         });
@@ -143,9 +134,6 @@ export function ProjectForm({ project: initialProject, role, setOpen, nextProjec
             patentNumber: '',
             processor: '',
             qa: '',
-            subject: '',
-            actionTaken: '',
-            documentName: '',
             processorStatus: 'Pending',
             qaStatus: 'Pending',
         }); 
@@ -191,7 +179,7 @@ export function ProjectForm({ project: initialProject, role, setOpen, nextProjec
   const isFieldEditable = (fieldName: string) => {
     if (isManager) return true;
     if (isProcessor || isQA) {
-        return ['applicationNumber', 'patentNumber', 'documentName', 'actionTaken', 'processorStatus', 'qaStatus'].includes(fieldName);
+        return ['applicationNumber', 'patentNumber', 'processorStatus', 'qaStatus'].includes(fieldName);
     }
     return false;
   };
@@ -211,7 +199,7 @@ export function ProjectForm({ project: initialProject, role, setOpen, nextProjec
                     {project && <CardDescription className="text-xs">Subject: {project.subject}</CardDescription>}
                 </div>
                 <div className="flex items-center space-x-2">
-                    {project && (
+                    {project && (isProcessor || isQA || isManager) && (
                         <Dialog open={isMMFormOpen} onOpenChange={setIsMMFormOpen}>
                             <DialogTrigger asChild>
                                 <Button size="sm" variant="outline" disabled={isAnyActionLoading}>
@@ -379,7 +367,7 @@ export function ProjectForm({ project: initialProject, role, setOpen, nextProjec
                          )}
                        </div>
                        
-                      <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                           <FormField
                               control={form.control}
                               name="applicationNumber"
@@ -406,46 +394,7 @@ export function ProjectForm({ project: initialProject, role, setOpen, nextProjec
                                   </FormItem>
                               )}
                           />
-                          <FormField
-                              control={form.control}
-                              name="documentName"
-                              render={({ field }) => (
-                                  <FormItem>
-                                  <FormLabel>Document Name</FormLabel>
-                                  <FormControl>
-                                      <Input placeholder="Response_To_OA.pdf" {...field} value={field.value || ''} disabled={!isFieldEditable('documentName')} />
-                                  </FormControl>
-                                  <FormMessage />
-                                  </FormItem>
-                              )}
-                          />
                       </div>
-                      <FormField
-                          control={form.control}
-                          name="subject"
-                          render={({ field }) => (
-                              <FormItem>
-                              <FormLabel>Subject</FormLabel>
-                              <FormControl>
-                                  <Input placeholder="Invention disclosure..." {...field} value={field.value || ''} disabled={!isManager}/>
-                              </FormControl>
-                              <FormMessage />
-                              </FormItem>
-                          )}
-                      />
-                      <FormField
-                          control={form.control}
-                          name="actionTaken"
-                          render={({ field }) => (
-                              <FormItem>
-                              <FormLabel>Action Taken</FormLabel>
-                              <FormControl>
-                                  <Textarea placeholder="Describe the action taken..." {...field} value={field.value || ''} disabled={!isFieldEditable('actionTaken')} />
-                              </FormControl>
-                              <FormMessage />
-                              </FormItem>
-                          )}
-                      />
                       
                       <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
                           <FormField
