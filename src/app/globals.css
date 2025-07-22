@@ -96,16 +96,7 @@ body {
     @apply border-border;
   }
   body {
-    @apply text-foreground;
-    background: linear-gradient(
-      90deg,
-      hsl(var(--background)),
-      hsl(var(--primary) / 0.05),
-      hsl(var(--accent) / 0.05),
-      hsl(var(--background))
-    );
-    background-size: 400% 400%;
-    animation: background-pan 15s ease-in-out infinite;
+    @apply bg-background text-foreground;
   }
 }
 
