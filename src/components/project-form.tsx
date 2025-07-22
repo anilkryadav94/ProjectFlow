@@ -60,11 +60,9 @@ const formSchema = z.object({
   qaStatus: z.enum(["Pending", "Complete", "NTP", "Client Query", "Already Processed"]),
   reworkReason: z.string().optional(),
 
-  subject: z.string().optional(),
-  actionTaken: z.string().optional(),
-  documentName: z.string().optional(),
   submitAction: z.enum(['save', 'submit_for_qa', 'submit_qa', 'send_for_rework'])
 }).refine(data => {
+    // If sending for rework, only the reworkReason is mandatory.
     if (data.submitAction === 'send_for_rework') {
         return !!data.reworkReason && data.reworkReason.trim().length > 0;
     }
@@ -72,7 +70,20 @@ const formSchema = z.object({
 }, {
     message: "Rework reason is required when sending for rework.",
     path: ["reworkReason"],
+}).refine(data => {
+    // If submitting QA, QA status is required.
+    // This is implicitly handled by the qaStatus enum being required,
+    // but this makes the logic explicit and allows us to skip it for rework.
+    if (data.submitAction === 'submit_qa') {
+        return !!data.qaStatus;
+    }
+    // For other actions, we don't need to validate qaStatus here.
+    return true;
+}, {
+    message: "QA Status is required.",
+    path: ["qaStatus"]
 });
+
 
 type ProjectFormValues = z.infer<typeof formSchema>;
 
@@ -132,11 +143,9 @@ export function ProjectForm({ project: initialProject, role, setOpen, nextProjec
     try {
       const result = await saveProject({ ...data, submitAction: action }, nextProjectId);
       
-      if (isSave) {
-        if (result) {
+      if (isSave && result) {
           setProject(result as Project);
           toast({ title: "Success", description: "Changes have been saved." });
-        }
       }
     } catch (error) {
       console.error("Failed to save project", error);
@@ -187,7 +196,7 @@ export function ProjectForm({ project: initialProject, role, setOpen, nextProjec
                     {project && <CardDescription className="text-xs">Subject: {project.subject}</CardDescription>}
                 </div>
                 <div className="flex items-center space-x-2">
-                    {project && (
+                    {project && isProcessor && (
                         <Dialog open={isMMFormOpen} onOpenChange={setIsMMFormOpen}>
                             <DialogTrigger asChild>
                                 <Button size="sm" variant="outline" disabled={isAnyActionLoading}>
@@ -359,7 +368,6 @@ export function ProjectForm({ project: initialProject, role, setOpen, nextProjec
                                 <FormMessage />
                                 </FormItem>
                             )}
-                         />
                          ) : null}
                        </div>
                        
