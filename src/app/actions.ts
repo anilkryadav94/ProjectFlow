@@ -3,7 +3,7 @@
 
 import { z } from "zod";
 import type { Project } from "@/lib/data";
-import { projects, processes } from "@/lib/data";
+import { projects } from "@/lib/data";
 import { redirect } from "next/navigation";
 import { revalidatePath } from "next/cache";
 
@@ -66,7 +66,7 @@ export async function saveProject(data: ProjectFormValues, nextProjectId?: strin
 
     if (existingProject) {
         // Update existing project
-        const updatedProject: Project = {
+        savedProject = {
             ...existingProject,
             ...formData,
             applicationNumber: formData.applicationNumber || null,
@@ -79,12 +79,11 @@ export async function saveProject(data: ProjectFormValues, nextProjectId?: strin
             processingDate,
             qaDate,
         };
-        projects[projectIndex] = updatedProject;
-        savedProject = updatedProject;
+        projects[projectIndex] = savedProject;
     } else {
         // Create new project
         const newId = (Math.max(...projects.map(p => parseInt(p.id, 10))) + 1).toString();
-        const newProject: Project = {
+        savedProject = {
             id: newId,
             ...formData,
             applicationNumber: formData.applicationNumber || null,
@@ -96,11 +95,10 @@ export async function saveProject(data: ProjectFormValues, nextProjectId?: strin
             qaStatus: finalQaStatus,
             processingDate,
             qaDate,
-            subject: 'Newly Created Project', // Add default subject
+            subject: 'Newly Created Project',
             reworkReason: null,
         };
-        projects.unshift(newProject);
-        savedProject = newProject;
+        projects.unshift(savedProject);
     }
     
     revalidatePath('/');

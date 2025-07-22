@@ -46,7 +46,7 @@ const formSchema = z.object({
   id: z.string().optional(),
   refNumber: z.string().min(1, "Reference number is required."),
   clientName: z.string().min(1, "Client name is required."),
-  process: z.enum(processes),
+  process: z.enum(["Patent", "TM", "IDS", "Project"]),
   applicationNumber: z.string().optional(),
   patentNumber: z.string().optional(),
   emailDate: z.date({ required_error: "Email date is required." }),
@@ -94,26 +94,24 @@ export function ProjectForm({ project: initialProject, role, setOpen, nextProjec
       processorStatus: project?.processorStatus || "Pending",
       qaStatus: project?.qaStatus || "Pending",
     },
-    key: project?.id || 'new',
   });
 
   React.useEffect(() => {
-    const currentProject = initialProject;
-    setProject(currentProject);
-    if (currentProject) {
+    setProject(initialProject);
+    if (initialProject) {
         form.reset({
-            id: currentProject.id,
-            refNumber: currentProject.refNumber || "",
-            clientName: currentProject.clientName || "",
-            process: currentProject.process || "Patent",
-            applicationNumber: currentProject.applicationNumber || "",
-            patentNumber: currentProject.patentNumber || "",
-            emailDate: new Date(currentProject.emailDate),
-            allocationDate: new Date(currentProject.allocationDate),
-            processor: currentProject.processor || "",
-            qa: currentProject.qa || "",
-            processorStatus: currentProject.processorStatus || "Pending",
-            qaStatus: currentProject.qaStatus || "Pending",
+            id: initialProject.id,
+            refNumber: initialProject.refNumber || "",
+            clientName: initialProject.clientName || "",
+            process: initialProject.process || "Patent",
+            applicationNumber: initialProject.applicationNumber || "",
+            patentNumber: initialProject.patentNumber || "",
+            emailDate: new Date(initialProject.emailDate),
+            allocationDate: new Date(initialProject.allocationDate),
+            processor: initialProject.processor || "",
+            qa: initialProject.qa || "",
+            processorStatus: initialProject.processorStatus || "Pending",
+            qaStatus: initialProject.qaStatus || "Pending",
         });
     } else {
         form.reset({
@@ -535,5 +533,3 @@ export function ProjectForm({ project: initialProject, role, setOpen, nextProjec
     </div>
   );
 }
-
-    
