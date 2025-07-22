@@ -62,10 +62,6 @@ function Dashboard({
   const [clientNameFilter, setClientNameFilter] = React.useState('all');
   const [processFilter, setProcessFilter] = React.useState<string | 'all'>('all');
   
-  const [currentPage, setCurrentPage] = React.useState(1);
-  const [itemsPerPage, setItemsPerPage] = React.useState(10);
-
-
   const { toast } = useToast();
 
   React.useEffect(() => {
@@ -131,7 +127,6 @@ function Dashboard({
   const handleAdvancedSearch = (criteria: SearchCriteria) => {
     setSearchCriteria(criteria);
     setShowSearchForm(false);
-    setCurrentPage(1);
 
     let results = [...projects];
     
@@ -167,7 +162,6 @@ function Dashboard({
       setSearchCriteria(null);
       setFilteredProjects(null);
       setShowSearchForm(true);
-      setCurrentPage(1);
   }
 
   const handleAmendSearch = () => {
@@ -225,11 +219,6 @@ function Dashboard({
     return filtered;
   }, [activeRole, user.name, projects, search, searchColumn, sort, filteredProjects, clientNameFilter, processFilter, showSearchForm]);
   
-  const paginatedProjects = React.useMemo(() => {
-    const startIndex = (currentPage - 1) * itemsPerPage;
-    return dashboardProjects.slice(startIndex, startIndex + itemsPerPage);
-  }, [dashboardProjects, currentPage, itemsPerPage]);
-
   if (!activeRole) {
     return <div className="flex h-screen w-full items-center justify-center"><Loader2 className="h-8 w-8 animate-spin" /></div>;
   }
@@ -239,7 +228,7 @@ function Dashboard({
       isManagerOrAdmin, 
       rowSelection, 
       setRowSelection, 
-      paginatedProjects
+      dashboardProjects
   );
   const selectedBulkUpdateField = bulkUpdateFields.find(f => f.value === bulkUpdateField);
 
@@ -275,7 +264,7 @@ function Dashboard({
                 
                 {!showSearchForm && (
                    <DataTable 
-                        data={paginatedProjects}
+                        data={dashboardProjects}
                         columns={columns}
                         sort={sort}
                         setSort={setSort}
@@ -283,10 +272,6 @@ function Dashboard({
                         setRowSelection={setRowSelection}
                         isManagerOrAdmin={isManagerOrAdmin}
                         totalCount={dashboardProjects.length}
-                        currentPage={currentPage}
-                        setCurrentPage={setCurrentPage}
-                        itemsPerPage={itemsPerPage}
-                        setItemsPerPage={setItemsPerPage}
                     >
                          {Object.keys(rowSelection).length > 0 && (
                             <div className="flex items-center gap-4 p-4 border-t bg-muted/50">
@@ -328,7 +313,7 @@ function Dashboard({
               </>
             ) : (
                 <DataTable 
-                    data={paginatedProjects}
+                    data={dashboardProjects}
                     columns={columns}
                     sort={sort}
                     setSort={setSort}
@@ -336,10 +321,6 @@ function Dashboard({
                     setRowSelection={() => {}}
                     isManagerOrAdmin={false}
                     totalCount={dashboardProjects.length}
-                    currentPage={currentPage}
-                    setCurrentPage={setCurrentPage}
-                    itemsPerPage={itemsPerPage}
-                    setItemsPerPage={setItemsPerPage}
                 />
             )}
         </div>
