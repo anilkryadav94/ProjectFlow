@@ -88,7 +88,7 @@ export async function saveProject(
         projects[projectIndex] = updatedProject;
         savedProject = updatedProject;
     } else {
-       // This part is for creating new projects, not needed for this flow but kept for structure
+       // This part is for creating new projects
         const newId = (Math.max(...projects.map(p => parseInt(p.id, 10))) + 1).toString();
         const newProject: Project = {
             ...validatedData,

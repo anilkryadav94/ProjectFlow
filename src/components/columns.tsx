@@ -5,7 +5,6 @@ import type { Project, Role } from "@/lib/data";
 import { Badge } from "@/components/ui/badge";
 import { cn } from "@/lib/utils";
 import { Checkbox } from "./ui/checkbox";
-import { DataTableRowActions } from "./data-table-row-actions";
 import Link from "next/link";
 
 
@@ -35,7 +34,6 @@ export const getColumns = (
   rowSelection: Record<string, boolean>,
   setRowSelection: (selection: Record<string, boolean>) => void,
   allProjectsOnPage: Project[],
-  activeRole: Role,
 ) => {
 
   const baseColumns = [
@@ -116,6 +114,7 @@ export const getColumns = (
         <Checkbox
           checked={
             Object.keys(rowSelection).length > 0 &&
+            allProjectsOnPage.length > 0 &&
             allProjectsOnPage.every((p) => rowSelection[p.id])
           }
           onCheckedChange={(value) => {
@@ -150,15 +149,6 @@ export const getColumns = (
     };
     columns.unshift(selectionColumn);
   }
-  
-  const actionsColumn = {
-      key: "actions",
-      header: "Actions",
-      render: (project: Project) => <DataTableRowActions row={project} />,
-  };
-  
-  columns.push(actionsColumn);
-
 
   return columns;
 };

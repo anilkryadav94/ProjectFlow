@@ -2,7 +2,7 @@
 "use client"
 
 import * as React from "react"
-import { LogOut, Settings, FileSpreadsheet, Workflow, Edit, RotateCcw } from "lucide-react"
+import { LogOut, Settings, FileSpreadsheet, Workflow, Edit, RotateCcw, MonitorPlay, ShieldCheck } from "lucide-react"
 import type { Role, User, ProcessType } from "@/lib/data"
 import { roleHierarchy } from "@/lib/data"
 import { Button } from "@/components/ui/button"
@@ -80,11 +80,9 @@ export function Header({
 
   const handleRoleChange = (role: Role) => {
     const targetUrl = `/?role=${role}`;
-    // If setActiveRole is provided (from the main dashboard), use it for instant client-side state update.
     if (setActiveRole) {
       setActiveRole(role);
     }
-    // Always use the router to navigate, ensuring the URL is updated correctly from any page.
     router.push(targetUrl, { scroll: false });
   }
 
@@ -104,7 +102,6 @@ export function Header({
     }
   }
 
-  // Sort user roles based on the hierarchy for consistent display
   const sortedUserRoles = React.useMemo(() => {
     if (!user.roles) return [];
     return user.roles.sort((a, b) => roleHierarchy.indexOf(a) - roleHierarchy.indexOf(b));
@@ -218,6 +215,21 @@ export function Header({
                 <DropdownMenuContent className="w-56">
                     <DropdownMenuLabel>{user.name}</DropdownMenuLabel>
                     <DropdownMenuLabel className="text-xs font-normal text-muted-foreground">{user.email}</DropdownMenuLabel>
+                    
+                    <DropdownMenuSeparator />
+                     <DropdownMenuLabel>Navigate</DropdownMenuLabel>
+                     {user.roles.includes('Processor') && (
+                        <DropdownMenuItem onSelect={() => router.push('/?role=Processor')}>
+                            <MonitorPlay className="mr-2 h-4 w-4" />
+                            Processor Dashboard
+                        </DropdownMenuItem>
+                     )}
+                     {user.roles.includes('QA') && (
+                        <DropdownMenuItem onSelect={() => router.push('/?role=QA')}>
+                            <ShieldCheck className="mr-2 h-4 w-4" />
+                            QA Dashboard
+                        </DropdownMenuItem>
+                     )}
                     
                     {sortedUserRoles.length > 1 && (
                         <>
