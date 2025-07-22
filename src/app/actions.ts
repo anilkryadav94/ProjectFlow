@@ -21,14 +21,6 @@ const formSchema = z.object({
   processorStatus: z.enum(["Pending", "On Hold", "Re-Work", "Processed", "NTP", "Client Query", "Already Processed"]),
   qaStatus: z.enum(["Pending", "Complete", "NTP", "Client Query", "Already Processed"]),
   submitAction: z.enum(['save', 'submit_for_qa', 'submit_qa'])
-}).superRefine((data, ctx) => {
-    if (data.submitAction === 'submit_qa' && !qaSubmissionStatuses.includes(data.qaStatus)) {
-         ctx.addIssue({
-            code: z.ZodIssueCode.custom,
-            message: "A valid submission status is required for QA.",
-            path: ["qaStatus"],
-        });
-    }
 });
 
 
@@ -100,7 +92,10 @@ export async function saveProject(data: ProjectFormValues, nextProjectId?: strin
         projects[projectIndex] = { 
             ...projects[projectIndex], 
             ...commonData,
+            // Keep existing values for fields not on the form
             subject: projects[projectIndex].subject,
+            from: projects[projectIndex].from,
+            country: projects[projectIndex].country,
             actionTaken: projects[projectIndex].actionTaken,
             documentName: projects[projectIndex].documentName,
             reworkReason: projects[projectIndex].reworkReason,
