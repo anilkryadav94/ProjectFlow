@@ -94,7 +94,7 @@ export async function saveProject(data: ProjectFormValues, nextProjectId?: strin
             workflowStatus = 'With Processor';
             processorStatus = 'Re-Work';
             qaStatus = 'Pending'; 
-            reworkReason = validatedData.reworkReason;
+            reworkReason = validatedData.reworkReason!;
             break;
         case 'save':
             // Statuses are taken directly from the form data
