@@ -3,9 +3,10 @@
 
 import { z } from "zod";
 import type { Project, Role, ProjectEntry } from "@/lib/data";
-import { projects } from "@/lib/data";
 import { redirect } from "next/navigation";
 import { revalidatePath } from "next/cache";
+import { db } from "@/lib/firebase";
+import { collection, doc, writeBatch, getDocs, updateDoc } from "firebase/firestore";
 
 const bulkUpdateSchema = z.object({
   projectIds: z.array(z.string()),
@@ -17,17 +18,30 @@ export async function bulkUpdateProjects(data: z.infer<typeof bulkUpdateSchema>)
     const validatedData = bulkUpdateSchema.parse(data);
     const updatedProjects: Project[] = [];
 
+    const batch = writeBatch(db);
+    const projectsCollection = collection(db, "projects");
+
+    // Fetch all projects to find the ones to update
+    // In a larger app, you'd fetch only the docs with the specified IDs.
+    const querySnapshot = await getDocs(projectsCollection);
+    const allProjects: Project[] = [];
+    querySnapshot.forEach(doc => {
+      allProjects.push({ id: doc.id, ...doc.data() } as Project);
+    });
+
     validatedData.projectIds.forEach(id => {
-        const projectIndex = projects.findIndex(p => p.id === id);
-        if (projectIndex !== -1) {
-            const updatedProject = {
-                ...projects[projectIndex],
+        const project = allProjects.find(p => p.id === id);
+        if (project) {
+            const projectRef = doc(db, "projects", id);
+            batch.update(projectRef, { [validatedData.field]: validatedData.value });
+            updatedProjects.push({
+                ...project,
                 [validatedData.field]: validatedData.value,
-            };
-            projects[projectIndex] = updatedProject;
-            updatedProjects.push(updatedProject);
+            });
         }
     });
+
+    await batch.commit();
 
     revalidatePath('/');
 
@@ -74,45 +88,25 @@ export async function saveProject(
 ): Promise<Project | void> {
     
     const validatedData = projectSchema.parse(data);
+    const projectRef = doc(db, "projects", validatedData.id);
 
-    let savedProject: Project;
-    const projectIndex = projects.findIndex(p => p.id === validatedData.id);
+    let projectToSave = { ...validatedData };
 
-    if (projectIndex !== -1) {
-        // Update existing project
-        const project = projects[projectIndex];
-        
-        const updatedProject: Project = {
-            ...project,
-            ...validatedData,
-        };
-
-        if (submitAction === 'submit_for_qa') {
-            updatedProject.workflowStatus = 'With QA';
-            updatedProject.processingDate = new Date().toISOString().split('T')[0];
-        } else if (submitAction === 'submit_qa') {
-            updatedProject.workflowStatus = 'Completed';
-            updatedProject.qaDate = new Date().toISOString().split('T')[0];
-        } else if (submitAction === 'send_rework') {
-            updatedProject.workflowStatus = 'With Processor';
-            updatedProject.processorStatus = 'Re-Work';
-        }
-
-        projects[projectIndex] = updatedProject;
-        savedProject = updatedProject;
-    } else {
-       // This part is for creating new projects
-        const newId = (Math.max(...projects.map(p => parseInt(p.id, 10))) + 1).toString();
-        const newProject: Project = {
-            ...validatedData,
-            id: newId,
-        };
-        projects.unshift(newProject);
-        savedProject = newProject;
+    if (submitAction === 'submit_for_qa') {
+        projectToSave.workflowStatus = 'With QA';
+        projectToSave.processingDate = new Date().toISOString().split('T')[0];
+    } else if (submitAction === 'submit_qa') {
+        projectToSave.workflowStatus = 'Completed';
+        projectToSave.qaDate = new Date().toISOString().split('T')[0];
+    } else if (submitAction === 'send_rework') {
+        projectToSave.workflowStatus = 'With Processor';
+        projectToSave.processorStatus = 'Re-Work';
     }
 
-    revalidatePath('/');
-    revalidatePath(`/task/${savedProject.id}`);
-}
+    // In Firestore, we don't save the id inside the document itself.
+    const { id, ...saveData } = projectToSave;
+    await updateDoc(projectRef, saveData);
 
-    
+    revalidatePath('/');
+    revalidatePath(`/task/${projectToSave.id}`);
+}

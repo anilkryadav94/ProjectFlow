@@ -7,23 +7,10 @@ export const roleHierarchy: Role[] = ['Admin', 'Manager', 'QA', 'Processor'];
 export type User = {
     id: string;
     email: string;
-    password?: string;
+    password?: string; // Only used for creation/update, not stored in Firestore
     name: string;
     roles: Role[];
 };
-
-export const users: User[] = [
-    { id: '1', email: 'admin@example.com', password: 'password', name: 'Admin User', roles: ['Admin', 'Manager'] },
-    { id: '2', email: 'manager@example.com', password: 'password', name: 'Manager User', roles: ['Manager', 'QA'] },
-    { id: '3', email: 'alice@example.com', password: 'password', name: 'Alice', roles: ['Processor'] },
-    { id: '4', email: 'bob@example.com', password: 'password', name: 'Bob', roles: ['Processor', 'QA'] },
-    { id: '5', email: 'charlie@example.com', password: 'password', name: 'Charlie', roles: ['Processor'] },
-    { id: '6', email: 'david@example.com', password: 'password', name: 'David', roles: ['QA'] },
-    { id: '7', email: 'eve@example.com', password: 'password', name: 'Eve', roles: ['QA'] },
-    { id: '8', email: 'anil@example.com', password: 'password', name: 'Anil', roles: ['QA'] },
-    { id: '9', email: 'ankit@example.com', password: 'password', name: 'Ankit', roles: ['QA'] },
-    { id: '10', email: 'rahul@example.com', password: 'password', name: 'Rahul', roles: ['Admin', 'Manager', 'QA', 'Processor'] },
-];
 
 export type WorkflowStatus = 'Pending Allocation' | 'With Processor' | 'With QA' | 'Completed';
 export const workflowStatuses: WorkflowStatus[] = ['Pending Allocation', 'With Processor', 'With QA', 'Completed'];
@@ -70,12 +57,28 @@ export type Project = {
   entries?: ProjectEntry[];
 };
 
+// --- CONSTANTS AND MOCK DATA FOR SEEDING ---
+
 export const processors = ['Alice', 'Bob', 'Charlie', 'Rahul'];
 export const qas = ['David', 'Eve', 'Anil', 'Ankit', 'Rahul', 'Bob', 'Manager User'];
 export const clientNames = ['Client A', 'Client B', 'Client C'];
 export const processes: ProcessType[] = ['Patent', 'TM', 'IDS', 'Project'];
 export const projectStatuses: any[] = ["Pending", "Completed", "On Hold"];
 export const countries = ['USA', 'India', 'Canada', 'UK', 'Germany'];
+
+// This mock data is now only used for seeding the database on first run.
+export const users: User[] = [
+    { id: '1', email: 'admin@example.com', password: 'password', name: 'Admin User', roles: ['Admin', 'Manager'] },
+    { id: '2', email: 'manager@example.com', password: 'password', name: 'Manager User', roles: ['Manager', 'QA'] },
+    { id: '3', email: 'alice@example.com', password: 'password', name: 'Alice', roles: ['Processor'] },
+    { id: '4', email: 'bob@example.com', password: 'password', name: 'Bob', roles: ['Processor', 'QA'] },
+    { id: '5', email: 'charlie@example.com', password: 'password', name: 'Charlie', roles: ['Processor'] },
+    { id: '6', email: 'david@example.com', password: 'password', name: 'David', roles: ['QA'] },
+    { id: '7', email: 'eve@example.com', password: 'password', name: 'Eve', roles: ['QA'] },
+    { id: '8', email: 'anil@example.com', password: 'password', name: 'Anil', roles: ['QA'] },
+    { id: '9', email: 'ankit@example.com', password: 'password', name: 'Ankit', roles: ['QA'] },
+    { id: '10', email: 'rahul@example.com', password: 'password', name: 'Rahul', roles: ['Admin', 'Manager', 'QA', 'Processor'] },
+];
 
 export const projects: Project[] = [
   {
@@ -387,5 +390,3 @@ export const projects: Project[] = [
     subject: 'QA Pending for Bob - Project 2',
   }
 ];
-
-    

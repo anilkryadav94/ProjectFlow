@@ -1,26 +1,43 @@
 
 import { redirect } from 'next/navigation';
-import { getSession } from '@/lib/auth';
+import { getSession, getUsers } from '@/lib/auth';
 import type { Project, Role } from '@/lib/data';
-import { projects, processorActionableStatuses, roleHierarchy } from '@/lib/data';
+import { processorActionableStatuses, roleHierarchy } from '@/lib/data';
 import { ProjectForm } from '@/components/project-form';
 import { Header } from '@/components/header';
 import { clientNames, processes } from '@/lib/data';
+import { collection, getDocs, doc, getDoc } from "firebase/firestore";
+import { db } from '@/lib/firebase';
 
-async function getProjectsForUser(user: { name: string; roles: Role[] }, activeRole: Role): Promise<Project[]> {
+async function getAllProjects(): Promise<Project[]> {
+    const projectsCollection = collection(db, "projects");
+    const projectsSnapshot = await getDocs(projectsCollection);
+    const projectsList = projectsSnapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as Project));
+    return projectsList;
+}
+
+async function getProject(id: string): Promise<Project | null> {
+    const projectRef = doc(db, "projects", id);
+    const projectSnap = await getDoc(projectRef);
+
+    if (!projectSnap.exists()) {
+        return null;
+    }
+    return { id: projectSnap.id, ...projectSnap.data() } as Project;
+}
+
+async function getProjectsForUser(user: { name: string; roles: Role[], id: string, email: string }, activeRole: Role): Promise<Project[]> {
+    let allProjects = await getAllProjects();
     let userProjects: Project[];
 
     if (activeRole === 'Processor') {
-        userProjects = projects.filter(p => p.processor === user.name && p.workflowStatus === 'With Processor' && processorActionableStatuses.includes(p.processorStatus));
+        userProjects = allProjects.filter(p => p.processor === user.name && p.workflowStatus === 'With Processor' && processorActionableStatuses.includes(p.processorStatus));
     } else if (activeRole === 'QA') {
-        userProjects = projects.filter(p => p.qa === user.name && p.workflowStatus === 'With QA');
+        userProjects = allProjects.filter(p => p.qa === user.name && p.workflowStatus === 'With QA');
     } else {
-        // For Manager/Admin, we show all projects, but pagination context will be based on the role view they came from.
-        // If they navigate directly, it uses their highest role.
-        userProjects = projects;
+        userProjects = allProjects;
     }
     
-    // Sort by allocation date
     userProjects.sort((a, b) => new Date(b.allocationDate).getTime() - new Date(a.allocationDate).getTime());
     
     return JSON.parse(JSON.stringify(userProjects));
@@ -42,7 +59,6 @@ export default async function TaskPage({ params, searchParams }: { params: { id:
     return roles[0] || 'Processor';
   };
   
-  // Prioritize role from URL, then fall back to user's highest role
   const urlRole = searchParams.role;
   const activeRole = urlRole && session.user.roles.includes(urlRole)
     ? urlRole
@@ -61,7 +77,7 @@ export default async function TaskPage({ params, searchParams }: { params: { id:
   
   const currentProjectIndex = userProjectList.findIndex(p => p.id === params.id);
 
-  const project = projects.find(p => p.id === params.id);
+  const project = await getProject(params.id);
 
   if (!project) {
     return <div>Project not found in your queue or does not exist.</div>;
@@ -69,8 +85,6 @@ export default async function TaskPage({ params, searchParams }: { params: { id:
   
   const isManagerOrAdmin = activeRole === 'Manager' || activeRole === 'Admin';
   
-  // If the project exists but is not in the user's specific queue, show a message.
-  // This check is not for managers/admins.
   if (currentProjectIndex === -1 && !isManagerOrAdmin) {
     return <div>Project not found in your current "{activeRole}" queue.</div>;
   }
@@ -101,4 +115,3 @@ export default async function TaskPage({ params, searchParams }: { params: { id:
     </div>
   );
 }
-

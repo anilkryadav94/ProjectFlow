@@ -14,7 +14,7 @@ import { useToast } from '@/hooks/use-toast';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from './ui/select';
 import { Loader2 } from 'lucide-react';
 import { AdvancedSearchForm, type SearchCriteria } from './advanced-search-form';
-import { useSearchParams } from 'next/navigation';
+import { useSearchParams, useRouter } from 'next/navigation';
 
 interface DashboardProps {
   user: User;
@@ -42,6 +42,7 @@ function Dashboard({
   initialProjects,
 }: DashboardProps) {
   const searchParams = useSearchParams();
+  const router = useRouter();
   const urlRole = searchParams.get('role') as Role;
 
   const [activeRole, setActiveRole] = React.useState<Role | null>(null);
@@ -65,13 +66,21 @@ function Dashboard({
   const { toast } = useToast();
 
   React.useEffect(() => {
+    let newActiveRole: Role;
     if (urlRole && user.roles.includes(urlRole)) {
-        setActiveRole(urlRole);
-    } else if (user?.roles?.length > 0) {
-      const highestRole = roleHierarchy.find(role => user.roles.includes(role));
-      setActiveRole(highestRole || user.roles[0]);
+        newActiveRole = urlRole;
+    } else {
+        newActiveRole = roleHierarchy.find(role => user.roles.includes(role)) || user.roles[0];
     }
-  }, [user.roles, urlRole]);
+    
+    if(newActiveRole !== activeRole) {
+        setActiveRole(newActiveRole);
+        // If the role in the URL is invalid or missing, update the URL
+        if (newActiveRole && (!urlRole || urlRole !== newActiveRole)) {
+            router.replace(`/?role=${newActiveRole}`, { scroll: false });
+        }
+    }
+  }, [user.roles, urlRole, router, activeRole]);
   
   const handleDownload = () => {
     const dataToExport = filteredProjects ?? dashboardProjects;
@@ -102,17 +111,17 @@ function Dashboard({
     try {
         const result = await bulkUpdateProjects({ projectIds, field: bulkUpdateField, value: bulkUpdateValue });
         if (result.success) {
-            setProjects(prevProjects => {
-                const updated = new Map(result.updatedProjects.map(p => [p.id, p]));
-                return prevProjects.map(p => updated.get(p.id) || p);
-            });
+            // Refetch or update state
+            // For now, simple state update
+            const updatedProjectsMap = new Map(result.updatedProjects.map(p => [p.id, p]));
+            setProjects(prev => prev.map(p => updatedProjectsMap.get(p.id) || p));
             if (filteredProjects) {
-                 setFilteredProjects(prevProjects => {
-                    if (!prevProjects) return null;
-                    const updated = new Map(result.updatedProjects.map(p => [p.id, p]));
-                    return prevProjects.map(p => updated.get(p.id) || p);
-                });
+                 setFilteredProjects(prev => {
+                    if (!prev) return null;
+                    return prev.map(p => updatedProjectsMap.get(p.id) || p);
+                 });
             }
+
             toast({ title: "Success", description: `${result.updatedProjects.length} projects have been updated.` });
             setRowSelection({});
             setBulkUpdateValue('');

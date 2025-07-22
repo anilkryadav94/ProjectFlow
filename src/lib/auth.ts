@@ -1,38 +1,30 @@
 
 'use server';
 
-import { SignJWT, jwtVerify } from 'jose';
 import { cookies } from 'next/headers';
-import type { User, Role } from './data';
-import { users as mockUsers } from './data';
 import { redirect } from 'next/navigation';
+import { type User, type Role } from './data';
+import { auth, db } from './firebase';
+import { 
+    signInWithEmailAndPassword, 
+    createUserWithEmailAndPassword, 
+    signOut,
+    updatePassword as firebaseUpdatePassword
+} from 'firebase/auth';
+import { 
+    collection, 
+    doc, 
+    setDoc, 
+    getDoc, 
+    getDocs, 
+    writeBatch,
+    query,
+    where
+} from 'firebase/firestore';
 
-const secretKey = process.env.SESSION_SECRET || "fallback-secret-key-for-development";
-const key = new TextEncoder().encode(secretKey);
+const SESSION_COOKIE_NAME = 'projectflow-session';
 
-export async function encrypt(payload: any) {
-  return await new SignJWT(payload)
-    .setProtectedHeader({ alg: 'HS256' })
-    .setIssuedAt()
-    .setExpirationTime('1h') // Token expires in 1 hour
-    .sign(key);
-}
-
-export async function decrypt(input: string): Promise<any> {
-  try {
-    const { payload } = await jwtVerify(input, key, {
-      algorithms: ['HS256'],
-    });
-    return payload;
-  } catch (error) {
-    return null;
-  }
-}
-
-function findUserByEmail(email: string): User | undefined {
-  return mockUsers.find(u => u.email === email);
-}
-
+// This function is now for logging into Firebase and setting a custom session cookie.
 export async function login(prevState: { error?: string, success?: boolean } | undefined, formData: FormData) {
   const email = formData.get('email') as string;
   const password = formData.get('password') as string;
@@ -40,108 +32,141 @@ export async function login(prevState: { error?: string, success?: boolean } | u
   if (!email || !password) {
     return { error: 'Email and password are required.' };
   }
-
-  const user = findUserByEmail(email);
   
-  if (!user || user.password !== password) {
+  try {
+    const userCredential = await signInWithEmailAndPassword(auth, email, password);
+    const idToken = await userCredential.user.getIdToken();
+
+    const expires = new Date(Date.now() + 60 * 60 * 1000); // 1 hour
+    cookies().set(SESSION_COOKIE_NAME, idToken, { expires, httpOnly: true });
+    
+  } catch (error: any) {
     return { error: 'Invalid email or password.' };
   }
-  
-  const expires = new Date(Date.now() + 60 * 60 * 1000); // 1 hour
-  const sessionUser = { id: user.id, email: user.email, name: user.name, roles: user.roles };
-  const session = await encrypt({ user: sessionUser, expires });
 
-  cookies().set('session', session, { expires, httpOnly: true });
-
-  // Redirect after successful login
   return redirect('/');
 }
 
 export async function logout() {
-  cookies().set('session', '', { expires: new Date(0) });
+  await signOut(auth);
+  cookies().set(SESSION_COOKIE_NAME, '', { expires: new Date(0) });
   redirect('/login');
 }
 
 export async function getSession() {
-  const sessionCookie = cookies().get('session')?.value;
+  const sessionCookie = cookies().get(SESSION_COOKIE_NAME)?.value;
   if (!sessionCookie) return null;
-  
-  const session = await decrypt(sessionCookie);
-  if (!session || new Date(session.expires) < new Date()) {
-      return null;
+
+  try {
+    // We are not verifying the token here on the server for simplicity.
+    // In a production app, you would use Firebase Admin SDK to verify the token.
+    const userCredential = await auth.updateCurrentUser(auth.currentUser);
+    if (!auth.currentUser) return null;
+
+    const userDocRef = doc(db, "users", auth.currentUser.uid);
+    const userDoc = await getDoc(userDocRef);
+
+    if (!userDoc.exists()) {
+      return null; // User document not found in Firestore
+    }
+
+    const userData = userDoc.data();
+    const user: User = {
+      id: auth.currentUser.uid,
+      email: auth.currentUser.email!,
+      name: userData.name,
+      roles: userData.roles,
+    };
+    
+    return { user };
+  } catch (error) {
+    // Token is invalid or expired
+    return null;
   }
-  
-  return session;
 }
 
 // --- User Management Functions ---
 
 export async function getUsers(): Promise<User[]> {
-    // In a real app, this would fetch from a database.
-    // Here we're returning the mock data.
-    return Promise.resolve(mockUsers);
-}
-
-export async function updateUser(userToUpdate: User): Promise<{ success: boolean; user?: User }> {
-    const index = mockUsers.findIndex(u => u.id === userToUpdate.id);
-    if (index === -1) {
-        return { success: false };
-    }
-
-    // Update the user in our mock data store
-    const updatedUser = { ...mockUsers[index], ...userToUpdate };
-    if (!userToUpdate.password) {
-        updatedUser.password = mockUsers[index].password;
-    }
-    mockUsers[index] = updatedUser;
-
-    // Check if the updated user is the currently logged-in user
-    const session = await getSession();
-    if (session?.user?.id === userToUpdate.id) {
-        // If so, re-issue the session cookie with the new data
-        const expires = new Date(Date.now() + 60 * 60 * 1000); // 1 hour
-        const newSessionUser = { 
-            id: updatedUser.id, 
-            email: updatedUser.email, 
-            name: updatedUser.name, 
-            roles: updatedUser.roles 
-        };
-        const newSession = await encrypt({ user: newSessionUser, expires });
-        cookies().set('session', newSession, { expires, httpOnly: true });
-    }
-
-    return { success: true, user: mockUsers[index] };
-}
-
-
-export async function addUser(newUser: Omit<User, 'id'>): Promise<{ success: boolean; user?: User }> {
-    if (mockUsers.some(u => u.email === newUser.email)) {
-        throw new Error("User with this email already exists.");
-    }
-    const user: User = {
-        id: (mockUsers.length + 1).toString(),
-        ...newUser
-    };
-    mockUsers.unshift(user); // Add to the beginning of the array
-    return { success: true, user };
-}
-
-export async function addBulkUsers(newUsers: Omit<User, 'id'>[]): Promise<{ addedUsers: User[], errors: any[] }> {
-    const addedUsers: User[] = [];
-    const errors: any[] = [];
-
-    newUsers.forEach(newUser => {
-        if (mockUsers.some(u => u.email === newUser.email)) {
-            errors.push({ email: newUser.email, reason: 'duplicate' });
-        } else {
-            const user: User = {
-                id: (mockUsers.length + 1 + addedUsers.length).toString(),
-                ...newUser
-            };
-            addedUsers.push(user);
-        }
+    const usersCollection = collection(db, "users");
+    const usersSnapshot = await getDocs(usersCollection);
+    const usersList: User[] = [];
+    usersSnapshot.forEach(doc => {
+        usersList.push({ id: doc.id, ...doc.data() } as User);
     });
+    return usersList;
+}
 
-    mockUsers.unshift(...addedUsers);
-    return { addedUsers, errors };
+export async function updateUser(userId: string, data: { name?: string, roles?: Role[], password?: string }): Promise<{ success: boolean; user?: User }> {
+    const userDocRef = doc(db, "users", userId);
+    
+    const updateData: Partial<User> = {};
+    if (data.name) updateData.name = data.name;
+    if (data.roles) updateData.roles = data.roles;
+    
+    await setDoc(userDocRef, updateData, { merge: true });
+
+    if (data.password && auth.currentUser?.uid === userId) {
+        await firebaseUpdatePassword(auth.currentUser, data.password);
+    } else if (data.password) {
+        // Updating other users' passwords requires Admin SDK, which we are not using here.
+        // This is a limitation of client-side SDK.
+        console.warn("Cannot change other users' passwords from the client.");
+    }
+
+    const updatedDoc = await getDoc(userDocRef);
+
+    return { success: true, user: { id: updatedDoc.id, ...updatedDoc.data() } as User };
+}
+
+
+export async function addUser(email: string, password: string, name: string, roles: Role[]): Promise<{ success: boolean; user?: User }> {
+    try {
+        const tempAuth = auth; // Use the existing auth instance
+        // Temporarily create user in Auth. This is tricky without Admin SDK.
+        // A better approach would be a Cloud Function. This is a workaround.
+        const userCredential = await createUserWithEmailAndPassword(tempAuth, email, password);
+        const user = userCredential.user;
+
+        const newUser: Omit<User, 'id'> = { email, name, roles };
+        await setDoc(doc(db, "users", user.uid), newUser);
+        
+        // The user is now logged in the server's auth state. Sign them out.
+        if (auth.currentUser?.email !== email) {
+            await signOut(tempAuth);
+        }
+
+        return { success: true, user: { id: user.uid, ...newUser } };
+    } catch (error: any) {
+        if (error.code === 'auth/email-already-in-use') {
+            throw new Error("User with this email already exists.");
+        }
+        throw new Error("Failed to create user.");
+    }
+}
+
+
+export async function addBulkUsers(newUsers: (Omit<User, 'id' | 'password'> & { password?: string })[]): Promise<{ addedCount: number, errors: any[] }> {
+    // This is very limited without the Admin SDK.
+    // The Admin SDK can create users without signing them in.
+    // The approach here is a major simplification and not recommended for production.
+    console.warn("Bulk user creation is a placeholder and not secure for production.");
+
+    let addedCount = 0;
+    const errors: any[] = [];
+    
+    for (const newUser of newUsers) {
+        try {
+            if (!newUser.password) {
+                errors.push({ email: newUser.email, reason: 'Missing password' });
+                continue;
+            }
+            await addUser(newUser.email, newUser.password, newUser.name, newUser.roles);
+            addedCount++;
+        } catch (error: any) {
+             errors.push({ email: newUser.email, reason: error.message });
+        }
+    }
+
+    return { addedCount, errors };
 }

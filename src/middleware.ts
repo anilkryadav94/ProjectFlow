@@ -2,7 +2,8 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { getSession } from '@/lib/auth';
 
-// 1. Specify protected and public routes
+const SESSION_COOKIE_NAME = 'projectflow-session';
+
 const protectedRoutes = ['/'];
 const publicRoutes = ['/login'];
 
@@ -10,21 +11,20 @@ export default async function middleware(req: NextRequest) {
   const path = req.nextUrl.pathname;
   const isProtectedRoute = protectedRoutes.some(p => path.startsWith(p)) && path !== '/login';
 
-  // 2. Check if the current route is protected or public
-  const session = await getSession();
+  const sessionCookie = req.cookies.get(SESSION_COOKIE_NAME)?.value;
   
-  // 3. Decrypt the session from the cookie
+  // A simple check for the presence of the cookie.
+  // For robust security, the token should be verified using Firebase Admin SDK on the backend.
+  const isAuthenticated = !!sessionCookie;
 
-  // 4. Redirect if the user is not authenticated
-  if (isProtectedRoute && !session?.user) {
-    return NextResponse.redirect(new URL('/login', req.nextUrl));
+  if (isProtectedRoute && !isAuthenticated) {
+    // Clear the potentially invalid cookie
+    const response = NextResponse.redirect(new URL('/login', req.nextUrl));
+    response.cookies.set(SESSION_COOKIE_NAME, '', { expires: new Date(0) });
+    return response;
   }
   
-  // 5. Redirect if the user is authenticated
-  if (
-    publicRoutes.includes(path) &&
-    session?.user
-  ) {
+  if (publicRoutes.includes(path) && isAuthenticated) {
     return NextResponse.redirect(new URL('/', req.nextUrl));
   }
 

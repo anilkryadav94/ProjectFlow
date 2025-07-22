@@ -69,17 +69,24 @@ export function UserManagementTable({ sessionUser }: { sessionUser: User }) {
 
         setIsSubmitting(prev => ({ ...prev, [user.id]: true }));
         try {
-            const result = await updateUser(user, sessionUser.id);
+            const result = await updateUser(user.id, {
+                name: user.name,
+                roles: user.roles,
+                password: user.password // Password will be undefined if not changed
+            });
+
             if (result.success) {
                 toast({
                     title: "Success",
                     description: `User ${user.name} has been updated.`,
                 });
                 
-                // If the admin updated their own roles, refresh the page to update the header
                 if (user.id === sessionUser.id) {
                     router.refresh();
                 }
+
+                // Clear password field after successful update
+                handleInputChange(userId, 'password', '');
             }
         } catch (error) {
             toast({
@@ -92,9 +99,13 @@ export function UserManagementTable({ sessionUser }: { sessionUser: User }) {
         }
     };
     
-    const handleAddUser = async (newUser: Omit<User, 'id'>) => {
+    const handleAddUser = async (newUser: Omit<User, 'id' | 'password'> & { password?: string }) => {
         try {
-            const result = await addUser(newUser);
+            if (!newUser.password) {
+                 toast({ title: "Error", description: "Password is required.", variant: "destructive" });
+                 return;
+            }
+            const result = await addUser(newUser.email, newUser.password, newUser.name, newUser.roles);
             if(result.success && result.user) {
                 setUsers(prev => [result.user!, ...prev]);
                 toast({
@@ -125,7 +136,7 @@ export function UserManagementTable({ sessionUser }: { sessionUser: User }) {
                     email: row.email || '',
                     password: row.password || 'password', // Default password
                     roles: (row.roles || '').split(',').map((r: string) => r.trim()).filter((r: Role) => roles.includes(r)) as Role[]
-                })).filter(u => u.name && u.email);
+                })).filter(u => u.name && u.email && u.password);
 
                 if (newUsers.length === 0) {
                     toast({ title: "Upload Error", description: "CSV file is empty or malformed.", variant: "destructive" });
@@ -133,11 +144,12 @@ export function UserManagementTable({ sessionUser }: { sessionUser: User }) {
                 }
                 
                 try {
-                    const { addedUsers, errors } = await addBulkUsers(newUsers);
-                    setUsers(prev => [...addedUsers, ...prev]);
+                    const { addedCount, errors } = await addBulkUsers(newUsers);
+                    const freshUserList = await getUsers();
+                    setUsers(freshUserList);
                     toast({
                         title: "Bulk Upload Complete",
-                        description: `${addedUsers.length} users added. ${errors.length} duplicates found.`,
+                        description: `${addedCount} users added. ${errors.length} duplicates/errors.`,
                     });
                 } catch(e) {
                      toast({ title: "Upload Error", description: "An error occurred during bulk upload.", variant: "destructive" });
@@ -193,7 +205,7 @@ export function UserManagementTable({ sessionUser }: { sessionUser: User }) {
                                     </TableRow>
                                 </TableHeader>
                                 <TableBody>
-                                    {isLoading || !users ? (
+                                    {isLoading ? (
                                         <TableRow>
                                             <TableCell colSpan={5} className="h-24 text-center">
                                                 <Loader2 className="mx-auto h-8 w-8 animate-spin text-primary" />
@@ -223,6 +235,7 @@ export function UserManagementTable({ sessionUser }: { sessionUser: User }) {
                                                         disabled={isSubmitting[user.id]}
                                                         placeholder="Set new password"
                                                         type="password"
+                                                        value={user.password || ''}
                                                     />
                                                 </TableCell>
                                                 <TableCell>
