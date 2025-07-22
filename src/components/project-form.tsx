@@ -64,9 +64,17 @@ const formSchema = z.object({
   actionTaken: z.string().optional(),
   documentName: z.string().optional(),
   submitAction: z.enum(['save', 'submit_for_qa', 'submit_qa', 'send_for_rework'])
-})
+}).refine(data => {
+    if (data.submitAction === 'send_for_rework') {
+        return !!data.reworkReason && data.reworkReason.trim().length > 0;
+    }
+    return true;
+}, {
+    message: "Rework reason is required when sending for rework.",
+    path: ["reworkReason"],
+});
 
-type ProjectFormValues = z.infer<typeof formSchema>
+type ProjectFormValues = z.infer<typeof formSchema>;
 
 interface ProjectFormProps {
   project?: Project | null;
@@ -132,7 +140,8 @@ export function ProjectForm({ project: initialProject, role, setOpen, nextProjec
       }
     } catch (error) {
       console.error("Failed to save project", error);
-      toast({ title: "Error", description: "Failed to save changes.", variant: "destructive" });
+      const errorMessage = error instanceof Error ? error.message : "An unknown error occurred.";
+      toast({ title: "Error", description: `Failed to save changes: ${errorMessage}`, variant: "destructive" });
     } finally {
         if(isSave) {
             setIsSaving(false);
@@ -141,6 +150,12 @@ export function ProjectForm({ project: initialProject, role, setOpen, nextProjec
         }
     }
   };
+  
+  const handleSaveChanges = () => form.handleSubmit((data) => handleFormSubmit(data, 'save'))();
+  const handleSubmitForQA = () => form.handleSubmit((data) => handleFormSubmit(data, 'submit_for_qa'))();
+  const handleQAComplete = () => form.handleSubmit((data) => handleFormSubmit(data, 'submit_qa'))();
+  const handleSendForRework = () => form.handleSubmit((data) => handleFormSubmit(data, 'send_for_rework'))();
+
 
   const isProcessor = role === 'Processor';
   const isQA = role === 'QA';
@@ -190,24 +205,24 @@ export function ProjectForm({ project: initialProject, role, setOpen, nextProjec
                     )}
                     
                     {canProcessorSubmit && (
-                        <Button size="sm" type="button" onClick={form.handleSubmit((d) => handleFormSubmit(d, 'submit_for_qa'))} disabled={isAnyActionLoading}>
+                        <Button size="sm" type="button" onClick={handleSubmitForQA} disabled={isAnyActionLoading}>
                             {isSubmitting && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
                             Submit for QA
                         </Button>
                     )}
                     {canQASubmit && (
                         <>
-                           <Button size="sm" type="button" variant="destructive" onClick={form.handleSubmit((d) => handleFormSubmit(d, 'send_for_rework'))} disabled={isAnyActionLoading}>
+                           <Button size="sm" type="button" variant="destructive" onClick={handleSendForRework} disabled={isAnyActionLoading}>
                                 {isSubmitting && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
                                 Send for Rework
                             </Button>
-                             <Button size="sm" type="button" onClick={form.handleSubmit((d) => handleFormSubmit(d, 'submit_qa'))} disabled={isAnyActionLoading}>
+                             <Button size="sm" type="button" onClick={handleQAComplete} disabled={isAnyActionLoading}>
                                 {isSubmitting && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
                                 QA Complete
                             </Button>
                         </>
                     )}
-                     <Button size="sm" type="button" onClick={form.handleSubmit((d) => handleFormSubmit(d, 'save'))} disabled={isAnyActionLoading || (!isManager && !canProcessorSubmit && !canQASubmit)}>
+                     <Button size="sm" type="button" onClick={handleSaveChanges} disabled={isAnyActionLoading || (!isManager && !canProcessorSubmit && !canQASubmit)}>
                         {isSaving && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
                         {isManager && !project ? 'Create Project' : 'Save Changes'}
                     </Button>

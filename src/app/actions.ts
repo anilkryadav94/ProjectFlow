@@ -27,7 +27,16 @@ const formSchema = z.object({
   actionTaken: z.string().optional(),
   documentName: z.string().optional(),
   submitAction: z.enum(['save', 'submit_for_qa', 'submit_qa', 'send_for_rework'])
+}).refine(data => {
+    if (data.submitAction === 'send_for_rework') {
+        return !!data.reworkReason && data.reworkReason.length > 0;
+    }
+    return true;
+}, {
+    message: "Rework reason is required.",
+    path: ["reworkReason"],
 });
+
 
 type ProjectFormValues = z.infer<typeof formSchema>;
 
@@ -75,10 +84,13 @@ export async function saveProject(data: ProjectFormValues, nextProjectId?: strin
             qaDate = new Date().toISOString().split('T')[0];
             break;
         case 'send_for_rework':
+            if (!validatedData.reworkReason) {
+                throw new Error("Rework reason is required.");
+            }
             workflowStatus = 'With Processor';
             processorStatus = 'Re-Work';
             qaStatus = 'Pending'; 
-            reworkReason = validatedData.reworkReason || 'No reason provided';
+            reworkReason = validatedData.reworkReason;
             break;
         case 'save':
             // Statuses are taken directly from the form data
@@ -155,6 +167,8 @@ export async function bulkUpdateProjects(data: z.infer<typeof bulkUpdateSchema>)
             updatedProjects.push(updatedProject);
         }
     });
+
+    revalidatePath('/');
 
     return { success: true, updatedProjects };
 }
