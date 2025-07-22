@@ -339,7 +339,7 @@ export function ProjectForm({ project: initialProject, role, setOpen, nextProjec
                          />
                          ) : null}
                          
-                         {(isQA || isManager) ? (
+                         {(isQA || isManager) && project?.workflowStatus === 'With QA' ? (
                              <FormField
                                 control={form.control}
                                 name="qaStatus"
