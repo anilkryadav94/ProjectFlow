@@ -290,7 +290,7 @@ export function ProjectForm({ project: initialProject, role, setOpen, nextProjec
                       </div>
 
                        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                         {isProcessor || isManager || (isQA && project) ? (
+                         {isProcessor || isManager ? (
                             <FormField
                                 control={form.control}
                                 name="processorStatus"
@@ -320,7 +320,7 @@ export function ProjectForm({ project: initialProject, role, setOpen, nextProjec
                          />
                          ) : null}
                          
-                         {isQA || isManager || (isProcessor && project) ? (
+                         {isQA || isManager ? (
                              <FormField
                                 control={form.control}
                                 name="qaStatus"
