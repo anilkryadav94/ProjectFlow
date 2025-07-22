@@ -2,7 +2,7 @@
 "use client"
 
 import * as React from "react"
-import { LogOut, Settings, FileSpreadsheet, Workflow, Edit, RotateCcw, MonitorPlay, ShieldCheck } from "lucide-react"
+import { LogOut, Settings, FileSpreadsheet, Workflow, Edit, RotateCcw } from "lucide-react"
 import type { Role, User, ProcessType } from "@/lib/data"
 import { roleHierarchy } from "@/lib/data"
 import { Button } from "@/components/ui/button"
@@ -215,21 +215,6 @@ export function Header({
                 <DropdownMenuContent className="w-56">
                     <DropdownMenuLabel>{user.name}</DropdownMenuLabel>
                     <DropdownMenuLabel className="text-xs font-normal text-muted-foreground">{user.email}</DropdownMenuLabel>
-                    
-                    <DropdownMenuSeparator />
-                     <DropdownMenuLabel>Navigate</DropdownMenuLabel>
-                     {user.roles.includes('Processor') && (
-                        <DropdownMenuItem onSelect={() => router.push('/?role=Processor')}>
-                            <MonitorPlay className="mr-2 h-4 w-4" />
-                            Processor Dashboard
-                        </DropdownMenuItem>
-                     )}
-                     {user.roles.includes('QA') && (
-                        <DropdownMenuItem onSelect={() => router.push('/?role=QA')}>
-                            <ShieldCheck className="mr-2 h-4 w-4" />
-                            QA Dashboard
-                        </DropdownMenuItem>
-                     )}
                     
                     {sortedUserRoles.length > 1 && (
                         <>
