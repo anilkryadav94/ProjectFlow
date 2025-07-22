@@ -190,11 +190,8 @@ export function ProjectForm({ project: initialProject, role, setOpen, nextProjec
   
   const isFieldEditable = (fieldName: string) => {
     if (isManager) return true;
-    if (isProcessor) {
-        return ['applicationNumber', 'patentNumber', 'documentName', 'actionTaken', 'processorStatus'].includes(fieldName);
-    }
-    if (isQA) {
-        return ['qaStatus'].includes(fieldName);
+    if (isProcessor || isQA) {
+        return ['applicationNumber', 'patentNumber', 'documentName', 'actionTaken', 'processorStatus', 'qaStatus'].includes(fieldName);
     }
     return false;
   };
@@ -214,7 +211,7 @@ export function ProjectForm({ project: initialProject, role, setOpen, nextProjec
                     {project && <CardDescription className="text-xs">Subject: {project.subject}</CardDescription>}
                 </div>
                 <div className="flex items-center space-x-2">
-                    {project && isProcessor && (
+                    {project && (isProcessor || isQA) && (
                         <Dialog open={isMMFormOpen} onOpenChange={setIsMMFormOpen}>
                             <DialogTrigger asChild>
                                 <Button size="sm" variant="outline" disabled={isAnyActionLoading}>
@@ -330,7 +327,7 @@ export function ProjectForm({ project: initialProject, role, setOpen, nextProjec
                       </div>
 
                        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                         {(isProcessor || isManager) && (
+                         {(isProcessor || isManager || isQA) && (
                             <FormField
                                 control={form.control}
                                 name="processorStatus"
