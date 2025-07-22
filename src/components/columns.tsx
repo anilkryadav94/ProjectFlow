@@ -150,7 +150,7 @@ export const getColumns = (
              if(value) {
                 newSelection[project.id] = true;
              } else {
-                delete newSelection[p.id];
+                delete newSelection[project.id];
              }
              setRowSelection(newSelection)
           }}
