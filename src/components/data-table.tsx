@@ -96,18 +96,11 @@ export function DataTable({
         </Table>
       </div>
 
-       <div className="flex-shrink-0 rounded-b-md border border-t-0 bg-muted/50">
+       <div className="flex-shrink-0 rounded-b-md border border-t-0 bg-card">
          {children}
-         {totalCount > 0 && !children && (
-          <div className="flex items-center justify-end p-2 text-sm text-muted-foreground">
-             <span>Total Projects: {totalCount}</span>
-          </div>
-         )}
-         {totalCount > 0 && children && (
-            <div className="flex items-center justify-end p-2 text-sm text-muted-foreground border-t">
-                <span>Total Projects: {totalCount}</span>
-            </div>
-         )}
+         <div className="flex items-center justify-end p-2 text-sm text-card-foreground">
+             {totalCount > 0 && <span>Total items: {totalCount}</span>}
+         </div>
        </div>
     </div>
   )
