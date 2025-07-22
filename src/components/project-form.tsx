@@ -48,7 +48,7 @@ const formSchema = z.object({
   id: z.string().optional(),
   refNumber: z.string().min(1, "Reference number is required."),
   clientName: z.string().min(1, "Client name is required."),
-  process: z.enum(processes),
+  process: z.enum(['Patent', 'TM', 'IDS', 'Project']),
   applicationNumber: z.string().optional(),
   patentNumber: z.string().optional(),
   emailDate: z.date({ required_error: "Email date is required." }),
@@ -211,7 +211,7 @@ export function ProjectForm({ project: initialProject, role, setOpen, nextProjec
                     {project && <CardDescription className="text-xs">Subject: {project.subject}</CardDescription>}
                 </div>
                 <div className="flex items-center space-x-2">
-                    {project && (isProcessor || isQA) && (
+                    {project && (
                         <Dialog open={isMMFormOpen} onOpenChange={setIsMMFormOpen}>
                             <DialogTrigger asChild>
                                 <Button size="sm" variant="outline" disabled={isAnyActionLoading}>

@@ -100,7 +100,7 @@ export async function saveProject(data: ProjectFormValues, nextProjectId?: strin
         workflowStatus,
         processorStatus,
         qaStatus,
-        reworkReason: '', // Keep field for data consistency, but logic is removed.
+        reworkReason: '',
     };
     
     delete (commonData as any).submitAction;
