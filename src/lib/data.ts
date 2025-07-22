@@ -68,7 +68,7 @@ export type Project = {
 export const processors = ['Alice', 'Bob', 'Charlie', 'Rahul'];
 export const qas = ['David', 'Eve', 'Anil', 'Ankit', 'Rahul', 'Bob', 'Manager User'];
 export const clientNames = ['Client A', 'Client B', 'Client C'];
-export const processes: ProcessType[] = ['Patent', 'TM', 'IDS', 'Project'];
+export const processes = ['Patent', 'TM', 'IDS', 'Project'] as const;
 export const projectStatuses: any[] = []; // This is obsolete now
 export const countries = ['USA', 'India', 'Canada', 'UK', 'Germany'];
 

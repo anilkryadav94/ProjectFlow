@@ -27,7 +27,7 @@ const formSchema = z.object({
 
   submitAction: z.enum(['save', 'submit_for_qa', 'submit_qa'])
 }).superRefine((data, ctx) => {
-    if (data.submitAction === 'submit_qa' && !qaSubmissionStatuses.includes(data.qaStatus)) {
+    if (data.submitAction === 'submit_qa' && !["Complete", "NTP", "Client Query", "Already Processed"].includes(data.qaStatus)) {
          ctx.addIssue({
             code: z.ZodIssueCode.custom,
             message: "A valid submission status is required for QA.",
