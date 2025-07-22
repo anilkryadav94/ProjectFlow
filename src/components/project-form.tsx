@@ -291,7 +291,7 @@ export function ProjectForm({ project: initialProject, role, setOpen, nextProjec
                                   <FormItem>
                                   <FormLabel>Reference Number</FormLabel>
                                   <FormControl>
-                                      <Input placeholder="REF..." {...field} disabled={!isFieldEditable('refNumber')}/>
+                                      <Input placeholder="REF..." {...field} disabled={!isManager}/>
                                   </FormControl>
                                   <FormMessage />
                                   </FormItem>
@@ -304,7 +304,7 @@ export function ProjectForm({ project: initialProject, role, setOpen, nextProjec
                                   <FormItem>
                                   <FormLabel>Client Name</FormLabel>
                                     {isManager ? (
-                                      <Select onValueChange={field.onChange} value={field.value} disabled={!isFieldEditable('clientName')}>
+                                      <Select onValueChange={field.onChange} value={field.value} disabled={!isManager}>
                                           <FormControl>
                                           <SelectTrigger>
                                               <SelectValue placeholder="Select a client" />
@@ -328,7 +328,7 @@ export function ProjectForm({ project: initialProject, role, setOpen, nextProjec
                                   <FormItem>
                                   <FormLabel>Process</FormLabel>
                                   {isManager ? (
-                                      <Select onValueChange={field.onChange} value={field.value} disabled={!isFieldEditable('process')}>
+                                      <Select onValueChange={field.onChange} value={field.value} disabled={!isManager}>
                                           <FormControl>
                                           <SelectTrigger>
                                               <SelectValue placeholder="Select a process" />
@@ -469,7 +469,7 @@ export function ProjectForm({ project: initialProject, role, setOpen, nextProjec
                               <FormItem>
                               <FormLabel>Subject</FormLabel>
                               <FormControl>
-                                  <Input placeholder="Invention disclosure..." {...field} value={field.value || ''} disabled={!isFieldEditable('subject')}/>
+                                  <Input placeholder="Invention disclosure..." {...field} value={field.value || ''} disabled={!isManager}/>
                               </FormControl>
                               <FormMessage />
                               </FormItem>
@@ -505,9 +505,9 @@ export function ProjectForm({ project: initialProject, role, setOpen, nextProjec
                                               className={cn(
                                                   "pl-3 text-left font-normal",
                                                   !field.value && "text-muted-foreground",
-                                                  !isFieldEditable('emailDate') && "disabled:opacity-100 disabled:cursor-default"
+                                                  !isManager && "disabled:opacity-100 disabled:cursor-default"
                                               )}
-                                              disabled={!isFieldEditable('emailDate')}
+                                              disabled={!isManager}
                                               >
                                               {field.value ? (
                                                   format(field.value, "PPP")
@@ -551,9 +551,9 @@ export function ProjectForm({ project: initialProject, role, setOpen, nextProjec
                                               className={cn(
                                                   "pl-3 text-left font-normal",
                                                   !field.value && "text-muted-foreground",
-                                                  !isFieldEditable('allocationDate') && "disabled:opacity-100 disabled:cursor-default"
+                                                  !isManager && "disabled:opacity-100 disabled:cursor-default"
                                               )}
-                                              disabled={!isFieldEditable('allocationDate')}
+                                              disabled={!isManager}
                                               >
                                               {field.value ? (
                                                   format(field.value, "PPP")
@@ -589,7 +589,7 @@ export function ProjectForm({ project: initialProject, role, setOpen, nextProjec
                               <FormItem>
                                   <FormLabel>Processor</FormLabel>
                                   {isManager ? (
-                                      <Select onValueChange={field.onChange} value={field.value} disabled={!isFieldEditable('processor')}>
+                                      <Select onValueChange={field.onChange} value={field.value} disabled={!isManager}>
                                           <FormControl>
                                           <SelectTrigger>
                                               <SelectValue placeholder="Select a processor" />
@@ -612,7 +612,7 @@ export function ProjectForm({ project: initialProject, role, setOpen, nextProjec
                               <FormItem>
                                   <FormLabel>QA</FormLabel>
                                   {isManager ? (
-                                      <Select onValueChange={field.onChange} value={field.value} disabled={!isFieldEditable('qa')}>
+                                      <Select onValueChange={field.onChange} value={field.value} disabled={!isManager}>
                                           <FormControl>
                                           <SelectTrigger>
                                               <SelectValue placeholder="Select a QA" />
