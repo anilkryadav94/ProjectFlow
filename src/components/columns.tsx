@@ -5,6 +5,9 @@ import type { Project, Role } from "@/lib/data";
 import { Badge } from "@/components/ui/badge";
 import { cn } from "@/lib/utils";
 import { Checkbox } from "./ui/checkbox";
+import { DataTableRowActions } from "./data-table-row-actions";
+import Link from "next/link";
+
 
 const statusColors: Record<string, string> = {
   // Workflow Statuses
@@ -33,7 +36,6 @@ export const getColumns = (
   setRowSelection: (selection: Record<string, boolean>) => void,
   allProjectsOnPage: Project[],
   activeRole: Role,
-  searchParams: { search: string, searchColumn: string, clientName: string, process: string }
 ) => {
 
   const baseColumns = [
@@ -41,7 +43,9 @@ export const getColumns = (
       key: "refNumber" as const,
       header: "Ref Number",
       render: (project: Project) => (
-         <span className="font-medium">{project.refNumber}</span>
+         <Link href={`/task/${project.id}`} className="font-medium text-primary hover:underline">
+            {project.refNumber}
+         </Link>
       )
     },
     {
@@ -103,6 +107,8 @@ export const getColumns = (
     },
   ];
 
+  let columns = [...baseColumns];
+
   if (isManagerOrAdmin) {
     const selectionColumn = {
       key: "select",
@@ -142,8 +148,17 @@ export const getColumns = (
         />
       ),
     };
-    return [selectionColumn, ...baseColumns];
+    columns.unshift(selectionColumn);
   }
+  
+  const actionsColumn = {
+      key: "actions",
+      header: "Actions",
+      render: (project: Project) => <DataTableRowActions row={project} />,
+  };
+  
+  columns.push(actionsColumn);
 
-  return baseColumns;
+
+  return columns;
 };
