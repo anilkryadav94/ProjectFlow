@@ -407,7 +407,7 @@ export function ProjectForm({ project: initialProject, role, setOpen, nextProjec
                               <FormItem>
                               <FormLabel>Subject</FormLabel>
                               <FormControl>
-                                  <Input placeholder="Invention disclosure..." {...field} disabled={!isFieldEditable('subject')}/>
+                                  <Input placeholder="Invention disclosure..." {...field} value={field.value || ''} disabled={!isFieldEditable('subject')}/>
                               </FormControl>
                               <FormMessage />
                               </FormItem>
@@ -576,3 +576,5 @@ export function ProjectForm({ project: initialProject, role, setOpen, nextProjec
     </div>
   )
 }
+
+    
