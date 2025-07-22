@@ -1,8 +1,7 @@
-
 "use client"
 
 import * as React from "react"
-import { LogOut, Settings, FileSpreadsheet, Workflow, Edit, RotateCcw } from "lucide-react"
+import { LogOut, Settings, FileSpreadsheet, Workflow, Edit, RotateCcw, ChevronLeft, ChevronRight } from "lucide-react"
 import type { Role, User, ProcessType } from "@/lib/data"
 import { roleHierarchy } from "@/lib/data"
 import { Button } from "@/components/ui/button"
@@ -26,6 +25,13 @@ import { Input } from "./ui/input";
 import type { SearchableColumn } from "./dashboard"
 import Link from "next/link"
 
+interface TaskPagination {
+    currentIndex: number;
+    total: number;
+    nextId: string | null;
+    prevId: string | null;
+}
+
 interface HeaderProps {
     user: User;
     activeRole: Role;
@@ -47,6 +53,7 @@ interface HeaderProps {
     clientNames: string[];
     processes: ProcessType[];
     children?: React.ReactNode;
+    taskPagination?: TaskPagination;
 }
 
 export function Header({ 
@@ -70,6 +77,7 @@ export function Header({
   clientNames,
   processes,
   children,
+  taskPagination,
 }: HeaderProps) {
   const router = useRouter();
 
@@ -197,6 +205,18 @@ export function Header({
                   </>
                 )}
               </div>
+            )}
+
+            {taskPagination && (
+                 <div className="flex items-center gap-2 text-sm font-medium">
+                    <Button variant="outline" size="icon" className="h-8 w-8 text-foreground" disabled={!taskPagination.prevId} onClick={() => router.push(`/task/${taskPagination.prevId}`)}>
+                        <ChevronLeft className="h-4 w-4" />
+                    </Button>
+                    <span>{taskPagination.currentIndex + 1} of {taskPagination.total}</span>
+                    <Button variant="outline" size="icon" className="h-8 w-8 text-foreground" disabled={!taskPagination.nextId} onClick={() => router.push(`/task/${taskPagination.nextId}`)}>
+                        <ChevronRight className="h-4 w-4" />
+                    </Button>
+                </div>
             )}
 
             {handleDownload && (

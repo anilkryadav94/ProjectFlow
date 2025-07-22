@@ -1,4 +1,3 @@
-
 "use client"
 
 import * as React from "react"
@@ -60,9 +59,10 @@ type ProjectFormValues = z.infer<typeof formSchema>
 interface ProjectFormProps {
   project: Project
   userRole: Role
+  nextProjectId: string | null;
 }
 
-export function ProjectForm({ project, userRole }: ProjectFormProps) {
+export function ProjectForm({ project, userRole, nextProjectId }: ProjectFormProps) {
   const { toast } = useToast()
   const [isSubmitting, setIsSubmitting] = React.useState(false);
   const [submitAction, setSubmitAction] = React.useState<'save' | 'submit_for_qa' | 'submit_qa' | 'send_rework' | null>(null);
@@ -76,19 +76,27 @@ export function ProjectForm({ project, userRole }: ProjectFormProps) {
     },
   })
 
+  // Reset form when project changes
+  React.useEffect(() => {
+    form.reset({
+      ...project,
+      emailDate: project.emailDate ? format(new Date(project.emailDate), "yyyy-MM-dd") : "",
+      allocationDate: project.allocationDate ? format(new Date(project.allocationDate), "yyyy-MM-dd") : "",
+    });
+  }, [project, form]);
+
+
   const handleFormSubmit = async (action: 'save' | 'submit_for_qa' | 'submit_qa' | 'send_rework') => {
     setSubmitAction(action);
     await form.handleSubmit(async (data) => {
       setIsSubmitting(true);
       try {
-        await saveProject(data, action);
+        await saveProject(data, action, nextProjectId);
         toast({
           title: "Success",
           description: `Project has been ${action === 'save' ? 'saved' : 'submitted'}.`,
         });
-        if (action !== 'save') {
-           // Redirect is handled in server action
-        }
+        // Redirect is handled in server action
       } catch (error) {
         toast({
           title: "Error",
@@ -114,9 +122,9 @@ export function ProjectForm({ project, userRole }: ProjectFormProps) {
         <form onSubmit={(e) => e.preventDefault()} className="h-full flex flex-col">
             <Card className="border-0 shadow-none flex flex-col flex-grow h-full">
                 <CardHeader>
-                    <CardTitle>Task Details</CardTitle>
+                    <CardTitle>{project.refNumber}</CardTitle>
                     <CardDescription>
-                        {isReadOnly ? "View task details." : "Update task details below."}
+                        {project.subject}
                     </CardDescription>
                 </CardHeader>
                 <CardContent className="flex-grow overflow-y-auto">
@@ -153,7 +161,7 @@ export function ProjectForm({ project, userRole }: ProjectFormProps) {
                             disabled={isSubmitting || isReadOnly}
                         >
                             {isSubmitting && submitAction === 'save' && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
-                            <Save className="mr-2 h-4 w-4" /> Save
+                            <Save className="mr-2 h-4 w-4" /> Save &amp; Next
                         </Button>
 
                         {isProcessorView && (
@@ -163,7 +171,7 @@ export function ProjectForm({ project, userRole }: ProjectFormProps) {
                                 disabled={isSubmitting}
                             >
                                 {isSubmitting && submitAction === 'submit_for_qa' && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
-                                Submit for QA
+                                Submit for QA &amp; Next
                             </Button>
                         )}
                         {isQaView && (
@@ -183,7 +191,7 @@ export function ProjectForm({ project, userRole }: ProjectFormProps) {
                                     disabled={isSubmitting}
                                 >
                                      {isSubmitting && submitAction === 'submit_qa' && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
-                                    Submit
+                                    Submit &amp; Next
                                 </Button>
                             </>
                         )}

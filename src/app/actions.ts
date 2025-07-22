@@ -1,9 +1,8 @@
-
 "use server";
 
 import { z } from "zod";
 import type { Project } from "@/lib/data";
-import { projects, processorSubmissionStatuses, qaSubmissionStatuses } from "@/lib/data";
+import { projects } from "@/lib/data";
 import { redirect } from "next/navigation";
 import { revalidatePath } from "next/cache";
 
@@ -57,7 +56,8 @@ const projectSchema = z.object({
 
 export async function saveProject(
   data: z.infer<typeof projectSchema>, 
-  submitAction: 'save' | 'submit_for_qa' | 'submit_qa' | 'send_rework'
+  submitAction: 'save' | 'submit_for_qa' | 'submit_qa' | 'send_rework',
+  nextProjectId?: string | null
 ): Promise<Project | void> {
     
     const validatedData = projectSchema.parse(data);
@@ -102,8 +102,15 @@ export async function saveProject(
     revalidatePath(`/task/${savedProject.id}`);
     
     if (submitAction === 'save') {
+        if(nextProjectId) {
+            redirect(`/task/${nextProjectId}`);
+        }
         return savedProject;
     } else {
-        redirect('/');
+        if (nextProjectId) {
+            redirect(`/task/${nextProjectId}`);
+        } else {
+            redirect('/');
+        }
     }
 }
