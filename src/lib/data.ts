@@ -42,9 +42,11 @@ export type ProcessType = 'Patent' | 'TM' | 'IDS' | 'Project';
 
 export type ProjectEntry = {
     id: string;
-    column1: string;
-    column2: string;
-    notes: string;
+    applicationNumber: string | null;
+    patentNumber: string | null;
+    country: string | null;
+    status: string | null;
+    notes: string | null;
 };
 
 export type Project = {
@@ -72,7 +74,7 @@ export const processors = ['Alice', 'Bob', 'Charlie', 'Rahul'];
 export const qas = ['David', 'Eve', 'Anil', 'Ankit', 'Rahul', 'Bob', 'Manager User'];
 export const clientNames = ['Client A', 'Client B', 'Client C'];
 export const processes: ProcessType[] = ['Patent', 'TM', 'IDS', 'Project'];
-export const projectStatuses: any[] = []; // This is obsolete now
+export const projectStatuses: any[] = ["Pending", "Completed", "On Hold"];
 export const countries = ['USA', 'India', 'Canada', 'UK', 'Germany'];
 
 export const projects: Project[] = [
@@ -95,7 +97,7 @@ export const projects: Project[] = [
     reworkReason: null,
     subject: 'Invention Disclosure - AI in Healthcare',
     entries: [
-        { id: 'entry1', column1: 'Value 1', column2: 'Value 2', notes: 'Initial notes' }
+        { id: 'entry1', applicationNumber: 'US16/123,456', patentNumber: '10,123,456', country: 'USA', status: 'Filed', notes: 'Initial notes' }
     ]
   },
   {

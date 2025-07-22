@@ -26,21 +26,23 @@ import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/com
 import { Textarea } from "@/components/ui/textarea"
 import { Calendar } from "@/components/ui/calendar"
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover"
-import { CalendarIcon, Loader2, Save, PlusCircle, Rows } from "lucide-react"
+import { CalendarIcon, Loader2, Save, Rows } from "lucide-react"
 import { format } from "date-fns"
 import { saveProject } from "@/app/actions"
 import { useToast } from "@/hooks/use-toast"
 import { cn } from "@/lib/utils"
-import type { Project, Role, ProjectEntry } from "@/lib/data"
+import type { Project, Role } from "@/lib/data"
 import { processors, qas, clientNames, processes, processorStatuses, qaStatuses, processorSubmissionStatuses, qaSubmissionStatuses } from "@/lib/data"
 import { useRouter } from "next/navigation"
-import { ProjectEntries } from "./project-entries"
+import { ProjectEntriesDialog } from "./project-entries-dialog"
 
 const projectEntrySchema = z.object({
     id: z.string(),
-    column1: z.string(),
-    column2: z.string(),
-    notes: z.string(),
+    applicationNumber: z.string().nullable(),
+    patentNumber: z.string().nullable(),
+    country: z.string().nullable(),
+    status: z.string().nullable(),
+    notes: z.string().nullable(),
 });
 
 const formSchema = z.object({
@@ -79,7 +81,7 @@ export function ProjectForm({ project, userRole, nextProjectId, filteredIds }: P
   const router = useRouter();
   const [isSubmitting, setIsSubmitting] = React.useState(false);
   const [submitAction, setSubmitAction] = React.useState<'save' | 'submit_for_qa' | 'submit_qa' | 'send_rework' | null>(null);
-  const [showEntries, setShowEntries] = React.useState(false);
+  const [isEntriesDialogOpen, setIsEntriesDialogOpen] = React.useState(false);
 
   const form = useForm<ProjectFormValues>({
     resolver: zodResolver(formSchema),
@@ -139,45 +141,37 @@ export function ProjectForm({ project, userRole, nextProjectId, filteredIds }: P
   const isReadOnly = !isProcessorView && !isQaView && !isManagerView && !isAdminView;
 
   return (
-    <div className="animated-border shadow-xl h-full">
-      <Form {...form}>
-        <form onSubmit={(e) => e.preventDefault()} className="h-full flex flex-col">
-            <Card className="border-0 shadow-none flex flex-col flex-grow h-full">
-                <CardHeader>
-                    <div className="flex justify-between items-start">
-                        <div>
-                            <CardTitle>{project.refNumber}</CardTitle>
-                            <CardDescription>
-                                {project.subject}
-                            </CardDescription>
-                        </div>
-                        {isProcessorView && (
-                            <Button variant="outline" onClick={() => setShowEntries(s => !s)}>
-                                <Rows className="mr-2 h-4 w-4" />
-                                {showEntries ? "Hide Entries" : "Add/View Entries"}
-                            </Button>
-                        )}
-                    </div>
-                </CardHeader>
-                <CardContent className="flex-grow overflow-y-auto">
-                
-                {showEntries && isProcessorView ? (
-                     <Controller
-                        control={form.control}
-                        name="entries"
-                        render={({ field }) => (
-                            <ProjectEntries
-                                entries={field.value ?? []}
-                                onChange={field.onChange}
-                                projectData={{ 
-                                    subject: form.getValues("subject"),
-                                    emailDate: form.getValues("emailDate"),
-                                    allocationDate: form.getValues("allocationDate")
-                                }}
-                            />
-                        )}
-                    />
-                ) : (
+    <>
+      <ProjectEntriesDialog
+        isOpen={isEntriesDialogOpen}
+        onOpenChange={setIsEntriesDialogOpen}
+        entries={form.watch('entries') ?? []}
+        onSaveChanges={(updatedEntries) => {
+          form.setValue('entries', updatedEntries);
+        }}
+        projectSubject={project.subject}
+      />
+      <div className="animated-border shadow-xl h-full">
+        <Form {...form}>
+          <form onSubmit={(e) => e.preventDefault()} className="h-full flex flex-col">
+              <Card className="border-0 shadow-none flex flex-col flex-grow h-full">
+                  <CardHeader>
+                      <div className="flex justify-between items-start">
+                          <div>
+                              <CardTitle>{project.refNumber}</CardTitle>
+                              <CardDescription>
+                                  {project.subject}
+                              </CardDescription>
+                          </div>
+                          {isProcessorView && (
+                              <Button variant="outline" onClick={() => setIsEntriesDialogOpen(true)}>
+                                  <Rows className="mr-2 h-4 w-4" />
+                                  Add/View Entries
+                              </Button>
+                          )}
+                      </div>
+                  </CardHeader>
+                  <CardContent className="flex-grow overflow-y-auto">
                     <div className="grid md:grid-cols-2 gap-6">
                       {/* Column 1 */}
                       <div className="space-y-4">
@@ -200,59 +194,57 @@ export function ProjectForm({ project, userRole, nextProjectId, filteredIds }: P
                         {isQaView && <FormField control={form.control} name="reworkReason" render={({ field }) => (<FormItem><FormLabel>Rework Reason (if sending back)</FormLabel><FormControl><Textarea {...field} value={field.value ?? ""} disabled={!isQaView} /></FormControl><FormMessage /></FormItem>)} />}
                       </div>
                     </div>
-                )}
-                </CardContent>
-                
-                <CardHeader className="border-t mt-auto">
-                    <div className="flex justify-end gap-2">
-                        <Button
-                            type="button"
-                            variant="secondary"
-                            onClick={() => handleFormSubmit('save')}
-                            disabled={isSubmitting || isReadOnly}
-                        >
-                            {isSubmitting && submitAction === 'save' && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
-                            <Save className="mr-2 h-4 w-4" /> Save &amp; Next
-                        </Button>
+                  </CardContent>
+                  
+                  <CardHeader className="border-t mt-auto">
+                      <div className="flex justify-end gap-2">
+                          <Button
+                              type="button"
+                              variant="secondary"
+                              onClick={() => handleFormSubmit('save')}
+                              disabled={isSubmitting || isReadOnly}
+                          >
+                              {isSubmitting && submitAction === 'save' && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
+                              <Save className="mr-2 h-4 w-4" /> Save &amp; Next
+                          </Button>
 
-                        {isProcessorView && (
-                            <Button
-                                type="button"
-                                onClick={() => handleFormSubmit('submit_for_qa')}
-                                disabled={isSubmitting}
-                            >
-                                {isSubmitting && submitAction === 'submit_for_qa' && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
-                                Submit for QA &amp; Next
-                            </Button>
-                        )}
-                        {isQaView && (
-                            <>
-                                <Button
-                                    type="button"
-                                    variant="destructive"
-                                    onClick={() => handleFormSubmit('send_rework')}
-                                    disabled={isSubmitting}
-                                >
-                                    {isSubmitting && submitAction === 'send_rework' && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
-                                    Send for Rework
-                                </Button>
-                                <Button
-                                    type="button"
-                                    onClick={() => handleFormSubmit('submit_qa')}
-                                    disabled={isSubmitting}
-                                >
-                                     {isSubmitting && submitAction === 'submit_qa' && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
-                                    Submit &amp; Next
-                                </Button>
-                            </>
-                        )}
-                    </div>
-                </CardHeader>
-            </Card>
-        </form>
-      </Form>
-    </div>
+                          {isProcessorView && (
+                              <Button
+                                  type="button"
+                                  onClick={() => handleFormSubmit('submit_for_qa')}
+                                  disabled={isSubmitting}
+                              >
+                                  {isSubmitting && submitAction === 'submit_for_qa' && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
+                                  Submit for QA &amp; Next
+                              </Button>
+                          )}
+                          {isQaView && (
+                              <>
+                                  <Button
+                                      type="button"
+                                      variant="destructive"
+                                      onClick={() => handleFormSubmit('send_rework')}
+                                      disabled={isSubmitting}
+                                  >
+                                      {isSubmitting && submitAction === 'send_rework' && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
+                                      Send for Rework
+                                  </Button>
+                                  <Button
+                                      type="button"
+                                      onClick={() => handleFormSubmit('submit_qa')}
+                                      disabled={isSubmitting}
+                                  >
+                                      {isSubmitting && submitAction === 'submit_qa' && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
+                                      Submit &amp; Next
+                                  </Button>
+                              </>
+                          )}
+                      </div>
+                  </CardHeader>
+              </Card>
+          </form>
+        </Form>
+      </div>
+    </>
   )
 }
-
-    

@@ -36,9 +36,11 @@ export async function bulkUpdateProjects(data: z.infer<typeof bulkUpdateSchema>)
 
 const projectEntrySchema = z.object({
     id: z.string(),
-    column1: z.string(),
-    column2: z.string(),
-    notes: z.string(),
+    applicationNumber: z.string().nullable(),
+    patentNumber: z.string().nullable(),
+    country: z.string().nullable(),
+    status: z.string().nullable(),
+    notes: z.string().nullable(),
 });
 
 const projectSchema = z.object({
