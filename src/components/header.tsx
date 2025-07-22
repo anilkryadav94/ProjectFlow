@@ -80,12 +80,12 @@ export function Header({
 
   const handleRoleChange = (role: Role) => {
     const targetUrl = `/?role=${role}`;
+    // If setActiveRole is provided (from the main dashboard), use it for instant client-side state update.
     if (setActiveRole) {
       setActiveRole(role);
-      router.push(targetUrl, { scroll: false });
-    } else {
-      router.push(targetUrl);
     }
+    // Always use the router to navigate, ensuring the URL is updated correctly from any page.
+    router.push(targetUrl, { scroll: false });
   }
 
   const getDashboardName = () => {
@@ -118,7 +118,9 @@ export function Header({
         <div className="flex items-center gap-2 flex-shrink-0">
           <div className="flex items-center gap-2">
             <Workflow className="h-6 w-6" />
-            <h2 className="text-xl font-bold tracking-tight">ProjectFlow</h2>
+            <Link href={dashboardLink}>
+              <h2 className="text-xl font-bold tracking-tight">ProjectFlow</h2>
+            </Link>
           </div>
           <Separator orientation="vertical" className="h-6 bg-primary-foreground/50" />
             <Link href={dashboardLink} className="text-md font-semibold hover:underline">
@@ -154,7 +156,9 @@ export function Header({
                         <SelectItem value="applicationNumber">Application No.</SelectItem>
                         <SelectItem value="patentNumber">Patent No.</SelectItem>
                         <SelectItem value="subject">Subject</SelectItem>
-                        <SelectItem value="status">Status</SelectItem>
+                        <SelectItem value="processorStatus">Processor Status</SelectItem>
+                        <SelectItem value="qaStatus">QA Status</SelectItem>
+                        <SelectItem value="workflowStatus">Workflow Status</SelectItem>
                         <SelectItem value="emailDate">Email Date</SelectItem>
                         <SelectItem value="allocationDate">Allocation Date</SelectItem>
                     </SelectContent>
@@ -164,7 +168,7 @@ export function Header({
                         placeholder="Quick search..."
                         value={search}
                         onChange={(e) => setSearch(e.target.value)}
-                        className="rounded-l-none focus-visible:ring-0 h-9 w-48"
+                        className="rounded-l-none focus-visible:ring-0 h-9 w-48 text-foreground"
                     />
                 </div>
                 
@@ -215,7 +219,7 @@ export function Header({
                     <DropdownMenuLabel>{user.name}</DropdownMenuLabel>
                     <DropdownMenuLabel className="text-xs font-normal text-muted-foreground">{user.email}</DropdownMenuLabel>
                     
-                    {sortedUserRoles.length > 1 && setActiveRole && (
+                    {sortedUserRoles.length > 1 && (
                         <>
                             <DropdownMenuSeparator />
                             <DropdownMenuLabel>Switch Role</DropdownMenuLabel>

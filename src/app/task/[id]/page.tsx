@@ -76,12 +76,6 @@ export default async function TaskPage({ params, searchParams }: { params: { id:
   const previousProject = projectIndex > 0 ? userProjects[projectIndex - 1] : null;
   const nextProject = projectIndex < userProjects.length - 1 ? userProjects[projectIndex + 1] : null;
 
-  const handleFormSubmit = async (updatedProject: Project) => {
-    'use server';
-    // This handler is now mostly for client-side state updates if needed,
-    // as redirection is handled in the server action.
-  };
-  
   // Reconstruct the search params for the pagination links to maintain context
   const navigationSearchParams = new URLSearchParams();
   navigationSearchParams.set('role', activeRole);
@@ -93,10 +87,6 @@ export default async function TaskPage({ params, searchParams }: { params: { id:
          <Header 
             user={session.user}
             activeRole={activeRole}
-            setActiveRole={(role) => {
-                const newUrl = `/?role=${role}`;
-                router.push(newUrl);
-            }}
             isManagerOrAdmin={false}
             clientNames={clientNames}
             processes={processes}
@@ -120,7 +110,6 @@ export default async function TaskPage({ params, searchParams }: { params: { id:
         <div className="flex-grow p-4">
            <ProjectForm 
                 project={project} 
-                onFormSubmit={handleFormSubmit} 
                 role={activeRole}
                 nextProjectId={nextProject?.id}
             />

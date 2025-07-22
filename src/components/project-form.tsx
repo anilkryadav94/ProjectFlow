@@ -72,16 +72,14 @@ type ProjectFormValues = z.infer<typeof formSchema>
 
 interface ProjectFormProps {
   project?: Project | null;
-  onFormSubmit: (project: Project) => void;
   role: Role;
   setOpen?: (open: boolean) => void;
   nextProjectId?: string;
 }
 
-export function ProjectForm({ project: initialProject, onFormSubmit, role, setOpen, nextProjectId }: ProjectFormProps) {
+export function ProjectForm({ project: initialProject, role, setOpen, nextProjectId }: ProjectFormProps) {
   const [isSubmitting, setIsSubmitting] = React.useState(false);
   const [isMMFormOpen, setIsMMFormOpen] = React.useState(false);
-  const router = useRouter();
   const { toast } = useToast();
   
   // Use state to manage the project data within the form
@@ -129,7 +127,6 @@ export function ProjectForm({ project: initialProject, onFormSubmit, role, setOp
         toast({ title: "Success", description: "Changes have been saved." });
       } else {
          // For other actions, redirection is handled by the server action
-         onFormSubmit(result);
          if(setOpen) {
            setOpen(false);
          }
