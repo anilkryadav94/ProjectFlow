@@ -58,7 +58,6 @@ const formSchema = z.object({
   
   processorStatus: z.enum(["Pending", "On Hold", "Re-Work", "Processed", "NTP", "Client Query", "Already Processed"]),
   qaStatus: z.enum(["Pending", "Complete", "NTP", "Client Query", "Already Processed"]),
-  reworkReason: z.string().optional(),
   subject: z.string().optional(),
   actionTaken: z.string().optional(),
   documentName: z.string().optional(),
@@ -110,7 +109,6 @@ export function ProjectForm({ project: initialProject, role, setOpen, nextProjec
       documentName: project?.documentName || "",
       processorStatus: project?.processorStatus || "Pending",
       qaStatus: project?.qaStatus || "Pending",
-      reworkReason: project?.reworkReason || "",
     },
     key: project?.id || 'new',
   });
@@ -135,7 +133,6 @@ export function ProjectForm({ project: initialProject, role, setOpen, nextProjec
             documentName: currentProject.documentName || "",
             processorStatus: currentProject.processorStatus || "Pending",
             qaStatus: currentProject.qaStatus || "Pending",
-            reworkReason: currentProject.reworkReason || "",
         });
     } else {
         form.reset({
@@ -151,7 +148,6 @@ export function ProjectForm({ project: initialProject, role, setOpen, nextProjec
             documentName: '',
             processorStatus: 'Pending',
             qaStatus: 'Pending',
-            reworkReason: '',
         }); 
     }
   }, [initialProject, form]);

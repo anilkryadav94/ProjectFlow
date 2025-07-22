@@ -21,7 +21,6 @@ const formSchema = z.object({
   
   processorStatus: z.enum(["Pending", "On Hold", "Re-Work", "Processed", "NTP", "Client Query", "Already Processed"]),
   qaStatus: z.enum(["Pending", "Complete", "NTP", "Client Query", "Already Processed"]),
-  reworkReason: z.string().optional(),
   subject: z.string().optional(),
   actionTaken: z.string().optional(),
   documentName: z.string().optional(),
@@ -68,7 +67,6 @@ export async function saveProject(data: ProjectFormValues, nextProjectId?: strin
     let qaDate = existingProjectData?.qaDate || null;
     let processorStatus = validatedData.processorStatus;
     let qaStatus = validatedData.qaStatus;
-    let reworkReason = validatedData.reworkReason || '';
 
     switch(validatedData.submitAction) {
         case 'submit_for_qa':
@@ -102,7 +100,7 @@ export async function saveProject(data: ProjectFormValues, nextProjectId?: strin
         workflowStatus,
         processorStatus,
         qaStatus,
-        reworkReason,
+        reworkReason: '', // Keep field for data consistency, but logic is removed.
     };
     
     delete (commonData as any).submitAction;
