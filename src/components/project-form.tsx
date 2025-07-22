@@ -114,25 +114,31 @@ export function ProjectForm({ project: initialProject, role, setOpen, nextProjec
   }, [project, form]);
   
   const handleFormSubmit = async (data: ProjectFormValues, action: ProjectFormValues['submitAction']) => {
-    const stateSetter = action === 'save' ? setIsSaving : setIsSubmitting;
-    stateSetter(true);
+    const isSave = action === 'save';
+    if(isSave) {
+        setIsSaving(true);
+    } else {
+        setIsSubmitting(true);
+    }
 
     try {
       const result = await saveProject({ ...data, submitAction: action }, nextProjectId);
       
-      if (action === 'save') {
+      if (isSave) {
         if (result) {
           setProject(result as Project);
           toast({ title: "Success", description: "Changes have been saved." });
         }
-      } else {
-         // Redirection is handled by the server action for other cases
       }
     } catch (error) {
       console.error("Failed to save project", error);
       toast({ title: "Error", description: "Failed to save changes.", variant: "destructive" });
     } finally {
-      stateSetter(false);
+        if(isSave) {
+            setIsSaving(false);
+        } else {
+            setIsSubmitting(false);
+        }
     }
   };
 
@@ -288,7 +294,7 @@ export function ProjectForm({ project: initialProject, role, setOpen, nextProjec
                       </div>
 
                        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                         {isProcessor || isManager ? (
+                         {(isProcessor || isManager) ? (
                             <FormField
                                 control={form.control}
                                 name="processorStatus"
@@ -318,7 +324,7 @@ export function ProjectForm({ project: initialProject, role, setOpen, nextProjec
                          />
                          ) : null}
                          
-                         {isQA || isManager ? (
+                         {(isQA || isManager) ? (
                              <FormField
                                 control={form.control}
                                 name="qaStatus"
@@ -469,7 +475,7 @@ export function ProjectForm({ project: initialProject, role, setOpen, nextProjec
                                           </PopoverContent>
                                       </Popover>
                                   ) : (
-                                    <Input value={field.value ? format(field.value, "PPP") : ''} disabled />
+                                    <Input value={field.value ? format(new Date(field.value), "PPP") : ''} disabled />
                                   )}
                                   </FormItem>
                           )}
@@ -515,7 +521,7 @@ export function ProjectForm({ project: initialProject, role, setOpen, nextProjec
                                           </PopoverContent>
                                       </Popover>
                                   ) : (
-                                    <Input value={field.value ? format(field.value, "PPP") : ''} disabled />
+                                    <Input value={field.value ? format(new Date(field.value), "PPP") : ''} disabled />
                                   )}
                                   </FormItem>
                           )}
@@ -576,5 +582,3 @@ export function ProjectForm({ project: initialProject, role, setOpen, nextProjec
     </div>
   )
 }
-
-    
