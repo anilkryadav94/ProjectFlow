@@ -35,7 +35,7 @@ import {
   SelectLabel,
 } from "@/components/ui/select"
 import { saveProject } from "@/app/actions"
-import { type Project, processors, qas, clientNames, processes, type Role, processorSubmissionStatuses, qaSubmissionStatuses, processorActionableStatuses } from "@/lib/data"
+import { type Project, processors, qas, clientNames, processes, type Role, processorActionableStatuses, qaSubmissionStatuses, processorSubmissionStatuses } from "@/lib/data"
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "./ui/card"
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "./ui/dialog"
 import { MultiMattersForm } from "./multi-matters-form"
@@ -46,7 +46,7 @@ const formSchema = z.object({
   id: z.string().optional(),
   refNumber: z.string().min(1, "Reference number is required."),
   clientName: z.string().min(1, "Client name is required."),
-  process: z.enum(['Patent', 'TM', 'IDS', 'Project']),
+  process: z.enum(processes),
   applicationNumber: z.string().optional(),
   patentNumber: z.string().optional(),
   emailDate: z.date({ required_error: "Email date is required." }),
@@ -139,10 +139,10 @@ export function ProjectForm({ project: initialProject, role, setOpen, nextProjec
     }
 
     try {
-      const result = await saveProject({ ...data, submitAction: action }, nextProjectId);
+      const savedProject = await saveProject({ ...data, submitAction: action }, nextProjectId);
       
-      if (isSave && result) {
-          setProject(result as Project);
+      if (isSave && savedProject) {
+          setProject(savedProject);
           toast({ title: "Success", description: "Changes have been saved." });
       }
     } catch (error) {
