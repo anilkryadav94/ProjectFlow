@@ -22,19 +22,12 @@ const formSchema = z.object({
   processorStatus: z.enum(["Pending", "On Hold", "Re-Work", "Processed", "NTP", "Client Query", "Already Processed"]),
   qaStatus: z.enum(["Pending", "Complete", "NTP", "Client Query", "Already Processed"]),
   reworkReason: z.string().optional(),
-
   subject: z.string().optional(),
   actionTaken: z.string().optional(),
   documentName: z.string().optional(),
-  submitAction: z.enum(['save', 'submit_for_qa', 'submit_qa', 'send_for_rework'])
+
+  submitAction: z.enum(['save', 'submit_for_qa', 'submit_qa'])
 }).superRefine((data, ctx) => {
-    if (data.submitAction === 'send_for_rework' && (!data.reworkReason || data.reworkReason.trim().length === 0)) {
-        ctx.addIssue({
-            code: z.ZodIssueCode.custom,
-            message: "Rework reason is required.",
-            path: ["reworkReason"],
-        });
-    }
     if (data.submitAction === 'submit_qa' && !qaSubmissionStatuses.includes(data.qaStatus)) {
          ctx.addIssue({
             code: z.ZodIssueCode.custom,
@@ -90,12 +83,6 @@ export async function saveProject(data: ProjectFormValues, nextProjectId?: strin
             workflowStatus = 'Completed';
             qaDate = new Date().toISOString().split('T')[0];
             break;
-        case 'send_for_rework':
-            workflowStatus = 'With Processor';
-            processorStatus = 'Re-Work';
-            qaStatus = 'Pending'; 
-            reworkReason = validatedData.reworkReason!;
-            break;
         case 'save':
             // Statuses are taken directly from the form data
             break;
@@ -141,7 +128,7 @@ export async function saveProject(data: ProjectFormValues, nextProjectId?: strin
       return projectToSave;
     }
     
-    if (validatedData.submitAction === 'submit_for_qa' || validatedData.submitAction === 'submit_qa' || validatedData.submitAction === 'send_for_rework') {
+    if (validatedData.submitAction === 'submit_for_qa' || validatedData.submitAction === 'submit_qa') {
       if (nextProjectId) {
         redirect(`/task/${nextProjectId}`);
       } else {

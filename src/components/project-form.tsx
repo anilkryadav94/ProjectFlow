@@ -63,25 +63,14 @@ const formSchema = z.object({
   actionTaken: z.string().optional(),
   documentName: z.string().optional(),
 
-  submitAction: z.enum(['save', 'submit_for_qa', 'submit_qa', 'send_for_rework'])
+  submitAction: z.enum(['save', 'submit_for_qa', 'submit_qa'])
 }).superRefine((data, ctx) => {
-    if (data.submitAction === 'send_for_rework') {
-        if (!data.reworkReason || data.reworkReason.trim().length === 0) {
-            ctx.addIssue({
-                code: z.ZodIssueCode.custom,
-                message: "Rework reason is required when sending for rework.",
-                path: ["reworkReason"],
-            });
-        }
-    }
-    if (data.submitAction === 'submit_qa') {
-         if (!qaSubmissionStatuses.includes(data.qaStatus)) {
-             ctx.addIssue({
-                code: z.ZodIssueCode.custom,
-                message: "A valid submission status is required for QA.",
-                path: ["qaStatus"],
-            });
-         }
+    if (data.submitAction === 'submit_qa' && !qaSubmissionStatuses.includes(data.qaStatus)) {
+         ctx.addIssue({
+            code: z.ZodIssueCode.custom,
+            message: "A valid submission status is required for QA.",
+            path: ["qaStatus"],
+        });
     }
 });
 
@@ -198,7 +187,6 @@ export function ProjectForm({ project: initialProject, role, setOpen, nextProjec
   const handleSaveChanges = () => form.handleSubmit((data) => handleFormSubmit(data, 'save'))();
   const handleSubmitForQA = () => form.handleSubmit((data) => handleFormSubmit(data, 'submit_for_qa'))();
   const handleQAComplete = () => form.handleSubmit((data) => handleFormSubmit(data, 'submit_qa'))();
-  const handleSendForRework = () => form.handleSubmit((data) => handleFormSubmit(data, 'send_for_rework'))();
 
   const isProcessor = role === 'Processor';
   const isQA = role === 'QA';
@@ -210,7 +198,7 @@ export function ProjectForm({ project: initialProject, role, setOpen, nextProjec
         return ['applicationNumber', 'patentNumber', 'documentName', 'actionTaken', 'processorStatus'].includes(fieldName);
     }
     if (isQA) {
-        return ['qaStatus', 'reworkReason'].includes(fieldName);
+        return ['qaStatus'].includes(fieldName);
     }
     return false;
   };
@@ -254,16 +242,10 @@ export function ProjectForm({ project: initialProject, role, setOpen, nextProjec
                         </Button>
                     )}
                     {canQASubmit && (
-                        <>
-                           <Button size="sm" type="button" variant="destructive" onClick={handleSendForRework} disabled={isAnyActionLoading}>
-                                {isSubmitting && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
-                                Send for Rework
-                            </Button>
-                             <Button size="sm" type="button" onClick={handleQAComplete} disabled={isAnyActionLoading}>
-                                {isSubmitting && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
-                                QA Complete
-                            </Button>
-                        </>
+                         <Button size="sm" type="button" onClick={handleQAComplete} disabled={isAnyActionLoading}>
+                            {isSubmitting && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
+                            QA Complete
+                        </Button>
                     )}
                      <Button size="sm" type="button" onClick={handleSaveChanges} disabled={isAnyActionLoading || (!isManager && !canProcessorSubmit && !canQASubmit)}>
                         {isSaving && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
@@ -404,23 +386,6 @@ export function ProjectForm({ project: initialProject, role, setOpen, nextProjec
                          )}
                        </div>
                        
-                        {canQASubmit && (
-                            <FormField
-                                control={form.control}
-                                name="reworkReason"
-                                render={({ field }) => (
-                                    <FormItem>
-                                    <FormLabel>Rework Reason</FormLabel>
-                                    <FormControl>
-                                        <Textarea placeholder="Provide a reason for sending this task back for rework..." {...field} value={field.value || ''} disabled={!isFieldEditable('reworkReason')} />
-                                    </FormControl>
-                                    <FormDescription>This is only required if you are sending for rework.</FormDescription>
-                                    <FormMessage />
-                                    </FormItem>
-                                )}
-                            />
-                        )}
-
                       <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
                           <FormField
                               control={form.control}
