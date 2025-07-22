@@ -3,7 +3,7 @@
 
 import { z } from "zod";
 import type { Project } from "@/lib/data";
-import { projects, processorSubmissionStatuses, qaSubmissionStatuses } from "@/lib/data";
+import { projects, processorSubmissionStatuses, qaSubmissionStatuses, processes } from "@/lib/data";
 import { redirect } from "next/navigation";
 import { revalidatePath } from "next/cache";
 
@@ -11,7 +11,7 @@ const formSchema = z.object({
   id: z.string().optional(),
   refNumber: z.string().min(1, "Reference number is required."),
   clientName: z.string().min(1, "Client name is required."),
-  process: z.enum(["Patent", "TM", "IDS", "Project"]),
+  process: z.enum(processes),
   applicationNumber: z.string().optional(),
   patentNumber: z.string().optional(),
   emailDate: z.date({ required_error: "Email date is required." }),
