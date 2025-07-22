@@ -65,6 +65,7 @@ const formSchema = z.object({
 
   submitAction: z.enum(['save', 'submit_for_qa', 'submit_qa', 'send_for_rework'])
 }).refine(data => {
+    // When sending for rework, only the rework reason is required.
     if (data.submitAction === 'send_for_rework') {
         return !!data.reworkReason && data.reworkReason.trim().length > 0;
     }
@@ -72,13 +73,15 @@ const formSchema = z.object({
 }, {
     message: "Rework reason is required when sending for rework.",
     path: ["reworkReason"],
-}).refine(data => {
+})
+.refine(data => {
+    // When submitting QA (but not for rework), QA status is required.
     if (data.submitAction === 'submit_qa') {
         return !!data.qaStatus;
     }
     return true;
 }, {
-    message: "QA Status is required when submitting.",
+    message: "QA Status is required when completing QA.",
     path: ["qaStatus"]
 });
 
@@ -102,28 +105,48 @@ export function ProjectForm({ project: initialProject, role, setOpen, nextProjec
 
   const form = useForm<ProjectFormValues>({
     resolver: zodResolver(formSchema),
+    defaultValues: {
+      id: project?.id || undefined,
+      refNumber: project?.refNumber || "",
+      clientName: project?.clientName || "",
+      process: project?.process || "Patent",
+      applicationNumber: project?.applicationNumber || "",
+      patentNumber: project?.patentNumber || "",
+      emailDate: project ? new Date(project.emailDate) : new Date(),
+      allocationDate: project ? new Date(project.allocationDate) : new Date(),
+      processor: project?.processor || "",
+      qa: project?.qa || "",
+      subject: project?.subject || "",
+      actionTaken: project?.actionTaken || "",
+      documentName: project?.documentName || "",
+      processorStatus: project?.processorStatus || "Pending",
+      qaStatus: project?.qaStatus || "Pending",
+      reworkReason: project?.reworkReason || "",
+    },
     key: project?.id || 'new',
   });
 
   React.useEffect(() => {
-    if (project) {
+    const currentProject = initialProject;
+    setProject(currentProject);
+    if (currentProject) {
         form.reset({
-            id: project.id,
-            refNumber: project.refNumber || "",
-            clientName: project.clientName || "",
-            process: project.process || "Patent",
-            applicationNumber: project.applicationNumber || "",
-            patentNumber: project.patentNumber || "",
-            emailDate: new Date(project.emailDate),
-            allocationDate: new Date(project.allocationDate),
-            processor: project.processor || "",
-            qa: project.qa || "",
-            subject: project.subject || "",
-            actionTaken: project.actionTaken || "",
-            documentName: project.documentName || "",
-            processorStatus: project.processorStatus || "Pending",
-            qaStatus: project.qaStatus || "Pending",
-            reworkReason: project.reworkReason || "",
+            id: currentProject.id,
+            refNumber: currentProject.refNumber || "",
+            clientName: currentProject.clientName || "",
+            process: currentProject.process || "Patent",
+            applicationNumber: currentProject.applicationNumber || "",
+            patentNumber: currentProject.patentNumber || "",
+            emailDate: new Date(currentProject.emailDate),
+            allocationDate: new Date(currentProject.allocationDate),
+            processor: currentProject.processor || "",
+            qa: currentProject.qa || "",
+            subject: currentProject.subject || "",
+            actionTaken: currentProject.actionTaken || "",
+            documentName: currentProject.documentName || "",
+            processorStatus: currentProject.processorStatus || "Pending",
+            qaStatus: currentProject.qaStatus || "Pending",
+            reworkReason: currentProject.reworkReason || "",
         });
     } else {
         form.reset({
@@ -142,7 +165,7 @@ export function ProjectForm({ project: initialProject, role, setOpen, nextProjec
             reworkReason: '',
         }); 
     }
-  }, [project, form]);
+  }, [initialProject, form]);
   
   const handleFormSubmit = async (data: ProjectFormValues, action: ProjectFormValues['submitAction']) => {
     const isSave = action === 'save';
@@ -359,7 +382,7 @@ export function ProjectForm({ project: initialProject, role, setOpen, nextProjec
                             )}
                          )}
                          
-                         {(isQA || isManager) && project?.workflowStatus === 'With QA' && (
+                         {(isQA || isManager) && (project?.workflowStatus === 'With QA' || project?.workflowStatus === 'Completed') && (
                              <FormField
                                 control={form.control}
                                 name="qaStatus"
@@ -614,5 +637,5 @@ export function ProjectForm({ project: initialProject, role, setOpen, nextProjec
         </form>
       </Form>
     </div>
-  )
+  );
 }
