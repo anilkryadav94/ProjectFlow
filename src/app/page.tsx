@@ -32,8 +32,8 @@ async function seedDatabase() {
          const batch = writeBatch(db);
          mockUsers.forEach((user) => {
             const { id, ...userData } = user;
-            // Use email as doc id for simplicity in this version
-            const userRef = doc(usersCollection, userData.email);
+            // Use a stable ID for seeding, but in a real app, Firebase Auth UID would be the doc ID.
+            const userRef = doc(db, "users", userData.email);
             batch.set(userRef, userData);
         });
         await batch.commit();
