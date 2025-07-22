@@ -75,7 +75,7 @@ const formSchema = z.object({
         }
     }
     if (data.submitAction === 'submit_qa') {
-         if (!data.qaStatus || !qaSubmissionStatuses.includes(data.qaStatus)) {
+         if (!qaSubmissionStatuses.includes(data.qaStatus)) {
              ctx.addIssue({
                 code: z.ZodIssueCode.custom,
                 message: "A valid submission status is required for QA.",
@@ -209,7 +209,7 @@ export function ProjectForm({ project: initialProject, role, setOpen, nextProjec
     if (isProcessor) {
         return ['applicationNumber', 'patentNumber', 'documentName', 'actionTaken', 'processorStatus'].includes(fieldName);
     }
-     if (isQA) {
+    if (isQA) {
         return ['qaStatus', 'reworkReason'].includes(fieldName);
     }
     return false;
