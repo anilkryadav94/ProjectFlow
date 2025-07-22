@@ -44,6 +44,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from 
 import { MultiMattersForm } from "./multi-matters-form"
 import { ScrollArea } from "./ui/scroll-area"
 import { Badge } from "./ui/badge"
+import { useToast } from "@/hooks/use-toast"
 
 const formSchema = z.object({
   id: z.string().optional(),
@@ -74,36 +75,24 @@ interface ProjectFormProps {
   onFormSubmit: (project: Project) => void;
   role: Role;
   setOpen?: (open: boolean) => void;
+  nextProjectId?: string;
 }
 
-export function ProjectForm({ project, onFormSubmit, role, setOpen }: ProjectFormProps) {
+export function ProjectForm({ project: initialProject, onFormSubmit, role, setOpen, nextProjectId }: ProjectFormProps) {
   const [isSubmitting, setIsSubmitting] = React.useState(false);
   const [isMMFormOpen, setIsMMFormOpen] = React.useState(false);
   const router = useRouter();
+  const { toast } = useToast();
   
+  // Use state to manage the project data within the form
+  const [project, setProject] = React.useState(initialProject);
+
   const form = useForm<ProjectFormValues>({
     resolver: zodResolver(formSchema),
     key: project?.id || 'new',
-    defaultValues: {
-      id: project?.id,
-      refNumber: project?.refNumber || "",
-      applicationNumber: project?.applicationNumber || "",
-      patentNumber: project?.patentNumber || "",
-      subject: project?.subject || "",
-      actionTaken: project?.actionTaken || "",
-      documentName: project?.documentName || "",
-      processor: project?.processor || "",
-      qa: project?.qa || "",
-      emailDate: project ? new Date(project.emailDate) : new Date(),
-      allocationDate: project ? new Date(project.allocationDate) : new Date(),
-      clientName: project?.clientName || clientNames[0],
-      process: project?.process || "Patent",
-      processorStatus: project?.processorStatus || "Pending",
-      qaStatus: project?.qaStatus || "Pending",
-      reworkReason: project?.reworkReason || "",
-    }
   })
 
+  // When project data changes (e.g., from props or after a save), reset the form
   React.useEffect(() => {
     if (project) {
         form.reset({
@@ -125,22 +114,29 @@ export function ProjectForm({ project, onFormSubmit, role, setOpen }: ProjectFor
             reworkReason: project.reworkReason || "",
         });
     } else {
-        form.reset(); // Reset to default empty values for a new project
+        form.reset(); 
     }
   }, [project, form]);
   
   async function onSubmit(data: ProjectFormValues) {
     setIsSubmitting(true);
     try {
-      const result = await saveProject(data);
-      onFormSubmit(result);
-      if(setOpen) {
-        setOpen(false);
+      const result = await saveProject(data, nextProjectId);
+      
+      if (data.submitAction === 'save') {
+        // If we just saved, update the local state to show the changes immediately
+        setProject(result);
+        toast({ title: "Success", description: "Changes have been saved." });
+      } else {
+         // For other actions, redirection is handled by the server action
+         onFormSubmit(result);
+         if(setOpen) {
+           setOpen(false);
+         }
       }
-      // The redirect is now handled in the server action for 'submit_for_qa'
-      // so no client-side navigation is needed for that case.
     } catch (error) {
       console.error("Failed to save project", error);
+      toast({ title: "Error", description: "Failed to save changes.", variant: "destructive" });
     } finally {
       setIsSubmitting(false);
     }

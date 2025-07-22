@@ -5,6 +5,7 @@ import { z } from "zod";
 import type { Project } from "@/lib/data";
 import { projects, processorSubmissionStatuses } from "@/lib/data";
 import { redirect } from "next/navigation";
+import { revalidatePath } from "next/cache";
 
 const formSchema = z.object({
   id: z.string().optional(),
@@ -37,7 +38,7 @@ function toISOString(date: Date | string | null | undefined): string | null {
 }
 
 
-export async function saveProject(data: ProjectFormValues): Promise<Project> {
+export async function saveProject(data: ProjectFormValues, nextProjectId?: string): Promise<Project> {
     const validatedData = formSchema.parse(data);
 
     let projectToSave: Project;
@@ -60,18 +61,14 @@ export async function saveProject(data: ProjectFormValues): Promise<Project> {
     let qaStatus = validatedData.qaStatus;
     let reworkReason = validatedData.reworkReason || '';
 
-    let shouldRedirect = false;
-
     switch(validatedData.submitAction) {
         case 'submit_for_qa':
             workflowStatus = 'With QA';
             processingDate = new Date().toISOString().split('T')[0];
             qaStatus = 'Pending';
-            // If processor didn't set a final status, default to 'Processed'
             if (!processorSubmissionStatuses.includes(processorStatus)) {
                 processorStatus = 'Processed';
             }
-            shouldRedirect = true;
             break;
         case 'submit_qa':
             workflowStatus = 'Completed';
@@ -80,7 +77,7 @@ export async function saveProject(data: ProjectFormValues): Promise<Project> {
         case 'send_for_rework':
             workflowStatus = 'With Processor';
             processorStatus = 'Re-Work';
-            qaStatus = 'Pending'; // Reset QA status
+            qaStatus = 'Pending'; 
             reworkReason = validatedData.reworkReason || 'No reason provided';
             break;
         case 'save':
@@ -121,10 +118,18 @@ export async function saveProject(data: ProjectFormValues): Promise<Project> {
         projects.unshift(projectToSave);
     }
     
-    if (shouldRedirect) {
-        redirect('/');
-    }
+    // In a real app, you'd revalidate paths/tags. Here we can just pretend.
+    revalidatePath('/');
+    revalidatePath(`/task/${projectToSave.id}`);
 
+    if (validatedData.submitAction === 'submit_for_qa' || validatedData.submitAction === 'submit_qa') {
+      if (nextProjectId) {
+        redirect(`/task/${nextProjectId}`);
+      } else {
+        redirect('/');
+      }
+    }
+    
     return projectToSave;
 }
 

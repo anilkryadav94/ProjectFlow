@@ -4,7 +4,7 @@ import { redirect } from 'next/navigation';
 import Link from 'next/link';
 import { getSession } from '@/lib/auth';
 import type { Project, Role } from '@/lib/data';
-import { projects, roleHierarchy, clientNames, processes } from '@/lib/data';
+import { projects, roleHierarchy, clientNames, processes, processorActionableStatuses } from '@/lib/data';
 import { ProjectForm } from '@/components/project-form';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -13,32 +13,15 @@ import { Header } from '@/components/header';
 
 // This function simulates fetching and filtering projects based on role and filters,
 // similar to how the dashboard does it.
-async function getFilteredProjectsForUser(user: any, role: Role, searchParams: { [key: string]: string | string[] | undefined }): Promise<Project[]> {
+async function getFilteredProjectsForUser(user: any, role: Role): Promise<Project[]> {
     let allProjects: Project[] = JSON.parse(JSON.stringify(projects));
     
-    // Filter by role
     if (role === 'Processor') {
-      allProjects = allProjects.filter(p => p.processor === user.name);
+      allProjects = allProjects.filter(p => p.processor === user.name && p.workflowStatus === 'With Processor' && processorActionableStatuses.includes(p.processorStatus));
     } else if (role === 'QA') {
-      allProjects = allProjects.filter(p => p.qa === user.name);
-    }
-
-    // Apply other filters from searchParams if they exist
-    const { search, searchColumn, clientName, process } = searchParams;
-    
-    if (search && searchColumn) {
-        allProjects = allProjects.filter(p => 
-            (p[searchColumn as keyof Project] as string)?.toLowerCase().includes((search as string).toLowerCase())
-        );
-    }
-    if (clientName && clientName !== 'all') {
-        allProjects = allProjects.filter(p => p.clientName === clientName);
-    }
-    if (process && process !== 'all') {
-        allProjects = allProjects.filter(p => p.process === process);
+      allProjects = allProjects.filter(p => p.qa === user.name && p.workflowStatus === 'With QA');
     }
     
-    // Sort like the dashboard
     allProjects.sort((a, b) => {
         const valA = a['allocationDate'];
         const valB = b['allocationDate'];
@@ -64,7 +47,7 @@ export default async function TaskPage({ params, searchParams }: { params: { id:
     : roleHierarchy.find(role => session.user.roles.includes(role)) || session.user.roles[0];
   
   // Fetch the filtered and sorted list of projects for the current user and role
-  const userProjects = await getFilteredProjectsForUser(session.user, activeRole, searchParams);
+  const userProjects = await getFilteredProjectsForUser(session.user, activeRole);
   
   const projectIndex = userProjects.findIndex(p => p.id === params.id);
 
@@ -95,15 +78,12 @@ export default async function TaskPage({ params, searchParams }: { params: { id:
 
   const handleFormSubmit = async (updatedProject: Project) => {
     'use server';
-    redirect('/');
+    // This handler is now mostly for client-side state updates if needed,
+    // as redirection is handled in the server action.
   };
   
   // Reconstruct the search params for the pagination links to maintain context
   const navigationSearchParams = new URLSearchParams();
-  if (searchParams.search) navigationSearchParams.set('search', searchParams.search as string);
-  if (searchParams.searchColumn) navigationSearchParams.set('searchColumn', searchParams.searchColumn as string);
-  if (searchParams.clientName) navigationSearchParams.set('clientName', searchParams.clientName as string);
-  if (searchParams.process) navigationSearchParams.set('process', searchParams.process as string);
   navigationSearchParams.set('role', activeRole);
   const queryString = navigationSearchParams.toString();
 
@@ -113,8 +93,11 @@ export default async function TaskPage({ params, searchParams }: { params: { id:
          <Header 
             user={session.user}
             activeRole={activeRole}
+            setActiveRole={(role) => {
+                const newUrl = `/?role=${role}`;
+                router.push(newUrl);
+            }}
             isManagerOrAdmin={false}
-            hasSearchResults={false}
             clientNames={clientNames}
             processes={processes}
          >
@@ -139,6 +122,7 @@ export default async function TaskPage({ params, searchParams }: { params: { id:
                 project={project} 
                 onFormSubmit={handleFormSubmit} 
                 role={activeRole}
+                nextProjectId={nextProject?.id}
             />
         </div>
     </div>
