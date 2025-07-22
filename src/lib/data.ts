@@ -40,6 +40,13 @@ export const qaSubmissionStatuses: QAStatus[] = ['Complete', 'NTP', 'Client Quer
 
 export type ProcessType = 'Patent' | 'TM' | 'IDS' | 'Project';
 
+export type ProjectEntry = {
+    id: string;
+    column1: string;
+    column2: string;
+    notes: string;
+};
+
 export type Project = {
   id: string;
   refNumber: string;
@@ -58,6 +65,7 @@ export type Project = {
   qaDate: string | null;
   reworkReason: string | null;
   subject: string;
+  entries?: ProjectEntry[];
 };
 
 export const processors = ['Alice', 'Bob', 'Charlie', 'Rahul'];
@@ -86,6 +94,9 @@ export const projects: Project[] = [
     qaDate: '2023-10-07',
     reworkReason: null,
     subject: 'Invention Disclosure - AI in Healthcare',
+    entries: [
+        { id: 'entry1', column1: 'Value 1', column2: 'Value 2', notes: 'Initial notes' }
+    ]
   },
   {
     id: '2',
@@ -124,6 +135,7 @@ export const projects: Project[] = [
     qaDate: null,
     reworkReason: null,
     subject: 'Follow-up on Application XYZ',
+    entries: []
   },
   {
     id: '4',

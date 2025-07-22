@@ -2,7 +2,7 @@
 "use client"
 
 import * as React from "react"
-import { useForm } from "react-hook-form"
+import { useForm, Controller } from "react-hook-form"
 import { zodResolver } from "@hookform/resolvers/zod"
 import { z } from "zod"
 import {
@@ -26,14 +26,22 @@ import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/com
 import { Textarea } from "@/components/ui/textarea"
 import { Calendar } from "@/components/ui/calendar"
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover"
-import { CalendarIcon, Loader2, Save } from "lucide-react"
+import { CalendarIcon, Loader2, Save, PlusCircle, Rows } from "lucide-react"
 import { format } from "date-fns"
 import { saveProject } from "@/app/actions"
 import { useToast } from "@/hooks/use-toast"
 import { cn } from "@/lib/utils"
-import type { Project, Role } from "@/lib/data"
+import type { Project, Role, ProjectEntry } from "@/lib/data"
 import { processors, qas, clientNames, processes, processorStatuses, qaStatuses, processorSubmissionStatuses, qaSubmissionStatuses } from "@/lib/data"
 import { useRouter } from "next/navigation"
+import { ProjectEntries } from "./project-entries"
+
+const projectEntrySchema = z.object({
+    id: z.string(),
+    column1: z.string(),
+    column2: z.string(),
+    notes: z.string(),
+});
 
 const formSchema = z.object({
     id: z.string(),
@@ -53,6 +61,7 @@ const formSchema = z.object({
     processingDate: z.string().nullable(),
     qaDate: z.string().nullable(),
     workflowStatus: z.enum(['Pending Allocation', 'With Processor', 'With QA', 'Completed']),
+    entries: z.array(projectEntrySchema).optional(),
 });
 
 
@@ -70,6 +79,7 @@ export function ProjectForm({ project, userRole, nextProjectId, filteredIds }: P
   const router = useRouter();
   const [isSubmitting, setIsSubmitting] = React.useState(false);
   const [submitAction, setSubmitAction] = React.useState<'save' | 'submit_for_qa' | 'submit_qa' | 'send_rework' | null>(null);
+  const [showEntries, setShowEntries] = React.useState(false);
 
   const form = useForm<ProjectFormValues>({
     resolver: zodResolver(formSchema),
@@ -77,6 +87,7 @@ export function ProjectForm({ project, userRole, nextProjectId, filteredIds }: P
       ...project,
       emailDate: project.emailDate ? format(new Date(project.emailDate), "yyyy-MM-dd") : "",
       allocationDate: project.allocationDate ? format(new Date(project.allocationDate), "yyyy-MM-dd") : "",
+      entries: project.entries ?? [],
     },
   })
 
@@ -86,6 +97,7 @@ export function ProjectForm({ project, userRole, nextProjectId, filteredIds }: P
       ...project,
       emailDate: project.emailDate ? format(new Date(project.emailDate), "yyyy-MM-dd") : "",
       allocationDate: project.allocationDate ? format(new Date(project.allocationDate), "yyyy-MM-dd") : "",
+      entries: project.entries ?? [],
     });
   }, [project, form]);
 
@@ -132,34 +144,63 @@ export function ProjectForm({ project, userRole, nextProjectId, filteredIds }: P
         <form onSubmit={(e) => e.preventDefault()} className="h-full flex flex-col">
             <Card className="border-0 shadow-none flex flex-col flex-grow h-full">
                 <CardHeader>
-                    <CardTitle>{project.refNumber}</CardTitle>
-                    <CardDescription>
-                        {project.subject}
-                    </CardDescription>
+                    <div className="flex justify-between items-start">
+                        <div>
+                            <CardTitle>{project.refNumber}</CardTitle>
+                            <CardDescription>
+                                {project.subject}
+                            </CardDescription>
+                        </div>
+                        {isProcessorView && (
+                            <Button variant="outline" onClick={() => setShowEntries(s => !s)}>
+                                <Rows className="mr-2 h-4 w-4" />
+                                {showEntries ? "Hide Entries" : "Add/View Entries"}
+                            </Button>
+                        )}
+                    </div>
                 </CardHeader>
                 <CardContent className="flex-grow overflow-y-auto">
-                <div className="grid md:grid-cols-2 gap-6">
-                  {/* Column 1 */}
-                  <div className="space-y-4">
-                    <FormField control={form.control} name="refNumber" render={({ field }) => (<FormItem><FormLabel>Ref Number</FormLabel><FormControl><Input {...field} disabled={!isAdminView && !isManagerView} /></FormControl><FormMessage /></FormItem>)} />
-                    <FormField control={form.control} name="clientName" render={({ field }) => (<FormItem><FormLabel>Client Name</FormLabel><Select onValueChange={field.onChange} defaultValue={field.value} disabled={!isAdminView && !isManagerView}><FormControl><SelectTrigger><SelectValue /></SelectTrigger></FormControl><SelectContent>{clientNames.map(c => <SelectItem key={c} value={c}>{c}</SelectItem>)}</SelectContent></Select><FormMessage /></FormItem>)} />
-                    <FormField control={form.control} name="process" render={({ field }) => (<FormItem><FormLabel>Process</FormLabel><Select onValueChange={field.onChange} defaultValue={field.value} disabled={!isAdminView && !isManagerView}><FormControl><SelectTrigger><SelectValue /></SelectTrigger></FormControl><SelectContent>{processes.map(p => <SelectItem key={p} value={p}>{p}</SelectItem>)}</SelectContent></Select><FormMessage /></FormItem>)} />
-                    <FormField control={form.control} name="subject" render={({ field }) => (<FormItem><FormLabel>Subject</FormLabel><FormControl><Textarea {...field} disabled={!isAdminView && !isManagerView} /></FormControl><FormMessage /></FormItem>)} />
-                    <FormField control={form.control} name="applicationNumber" render={({ field }) => (<FormItem><FormLabel>Application No.</FormLabel><FormControl><Input {...field} value={field.value ?? ""} disabled={!isAdminView && !isManagerView} /></FormControl><FormMessage /></FormItem>)} />
-                    <FormField control={form.control} name="patentNumber" render={({ field }) => (<FormItem><FormLabel>Patent No.</FormLabel><FormControl><Input {...field} value={field.value ?? ""} disabled={!isAdminView && !isManagerView} /></FormControl><FormMessage /></FormItem>)} />
-                  </div>
-                  {/* Column 2 */}
-                  <div className="space-y-4">
-                    <FormField control={form.control} name="emailDate" render={({ field }) => (<FormItem className="flex flex-col"><FormLabel>Email Date</FormLabel><Popover><PopoverTrigger asChild><FormControl><Button variant="outline" className={cn("font-normal", !field.value && "text-muted-foreground")} disabled={!isAdminView && !isManagerView}><CalendarIcon className="mr-2 h-4 w-4" />{field.value ? format(new Date(field.value), "PPP") : <span>Pick a date</span>}</Button></FormControl></PopoverTrigger><PopoverContent className="w-auto p-0"><Calendar mode="single" selected={field.value ? new Date(field.value) : undefined} onSelect={(date) => field.onChange(date ? format(date, 'yyyy-MM-dd') : '')} /></PopoverContent></Popover><FormMessage /></FormItem>)} />
-                    <FormField control={form.control} name="allocationDate" render={({ field }) => (<FormItem className="flex flex-col"><FormLabel>Allocation Date</FormLabel><Popover><PopoverTrigger asChild><FormControl><Button variant="outline" className={cn("font-normal", !field.value && "text-muted-foreground")} disabled={!isAdminView && !isManagerView}><CalendarIcon className="mr-2 h-4 w-4" />{field.value ? format(new Date(field.value), "PPP") : <span>Pick a date</span>}</Button></FormControl></PopoverTrigger><PopoverContent className="w-auto p-0"><Calendar mode="single" selected={field.value ? new Date(field.value) : undefined} onSelect={(date) => field.onChange(date ? format(date, 'yyyy-MM-dd') : '')} /></PopoverContent></Popover><FormMessage /></FormItem>)} />
-                    <FormField control={form.control} name="processor" render={({ field }) => (<FormItem><FormLabel>Processor</FormLabel><Select onValueChange={field.onChange} defaultValue={field.value} disabled={!isAdminView && !isManagerView}><FormControl><SelectTrigger><SelectValue /></SelectTrigger></FormControl><SelectContent>{processors.map(p => <SelectItem key={p} value={p}>{p}</SelectItem>)}</SelectContent></Select><FormMessage /></FormItem>)} />
-                    <FormField control={form.control} name="qa" render={({ field }) => (<FormItem><FormLabel>QA</FormLabel><Select onValueChange={field.onChange} defaultValue={field.value} disabled={!isAdminView && !isManagerView}><FormControl><SelectTrigger><SelectValue /></SelectTrigger></FormControl><SelectContent>{qas.map(q => <SelectItem key={q} value={q}>{q}</SelectItem>)}</SelectContent></Select><FormMessage /></FormItem>)} />
-                    {(isProcessorView || isManagerView || isAdminView || project.processorStatus !== 'Pending') && <FormField control={form.control} name="processorStatus" render={({ field }) => (<FormItem><FormLabel>Processor Status</FormLabel><Select onValueChange={field.onChange} value={field.value} disabled={!isProcessorView}><FormControl><SelectTrigger><SelectValue /></SelectTrigger></FormControl><SelectContent>{(isProcessorView ? processorSubmissionStatuses : processorStatuses).map(s => <SelectItem key={s} value={s}>{s}</SelectItem>)}</SelectContent></Select><FormMessage /></FormItem>)} />}
-                    {(isQaView || isManagerView || isAdminView || project.qaStatus !== 'Pending') && <FormField control={form.control} name="qaStatus" render={({ field }) => (<FormItem><FormLabel>QA Status</FormLabel><Select onValueChange={field.onChange} value={field.value} disabled={!isQaView}><FormControl><SelectTrigger><SelectValue /></SelectTrigger></FormControl><SelectContent>{(isQaView ? qaSubmissionStatuses : qaStatuses).map(s => <SelectItem key={s} value={s}>{s}</SelectItem>)}</SelectContent></Select><FormMessage /></FormItem>)} />}
-                    {project.reworkReason && <FormItem><FormLabel>Rework Reason</FormLabel><Textarea value={project.reworkReason} readOnly className="h-24 bg-destructive/10 border-destructive" /></FormItem>}
-                    {isQaView && <FormField control={form.control} name="reworkReason" render={({ field }) => (<FormItem><FormLabel>Rework Reason (if sending back)</FormLabel><FormControl><Textarea {...field} value={field.value ?? ""} disabled={!isQaView} /></FormControl><FormMessage /></FormItem>)} />}
-                  </div>
-                </div>
+                
+                {showEntries && isProcessorView ? (
+                     <Controller
+                        control={form.control}
+                        name="entries"
+                        render={({ field }) => (
+                            <ProjectEntries
+                                entries={field.value ?? []}
+                                onChange={field.onChange}
+                                projectData={{ 
+                                    subject: form.getValues("subject"),
+                                    emailDate: form.getValues("emailDate"),
+                                    allocationDate: form.getValues("allocationDate")
+                                }}
+                            />
+                        )}
+                    />
+                ) : (
+                    <div className="grid md:grid-cols-2 gap-6">
+                      {/* Column 1 */}
+                      <div className="space-y-4">
+                        <FormField control={form.control} name="refNumber" render={({ field }) => (<FormItem><FormLabel>Ref Number</FormLabel><FormControl><Input {...field} disabled={!isAdminView && !isManagerView} /></FormControl><FormMessage /></FormItem>)} />
+                        <FormField control={form.control} name="clientName" render={({ field }) => (<FormItem><FormLabel>Client Name</FormLabel><Select onValueChange={field.onChange} defaultValue={field.value} disabled={!isAdminView && !isManagerView}><FormControl><SelectTrigger><SelectValue /></SelectTrigger></FormControl><SelectContent>{clientNames.map(c => <SelectItem key={c} value={c}>{c}</SelectItem>)}</SelectContent></Select><FormMessage /></FormItem>)} />
+                        <FormField control={form.control} name="process" render={({ field }) => (<FormItem><FormLabel>Process</FormLabel><Select onValueChange={field.onChange} defaultValue={field.value} disabled={!isAdminView && !isManagerView}><FormControl><SelectTrigger><SelectValue /></SelectTrigger></FormControl><SelectContent>{processes.map(p => <SelectItem key={p} value={p}>{p}</SelectItem>)}</SelectContent></Select><FormMessage /></FormItem>)} />
+                        <FormField control={form.control} name="subject" render={({ field }) => (<FormItem><FormLabel>Subject</FormLabel><FormControl><Textarea {...field} disabled={!isAdminView && !isManagerView} /></FormControl><FormMessage /></FormItem>)} />
+                        <FormField control={form.control} name="applicationNumber" render={({ field }) => (<FormItem><FormLabel>Application No.</FormLabel><FormControl><Input {...field} value={field.value ?? ""} disabled={!isAdminView && !isManagerView} /></FormControl><FormMessage /></FormItem>)} />
+                        <FormField control={form.control} name="patentNumber" render={({ field }) => (<FormItem><FormLabel>Patent No.</FormLabel><FormControl><Input {...field} value={field.value ?? ""} disabled={!isAdminView && !isManagerView} /></FormControl><FormMessage /></FormItem>)} />
+                      </div>
+                      {/* Column 2 */}
+                      <div className="space-y-4">
+                        <FormField control={form.control} name="emailDate" render={({ field }) => (<FormItem className="flex flex-col"><FormLabel>Email Date</FormLabel><Popover><PopoverTrigger asChild><FormControl><Button variant="outline" className={cn("font-normal", !field.value && "text-muted-foreground")} disabled={!isAdminView && !isManagerView}><CalendarIcon className="mr-2 h-4 w-4" />{field.value ? format(new Date(field.value), "PPP") : <span>Pick a date</span>}</Button></FormControl></PopoverTrigger><PopoverContent className="w-auto p-0"><Calendar mode="single" selected={field.value ? new Date(field.value) : undefined} onSelect={(date) => field.onChange(date ? format(date, 'yyyy-MM-dd') : '')} /></PopoverContent></Popover><FormMessage /></FormItem>)} />
+                        <FormField control={form.control} name="allocationDate" render={({ field }) => (<FormItem className="flex flex-col"><FormLabel>Allocation Date</FormLabel><Popover><PopoverTrigger asChild><FormControl><Button variant="outline" className={cn("font-normal", !field.value && "text-muted-foreground")} disabled={!isAdminView && !isManagerView}><CalendarIcon className="mr-2 h-4 w-4" />{field.value ? format(new Date(field.value), "PPP") : <span>Pick a date</span>}</Button></FormControl></PopoverTrigger><PopoverContent className="w-auto p-0"><Calendar mode="single" selected={field.value ? new Date(field.value) : undefined} onSelect={(date) => field.onChange(date ? format(date, 'yyyy-MM-dd') : '')} /></PopoverContent></Popover><FormMessage /></FormItem>)} />
+                        <FormField control={form.control} name="processor" render={({ field }) => (<FormItem><FormLabel>Processor</FormLabel><Select onValueChange={field.onChange} defaultValue={field.value} disabled={!isAdminView && !isManagerView}><FormControl><SelectTrigger><SelectValue /></SelectTrigger></FormControl><SelectContent>{processors.map(p => <SelectItem key={p} value={p}>{p}</SelectItem>)}</SelectContent></Select><FormMessage /></FormItem>)} />
+                        <FormField control={form.control} name="qa" render={({ field }) => (<FormItem><FormLabel>QA</FormLabel><Select onValueChange={field.onChange} defaultValue={field.value} disabled={!isAdminView && !isManagerView}><FormControl><SelectTrigger><SelectValue /></SelectTrigger></FormControl><SelectContent>{qas.map(q => <SelectItem key={q} value={q}>{q}</SelectItem>)}</SelectContent></Select><FormMessage /></FormItem>)} />
+                        {(isProcessorView || isManagerView || isAdminView || project.processorStatus !== 'Pending') && <FormField control={form.control} name="processorStatus" render={({ field }) => (<FormItem><FormLabel>Processor Status</FormLabel><Select onValueChange={field.onChange} value={field.value} disabled={!isProcessorView}><FormControl><SelectTrigger><SelectValue /></SelectTrigger></FormControl><SelectContent>{(isProcessorView ? processorSubmissionStatuses : processorStatuses).map(s => <SelectItem key={s} value={s}>{s}</SelectItem>)}</SelectContent></Select><FormMessage /></FormItem>)} />}
+                        {(isQaView || isManagerView || isAdminView || project.qaStatus !== 'Pending') && <FormField control={form.control} name="qaStatus" render={({ field }) => (<FormItem><FormLabel>QA Status</FormLabel><Select onValueChange={field.onChange} value={field.value} disabled={!isQaView}><FormControl><SelectTrigger><SelectValue /></SelectTrigger></FormControl><SelectContent>{(isQaView ? qaSubmissionStatuses : qaStatuses).map(s => <SelectItem key={s} value={s}>{s}</SelectItem>)}</SelectContent></Select><FormMessage /></FormItem>)} />}
+                        {project.reworkReason && <FormItem><FormLabel>Rework Reason</FormLabel><Textarea value={project.reworkReason} readOnly className="h-24 bg-destructive/10 border-destructive" /></FormItem>}
+                        {isQaView && <FormField control={form.control} name="reworkReason" render={({ field }) => (<FormItem><FormLabel>Rework Reason (if sending back)</FormLabel><FormControl><Textarea {...field} value={field.value ?? ""} disabled={!isQaView} /></FormControl><FormMessage /></FormItem>)} />}
+                      </div>
+                    </div>
+                )}
                 </CardContent>
                 
                 <CardHeader className="border-t mt-auto">
@@ -213,3 +254,5 @@ export function ProjectForm({ project, userRole, nextProjectId, filteredIds }: P
     </div>
   )
 }
+
+    
