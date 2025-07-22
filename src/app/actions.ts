@@ -37,30 +37,25 @@ export async function saveProject(data: ProjectFormValues, nextProjectId?: strin
     const { id, submitAction, ...formData } = validatedData;
 
     const projectIndex = id ? projects.findIndex(p => p.id === id) : -1;
-
-    if (id && projectIndex === -1) {
-        throw new Error("Project not found for update");
-    }
-
-    const existingProject = projectIndex !== -1 ? projects[projectIndex] : {};
+    const existingProject = projectIndex !== -1 ? projects[projectIndex] : null;
 
     let workflowStatus = existingProject?.workflowStatus || 'With Processor';
     let processingDate = existingProject?.processingDate || null;
     let qaDate = existingProject?.qaDate || null;
-    let processorStatus = formData.processorStatus;
-    let qaStatus = formData.qaStatus;
+    let finalProcessorStatus = formData.processorStatus;
+    let finalQaStatus = formData.qaStatus;
 
     switch(submitAction) {
         case 'submit_for_qa':
             workflowStatus = 'With QA';
             processingDate = new Date().toISOString().split('T')[0];
-            processorStatus = 'Processed';
-            qaStatus = 'Pending';
+            finalProcessorStatus = 'Processed';
+            finalQaStatus = 'Pending';
             break;
         case 'submit_qa':
             workflowStatus = 'Completed';
             qaDate = new Date().toISOString().split('T')[0];
-            qaStatus = 'Complete';
+            finalQaStatus = 'Complete';
             break;
         case 'save':
             // Keep statuses from form data
@@ -69,16 +64,18 @@ export async function saveProject(data: ProjectFormValues, nextProjectId?: strin
 
     let savedProject: Project;
 
-    if (projectIndex !== -1) {
+    if (existingProject) {
         // Update existing project
         const updatedProject: Project = {
-            ...projects[projectIndex],
+            ...existingProject,
             ...formData,
+            applicationNumber: formData.applicationNumber || null,
+            patentNumber: formData.patentNumber || null,
             emailDate: toISOString(formData.emailDate)!,
             allocationDate: toISOString(formData.allocationDate)!,
             workflowStatus,
-            processorStatus,
-            qaStatus,
+            processorStatus: finalProcessorStatus,
+            qaStatus: finalQaStatus,
             processingDate,
             qaDate,
         };
@@ -90,20 +87,17 @@ export async function saveProject(data: ProjectFormValues, nextProjectId?: strin
         const newProject: Project = {
             id: newId,
             ...formData,
+            applicationNumber: formData.applicationNumber || null,
+            patentNumber: formData.patentNumber || null,
             emailDate: toISOString(formData.emailDate)!,
             allocationDate: toISOString(formData.allocationDate)!,
             workflowStatus,
-            processorStatus,
-            qaStatus,
+            processorStatus: finalProcessorStatus,
+            qaStatus: finalQaStatus,
             processingDate,
             qaDate,
-            // Provide default values for fields not on the form to match Project type
-            from: "new.user@example.com", 
-            country: 'USA',
-            actionTaken: '',
-            documentName: '',
-            subject: 'Newly Created Project',
-            reworkReason: '',
+            subject: 'Newly Created Project', // Add default subject
+            reworkReason: null,
         };
         projects.unshift(newProject);
         savedProject = newProject;
@@ -150,3 +144,5 @@ export async function bulkUpdateProjects(data: z.infer<typeof bulkUpdateSchema>)
 
     return { success: true, updatedProjects };
 }
+
+    

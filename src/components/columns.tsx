@@ -1,7 +1,7 @@
 
 "use client";
 
-import type { Project, Role, WorkflowStatus, ProcessorStatus, QAStatus } from "@/lib/data";
+import type { Project, Role } from "@/lib/data";
 import { Badge } from "@/components/ui/badge";
 import { cn } from "@/lib/utils";
 import Link from "next/link";
@@ -93,7 +93,7 @@ export const getColumns = (
       header: "QA",
     },
     {
-      key: "status" as const,
+      key: "workflowStatus" as const,
       header: "Status",
       render: (project: Project) => {
         let statusText: string = project.workflowStatus;
@@ -163,3 +163,5 @@ export const getColumns = (
 
   return baseColumns;
 };
+
+    

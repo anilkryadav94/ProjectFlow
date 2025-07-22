@@ -14,7 +14,6 @@ import { Calendar } from "@/components/ui/calendar"
 import {
   Form,
   FormControl,
-  FormDescription,
   FormField,
   FormItem,
   FormLabel,
@@ -37,7 +36,6 @@ import {
 } from "@/components/ui/select"
 import { saveProject } from "@/app/actions"
 import { type Project, processors, qas, clientNames, processes, type Role, processorSubmissionStatuses, qaSubmissionStatuses, processorActionableStatuses } from "@/lib/data"
-import { Textarea } from "./ui/textarea"
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "./ui/card"
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "./ui/dialog"
 import { MultiMattersForm } from "./multi-matters-form"
@@ -60,14 +58,6 @@ const formSchema = z.object({
   qaStatus: z.enum(["Pending", "Complete", "NTP", "Client Query", "Already Processed"]),
 
   submitAction: z.enum(['save', 'submit_for_qa', 'submit_qa'])
-}).superRefine((data, ctx) => {
-    if (data.submitAction === 'submit_qa' && !qaSubmissionStatuses.includes(data.qaStatus)) {
-         ctx.addIssue({
-            code: z.ZodIssueCode.custom,
-            message: "A valid submission status is required for QA.",
-            path: ["qaStatus"],
-        });
-    }
 });
 
 
@@ -545,3 +535,5 @@ export function ProjectForm({ project: initialProject, role, setOpen, nextProjec
     </div>
   );
 }
+
+    

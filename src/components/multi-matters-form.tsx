@@ -1,3 +1,4 @@
+
 "use client";
 
 import * as React from "react";
@@ -30,7 +31,6 @@ const formSchema = z.object({
   clientName: z.string(),
   process: z.string(),
   emailDate: z.string(),
-  from: z.string(),
   subject: z.string(),
   records: z.array(mmRecordSchema),
 });
@@ -52,7 +52,6 @@ export function MultiMattersForm({ project, setOpen }: MultiMattersFormProps) {
       clientName: project.clientName,
       process: project.process,
       emailDate: format(new Date(project.emailDate), "PPP"),
-      from: project.from,
       subject: project.subject,
       records: [{ matterId: "", customField: "" }],
     },
@@ -112,18 +111,6 @@ export function MultiMattersForm({ project, setOpen }: MultiMattersFormProps) {
             render={({ field }) => (
               <FormItem>
                 <FormLabel>Email Date</FormLabel>
-                <FormControl>
-                  <Input {...field} disabled />
-                </FormControl>
-              </FormItem>
-            )}
-          />
-          <FormField
-            control={form.control}
-            name="from"
-            render={({ field }) => (
-              <FormItem>
-                <FormLabel>From</FormLabel>
                 <FormControl>
                   <Input {...field} disabled />
                 </FormControl>
@@ -227,3 +214,5 @@ export function MultiMattersForm({ project, setOpen }: MultiMattersFormProps) {
     </Form>
   );
 }
+
+    
