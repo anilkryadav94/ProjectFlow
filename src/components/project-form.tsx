@@ -7,7 +7,6 @@ import { useForm } from "react-hook-form"
 import { z } from "zod"
 import { format } from "date-fns"
 import { CalendarIcon, Loader2, PlusSquare } from "lucide-react"
-import { useRouter } from "next/navigation"
 
 import { cn } from "@/lib/utils"
 import { Button } from "@/components/ui/button"
@@ -43,7 +42,6 @@ import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "./ui/
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "./ui/dialog"
 import { MultiMattersForm } from "./multi-matters-form"
 import { ScrollArea } from "./ui/scroll-area"
-import { Badge } from "./ui/badge"
 import { useToast } from "@/hooks/use-toast"
 
 const formSchema = z.object({
@@ -79,10 +77,10 @@ interface ProjectFormProps {
 
 export function ProjectForm({ project: initialProject, role, setOpen, nextProjectId }: ProjectFormProps) {
   const [isSubmitting, setIsSubmitting] = React.useState(false);
+  const [isSaving, setIsSaving] = React.useState(false);
   const [isMMFormOpen, setIsMMFormOpen] = React.useState(false);
   const { toast } = useToast();
   
-  // Use state to manage the project data within the form
   const [project, setProject] = React.useState(initialProject);
 
   const form = useForm<ProjectFormValues>({
@@ -90,7 +88,6 @@ export function ProjectForm({ project: initialProject, role, setOpen, nextProjec
     key: project?.id || 'new',
   })
 
-  // When project data changes (e.g., from props or after a save), reset the form
   React.useEffect(() => {
     if (project) {
         form.reset({
@@ -116,28 +113,28 @@ export function ProjectForm({ project: initialProject, role, setOpen, nextProjec
     }
   }, [project, form]);
   
-  async function onSubmit(data: ProjectFormValues) {
-    setIsSubmitting(true);
+  const handleFormSubmit = async (data: ProjectFormValues, action: ProjectFormValues['submitAction']) => {
+    const stateSetter = action === 'save' ? setIsSaving : setIsSubmitting;
+    stateSetter(true);
+
     try {
-      const result = await saveProject(data, nextProjectId);
+      const result = await saveProject({ ...data, submitAction: action }, nextProjectId);
       
-      if (data.submitAction === 'save') {
-        // If we just saved, update the local state to show the changes immediately
-        setProject(result);
-        toast({ title: "Success", description: "Changes have been saved." });
+      if (action === 'save') {
+        if (result) {
+          setProject(result as Project);
+          toast({ title: "Success", description: "Changes have been saved." });
+        }
       } else {
-         // For other actions, redirection is handled by the server action
-         if(setOpen) {
-           setOpen(false);
-         }
+         // Redirection is handled by the server action for other cases
       }
     } catch (error) {
       console.error("Failed to save project", error);
       toast({ title: "Error", description: "Failed to save changes.", variant: "destructive" });
     } finally {
-      setIsSubmitting(false);
+      stateSetter(false);
     }
-  }
+  };
 
   const isProcessor = role === 'Processor';
   const isQA = role === 'QA';
@@ -156,6 +153,7 @@ export function ProjectForm({ project: initialProject, role, setOpen, nextProjec
 
   const canProcessorSubmit = isProcessor && project?.workflowStatus === 'With Processor';
   const canQASubmit = isQA && project?.workflowStatus === 'With QA';
+  const isAnyActionLoading = isSubmitting || isSaving;
 
   return (
     <div className="animated-border shadow-xl h-full">
@@ -171,7 +169,7 @@ export function ProjectForm({ project: initialProject, role, setOpen, nextProjec
                     {project && (
                         <Dialog open={isMMFormOpen} onOpenChange={setIsMMFormOpen}>
                             <DialogTrigger asChild>
-                                <Button size="sm" variant="outline" disabled={isSubmitting}>
+                                <Button size="sm" variant="outline" disabled={isAnyActionLoading}>
                                     <PlusSquare className="mr-2 h-4 w-4" />
                                     Add MM Records
                                 </Button>
@@ -186,25 +184,25 @@ export function ProjectForm({ project: initialProject, role, setOpen, nextProjec
                     )}
                     
                     {canProcessorSubmit && (
-                        <Button size="sm" type="submit" onClick={form.handleSubmit(d => onSubmit({...d, submitAction: 'submit_for_qa'}))} disabled={isSubmitting}>
+                        <Button size="sm" type="button" onClick={form.handleSubmit((d) => handleFormSubmit(d, 'submit_for_qa'))} disabled={isAnyActionLoading}>
                             {isSubmitting && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
                             Submit for QA
                         </Button>
                     )}
                     {canQASubmit && (
                         <>
-                           <Button size="sm" type="submit" variant="destructive" onClick={form.handleSubmit(d => onSubmit({...d, submitAction: 'send_for_rework'}))} disabled={isSubmitting}>
+                           <Button size="sm" type="button" variant="destructive" onClick={form.handleSubmit((d) => handleFormSubmit(d, 'send_for_rework'))} disabled={isAnyActionLoading}>
                                 {isSubmitting && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
                                 Send for Rework
                             </Button>
-                             <Button size="sm" type="submit" onClick={form.handleSubmit(d => onSubmit({...d, submitAction: 'submit_qa'}))} disabled={isSubmitting}>
+                             <Button size="sm" type="button" onClick={form.handleSubmit((d) => handleFormSubmit(d, 'submit_qa'))} disabled={isAnyActionLoading}>
                                 {isSubmitting && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
                                 QA Complete
                             </Button>
                         </>
                     )}
-                     <Button size="sm" type="submit" onClick={form.handleSubmit(d => onSubmit({...d, submitAction: 'save'}))} disabled={isSubmitting || (!isManager && !canProcessorSubmit && !canQASubmit)}>
-                        {isSubmitting && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
+                     <Button size="sm" type="button" onClick={form.handleSubmit((d) => handleFormSubmit(d, 'save'))} disabled={isAnyActionLoading || (!isManager && !canProcessorSubmit && !canQASubmit)}>
+                        {isSaving && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
                         {isManager && !project ? 'Create Project' : 'Save Changes'}
                     </Button>
                 </div>

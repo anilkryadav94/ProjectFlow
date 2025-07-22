@@ -38,7 +38,7 @@ function toISOString(date: Date | string | null | undefined): string | null {
 }
 
 
-export async function saveProject(data: ProjectFormValues, nextProjectId?: string): Promise<Project> {
+export async function saveProject(data: ProjectFormValues, nextProjectId?: string): Promise<Project | void> {
     const validatedData = formSchema.parse(data);
 
     let projectToSave: Project;
@@ -118,19 +118,20 @@ export async function saveProject(data: ProjectFormValues, nextProjectId?: strin
         projects.unshift(projectToSave);
     }
     
-    // In a real app, you'd revalidate paths/tags. Here we can just pretend.
     revalidatePath('/');
     revalidatePath(`/task/${projectToSave.id}`);
 
-    if (validatedData.submitAction === 'submit_for_qa' || validatedData.submitAction === 'submit_qa') {
+    if (validatedData.submitAction === 'save') {
+      return projectToSave;
+    }
+    
+    if (validatedData.submitAction === 'submit_for_qa' || validatedData.submitAction === 'submit_qa' || validatedData.submitAction === 'send_for_rework') {
       if (nextProjectId) {
         redirect(`/task/${nextProjectId}`);
       } else {
         redirect('/');
       }
     }
-    
-    return projectToSave;
 }
 
 const bulkUpdateSchema = z.object({
