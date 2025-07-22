@@ -15,7 +15,8 @@ async function getProjectsForUser(user: { name: string; roles: Role[] }, activeR
     } else if (activeRole === 'QA') {
         userProjects = projects.filter(p => p.qa === user.name && p.workflowStatus === 'With QA');
     } else {
-        // For Manager/Admin, for now, let's just use all projects for pagination context
+        // For Manager/Admin, we show all projects, but pagination context will be based on the role view they came from.
+        // If they navigate directly, it uses their highest role.
         userProjects = projects;
     }
     
@@ -26,16 +27,12 @@ async function getProjectsForUser(user: { name: string; roles: Role[] }, activeR
 }
 
 
-export default async function TaskPage({ params }: { params: { id: string } }) {
+export default async function TaskPage({ params, searchParams }: { params: { id: string }, searchParams: { role?: Role } }) {
   const session = await getSession();
   if (!session) {
     redirect('/login');
   }
-
-  // Determine active role based on URL search param or user's highest role.
-  const searchParams = new URLSearchParams(''); // dummy for server component
-  const urlRole = searchParams.get('role') as Role | null;
-
+  
   const getHighestRole = (roles: Role[]): Role => {
     for (const role of roleHierarchy) {
       if (roles.includes(role)) {
@@ -43,8 +40,10 @@ export default async function TaskPage({ params }: { params: { id: string } }) {
       }
     }
     return roles[0] || 'Processor';
-  }
-
+  };
+  
+  // Prioritize role from URL, then fall back to user's highest role
+  const urlRole = searchParams.role;
   const activeRole = urlRole && session.user.roles.includes(urlRole)
     ? urlRole
     : getHighestRole(session.user.roles);
@@ -56,18 +55,19 @@ export default async function TaskPage({ params }: { params: { id: string } }) {
   const project = projects.find(p => p.id === params.id);
 
   if (!project) {
-    return <div>Project with ID {params.id} does not exist.</div>;
+    return <div>Project not found in your queue or does not exist.</div>;
   }
   
-  // If the project exists but is not in the user's current queue, show a message.
-  if (currentProjectIndex === -1 && (activeRole === 'Processor' || activeRole === 'QA')) {
+  const isManagerOrAdmin = activeRole === 'Manager' || activeRole === 'Admin';
+  
+  // If the project exists but is not in the user's specific queue, show a message.
+  // This check is not for managers/admins.
+  if (currentProjectIndex === -1 && !isManagerOrAdmin) {
     return <div>Project not found in your current "{activeRole}" queue.</div>;
   }
   
-  const nextProjectId = currentProjectIndex < userProjectList.length - 1 ? userProjectList[currentProjectIndex + 1].id : null;
+  const nextProjectId = currentProjectIndex !== -1 && currentProjectIndex < userProjectList.length - 1 ? userProjectList[currentProjectIndex + 1].id : null;
   const prevProjectId = currentProjectIndex > 0 ? userProjectList[currentProjectIndex - 1].id : null;
-
-  const isManagerOrAdmin = activeRole === 'Manager' || activeRole === 'Admin';
 
 
   return (
@@ -79,7 +79,7 @@ export default async function TaskPage({ params }: { params: { id: string } }) {
             clientNames={clientNames}
             processes={processes}
             taskPagination={{
-                currentIndex: currentProjectIndex,
+                currentIndex: currentProjectIndex === -1 ? 0 : currentProjectIndex,
                 total: userProjectList.length,
                 nextId: nextProjectId,
                 prevId: prevProjectId,
@@ -91,6 +91,3 @@ export default async function TaskPage({ params }: { params: { id: string } }) {
     </div>
   );
 }
-
-
-    

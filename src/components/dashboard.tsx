@@ -228,7 +228,8 @@ function Dashboard({
       isManagerOrAdmin, 
       rowSelection, 
       setRowSelection, 
-      dashboardProjects
+      dashboardProjects,
+      activeRole
   );
   const selectedBulkUpdateField = bulkUpdateFields.find(f => f.value === bulkUpdateField);
 

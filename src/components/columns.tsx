@@ -6,6 +6,14 @@ import { Badge } from "@/components/ui/badge";
 import { cn } from "@/lib/utils";
 import { Checkbox } from "./ui/checkbox";
 import Link from "next/link";
+import { MoreHorizontal } from "lucide-react";
+import { Button } from "./ui/button";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from "./ui/dropdown-menu";
 
 
 const statusColors: Record<string, string> = {
@@ -34,6 +42,7 @@ export const getColumns = (
   rowSelection: Record<string, boolean>,
   setRowSelection: (selection: Record<string, boolean>) => void,
   allProjectsOnPage: Project[],
+  activeRole: Role,
 ) => {
 
   const baseColumns = [
@@ -41,7 +50,7 @@ export const getColumns = (
       key: "refNumber" as const,
       header: "Ref Number",
       render: (project: Project) => (
-         <Link href={`/task/${project.id}`} className="font-medium text-primary hover:underline">
+         <Link href={`/task/${project.id}?role=${activeRole}`} className="font-medium text-primary hover:underline">
             {project.refNumber}
          </Link>
       )
@@ -148,6 +157,30 @@ export const getColumns = (
       ),
     };
     columns.unshift(selectionColumn);
+  } else {
+     const actionsColumn = {
+        key: 'actions',
+        header: 'Actions',
+        render: (project: Project) => (
+            <DropdownMenu>
+              <DropdownMenuTrigger asChild>
+                <Button
+                  variant="ghost"
+                  className="flex h-8 w-8 p-0 data-[state=open]:bg-muted"
+                >
+                  <MoreHorizontal className="h-4 w-4" />
+                  <span className="sr-only">Open menu</span>
+                </Button>
+              </DropdownMenuTrigger>
+              <DropdownMenuContent align="end" className="w-[160px]">
+                <DropdownMenuItem asChild>
+                  <Link href={`/task/${project.id}?role=${activeRole}`}>View Task</Link>
+                </DropdownMenuItem>
+              </DropdownMenuContent>
+            </DropdownMenu>
+        )
+     }
+     columns.push(actionsColumn);
   }
 
   return columns;
