@@ -9,13 +9,12 @@ import { getColumns } from '@/components/columns';
 import { Header } from '@/components/header';
 import { UserManagementTable } from './user-management-table';
 import { Button } from './ui/button';
-import { bulkUpdateProjects } from '@/app/actions';
 import { useToast } from '@/hooks/use-toast';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from './ui/select';
 import { Loader2 } from 'lucide-react';
 import { AdvancedSearchForm, type SearchCriteria } from './advanced-search-form';
 import { useSearchParams, useRouter } from 'next/navigation';
-import { collection, getDocs } from 'firebase/firestore';
+import { collection, getDocs, writeBatch, doc } from 'firebase/firestore';
 import { db } from '@/lib/firebase';
 
 interface DashboardProps {
@@ -113,13 +112,18 @@ function Dashboard({
     
     setIsBulkUpdating(true);
     try {
-        const result = await bulkUpdateProjects({ projectIds, field: bulkUpdateField, value: bulkUpdateValue });
-        if (result.success) {
-            await refreshProjects();
-            toast({ title: "Success", description: `${result.updatedProjects.length} projects have been updated.` });
-            setRowSelection({});
-            setBulkUpdateValue('');
-        }
+        const batch = writeBatch(db);
+        projectIds.forEach(id => {
+            const projectRef = doc(db, "projects", id);
+            batch.update(projectRef, { [bulkUpdateField]: bulkUpdateValue });
+        });
+        await batch.commit();
+
+        await refreshProjects();
+        toast({ title: "Success", description: `${projectIds.length} projects have been updated.` });
+        setRowSelection({});
+        setBulkUpdateValue('');
+
     } catch (error) {
         toast({ title: "Bulk Update Failed", description: "An error occurred.", variant: "destructive" });
     } finally {

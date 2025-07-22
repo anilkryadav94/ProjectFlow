@@ -28,13 +28,15 @@ import { Calendar } from "@/components/ui/calendar"
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover"
 import { CalendarIcon, Loader2, Save, Rows } from "lucide-react"
 import { format } from "date-fns"
-import { saveProject } from "@/app/actions"
 import { useToast } from "@/hooks/use-toast"
 import { cn } from "@/lib/utils"
 import type { Project, Role } from "@/lib/data"
 import { processors, qas, clientNames, processes, processorStatuses, qaStatuses, processorSubmissionStatuses, qaSubmissionStatuses } from "@/lib/data"
 import { useRouter } from "next/navigation"
 import { ProjectEntriesDialog } from "./project-entries-dialog"
+import { doc, updateDoc } from "firebase/firestore"
+import { db } from "@/lib/firebase"
+
 
 const projectEntrySchema = z.object({
     id: z.string(),
@@ -113,7 +115,23 @@ export function ProjectForm({ project, userRole, nextProjectId, filteredIds }: P
           ? `/task/${nextProjectId}?role=${userRole}${filteredIds ? `&filteredIds=${filteredIds}`: ''}` 
           : `/?role=${userRole}`;
           
-        await saveProject(data, action);
+        const projectRef = doc(db, "projects", data.id);
+        let projectToSave = { ...data };
+
+        if (action === 'submit_for_qa') {
+            projectToSave.workflowStatus = 'With QA';
+            projectToSave.processingDate = new Date().toISOString().split('T')[0];
+        } else if (action === 'submit_qa') {
+            projectToSave.workflowStatus = 'Completed';
+            projectToSave.qaDate = new Date().toISOString().split('T')[0];
+        } else if (action === 'send_rework') {
+            projectToSave.workflowStatus = 'With Processor';
+            projectToSave.processorStatus = 'Re-Work';
+        }
+        
+        const { id, ...saveData } = projectToSave;
+        await updateDoc(projectRef, saveData);
+
         toast({
           title: "Success",
           description: `Project has been ${action === 'save' ? 'saved' : 'submitted'}.`,
@@ -122,6 +140,7 @@ export function ProjectForm({ project, userRole, nextProjectId, filteredIds }: P
         router.push(nextUrl);
 
       } catch (error) {
+        console.error("Failed to save project:", error);
         toast({
           title: "Error",
           description: "Failed to save the project.",
