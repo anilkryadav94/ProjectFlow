@@ -59,10 +59,12 @@ const formSchema = z.object({
   processorStatus: z.enum(["Pending", "On Hold", "Re-Work", "Processed", "NTP", "Client Query", "Already Processed"]),
   qaStatus: z.enum(["Pending", "Complete", "NTP", "Client Query", "Already Processed"]),
   reworkReason: z.string().optional(),
+  subject: z.string().optional(),
+  actionTaken: z.string().optional(),
+  documentName: z.string().optional(),
 
   submitAction: z.enum(['save', 'submit_for_qa', 'submit_qa', 'send_for_rework'])
 }).refine(data => {
-    // If sending for rework, only the reworkReason is mandatory.
     if (data.submitAction === 'send_for_rework') {
         return !!data.reworkReason && data.reworkReason.trim().length > 0;
     }
@@ -71,16 +73,13 @@ const formSchema = z.object({
     message: "Rework reason is required when sending for rework.",
     path: ["reworkReason"],
 }).refine(data => {
-    // If submitting QA, QA status is required.
-    // This is implicitly handled by the qaStatus enum being required,
-    // but this makes the logic explicit and allows us to skip it for rework.
+    // QA status is only required when submitting QA, not when sending for rework
     if (data.submitAction === 'submit_qa') {
         return !!data.qaStatus;
     }
-    // For other actions, we don't need to validate qaStatus here.
     return true;
 }, {
-    message: "QA Status is required.",
+    message: "QA Status is required when submitting.",
     path: ["qaStatus"]
 });
 
@@ -105,7 +104,7 @@ export function ProjectForm({ project: initialProject, role, setOpen, nextProjec
   const form = useForm<ProjectFormValues>({
     resolver: zodResolver(formSchema),
     key: project?.id || 'new',
-  })
+  });
 
   React.useEffect(() => {
     if (project) {
@@ -605,3 +604,5 @@ export function ProjectForm({ project: initialProject, role, setOpen, nextProjec
     </div>
   )
 }
+
+    
