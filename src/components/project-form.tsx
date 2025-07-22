@@ -113,7 +113,7 @@ export function ProjectForm({ project, userRole, nextProjectId, filteredIds }: P
           ? `/task/${nextProjectId}?role=${userRole}${filteredIds ? `&filteredIds=${filteredIds}`: ''}` 
           : `/?role=${userRole}`;
           
-        await saveProject(data, action, nextProjectId, filteredIds, userRole);
+        await saveProject(data, action);
         toast({
           title: "Success",
           description: `Project has been ${action === 'save' ? 'saved' : 'submitted'}.`,

@@ -10,8 +10,7 @@ This application is configured to use Firebase Authentication and Firestore. To 
 
 1.  Go to your Firebase project settings.
 2.  Under "General", find your web app configuration.
-3.  Copy the values into the environment variables for your App Hosting backend.
-
+3.  
 ```
 NEXT_PUBLIC_FIREBASE_API_KEY="AIza..."
 NEXT_PUBLIC_FIREBASE_AUTH_DOMAIN="your-project-id.firebaseapp.com"

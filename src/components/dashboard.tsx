@@ -15,6 +15,8 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '.
 import { Loader2 } from 'lucide-react';
 import { AdvancedSearchForm, type SearchCriteria } from './advanced-search-form';
 import { useSearchParams, useRouter } from 'next/navigation';
+import { collection, getDocs } from 'firebase/firestore';
+import { db } from '@/lib/firebase';
 
 interface DashboardProps {
   user: User;
@@ -22,11 +24,7 @@ interface DashboardProps {
 }
 
 export function DashboardWrapper(props: DashboardProps) {
-    return (
-        <React.Suspense fallback={<div className="flex h-screen w-full items-center justify-center"><Loader2 className="h-8 w-8 animate-spin" /></div>}>
-            <Dashboard {...props} />
-        </React.Suspense>
-    )
+    return <Dashboard {...props} />;
 }
 
 
@@ -64,6 +62,13 @@ function Dashboard({
   const [processFilter, setProcessFilter] = React.useState<string | 'all'>('all');
   
   const { toast } = useToast();
+  
+  const refreshProjects = React.useCallback(async () => {
+    const projectsCollection = collection(db, "projects");
+    const projectsSnapshot = await getDocs(projectsCollection);
+    const projectsList = projectsSnapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as Project));
+    setProjects(projectsList);
+  }, []);
 
   React.useEffect(() => {
     let newActiveRole: Role;
@@ -75,7 +80,6 @@ function Dashboard({
     
     if(newActiveRole !== activeRole) {
         setActiveRole(newActiveRole);
-        // If the role in the URL is invalid or missing, update the URL
         if (newActiveRole && (!urlRole || urlRole !== newActiveRole)) {
             router.replace(`/?role=${newActiveRole}`, { scroll: false });
         }
@@ -111,17 +115,7 @@ function Dashboard({
     try {
         const result = await bulkUpdateProjects({ projectIds, field: bulkUpdateField, value: bulkUpdateValue });
         if (result.success) {
-            // Refetch or update state
-            // For now, simple state update
-            const updatedProjectsMap = new Map(result.updatedProjects.map(p => [p.id, p]));
-            setProjects(prev => prev.map(p => updatedProjectsMap.get(p.id) || p));
-            if (filteredProjects) {
-                 setFilteredProjects(prev => {
-                    if (!prev) return null;
-                    return prev.map(p => updatedProjectsMap.get(p.id) || p);
-                 });
-            }
-
+            await refreshProjects();
             toast({ title: "Success", description: `${result.updatedProjects.length} projects have been updated.` });
             setRowSelection({});
             setBulkUpdateValue('');

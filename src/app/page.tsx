@@ -1,21 +1,22 @@
 
+"use client";
+
 import * as React from 'react';
 import { DashboardWrapper } from '@/components/dashboard';
-import { redirect } from 'next/navigation';
-import { getSession } from '@/lib/auth';
-import type { Project } from '@/lib/data';
+import type { Project, User } from '@/lib/data';
 import { db } from '@/lib/firebase';
 import { collection, getDocs, writeBatch, doc } from 'firebase/firestore';
 import { projects as mockProjects, users as mockUsers } from '@/lib/data';
+import { getSession, onAuthChanged } from '@/lib/auth';
+import { useRouter } from 'next/navigation';
+import { Loader2 } from 'lucide-react';
 
-// One-time data seeding function
 async function seedDatabase() {
     const projectsCollection = collection(db, "projects");
     const usersCollection = collection(db, "users");
     const projectsSnapshot = await getDocs(projectsCollection);
     const usersSnapshot = await getDocs(usersCollection);
 
-    // Only seed if collections are empty
     if (projectsSnapshot.empty) {
         const batch = writeBatch(db);
         mockProjects.forEach((project) => {
@@ -31,7 +32,8 @@ async function seedDatabase() {
          const batch = writeBatch(db);
          mockUsers.forEach((user) => {
             const { id, ...userData } = user;
-            const userRef = doc(usersCollection, id);
+            // Use email as doc id for simplicity in this version
+            const userRef = doc(usersCollection, userData.email);
             batch.set(userRef, userData);
         });
         await batch.commit();
@@ -40,7 +42,7 @@ async function seedDatabase() {
 }
 
 async function getProjects(): Promise<Project[]> {
-    await seedDatabase(); // Run seeding check on every load (it will only run once if data is empty)
+    await seedDatabase();
     
     const projectsCollection = collection(db, "projects");
     const projectsSnapshot = await getDocs(projectsCollection);
@@ -48,13 +50,40 @@ async function getProjects(): Promise<Project[]> {
     return projectsList;
 }
 
-export default async function Home() {
-  const session = await getSession();
-  if (!session) {
-    redirect('/login');
-  }
+export default function Home() {
+  const [session, setSession] = React.useState<{ user: User } | null>(null);
+  const [initialProjects, setInitialProjects] = React.useState<Project[] | null>(null);
+  const [loading, setLoading] = React.useState(true);
+  const router = useRouter();
 
-  const initialProjects = await getProjects();
+  React.useEffect(() => {
+    const checkAuthAndLoadData = async (user: any) => {
+      if (user) {
+        const sessionData = await getSession();
+        setSession(sessionData);
+        if (sessionData) {
+          const projects = await getProjects();
+          setInitialProjects(projects);
+        } else {
+            router.push('/login');
+        }
+      } else {
+        router.push('/login');
+      }
+      setLoading(false);
+    };
+
+    const unsubscribe = onAuthChanged(checkAuthAndLoadData);
+    return () => unsubscribe();
+  }, [router]);
+
+  if (loading || !session || !initialProjects) {
+    return (
+        <div className="flex h-screen w-full items-center justify-center">
+            <Loader2 className="h-8 w-8 animate-spin" />
+        </div>
+    );
+  }
   
   return (
     <main>

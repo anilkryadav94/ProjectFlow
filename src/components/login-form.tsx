@@ -2,9 +2,7 @@
 "use client";
 
 import * as React from "react";
-import { useActionState } from "react";
-import { useFormStatus } from "react-dom";
-import { login } from "@/lib/auth";
+import { login, onAuthChanged } from "@/lib/auth";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
@@ -13,14 +11,44 @@ import { Loader2, Workflow } from "lucide-react";
 import { useRouter } from "next/navigation";
 
 export function LoginForm() {
-  const [state, action] = useActionState(login, undefined);
+  const [error, setError] = React.useState<string | undefined>(undefined);
+  const [loading, setLoading] = React.useState(false);
   const router = useRouter();
 
+  const emailRef = React.useRef<HTMLInputElement>(null);
+  const passwordRef = React.useRef<HTMLInputElement>(null);
+
   React.useEffect(() => {
-    if (state?.success) {
-      router.push('/');
+    const unsubscribe = onAuthChanged((user) => {
+      if (user) {
+        router.push('/');
+      }
+    });
+    return () => unsubscribe();
+  }, [router]);
+
+  const handleLogin = async (event: React.FormEvent) => {
+    event.preventDefault();
+    setLoading(true);
+    setError(undefined);
+
+    const email = emailRef.current?.value;
+    const password = passwordRef.current?.value;
+
+    if (!email || !password) {
+      setError("Email and password are required.");
+      setLoading(false);
+      return;
     }
-  }, [state, router]);
+
+    try {
+      await login(email, password);
+      // Redirect is handled by the useEffect
+    } catch (err: any) {
+      setError(err.message || 'Failed to login.');
+      setLoading(false);
+    }
+  };
 
   return (
     <Card className="w-full max-w-sm shadow-xl">
@@ -33,31 +61,24 @@ export function LoginForm() {
         <CardDescription>Enter your credentials to access your dashboard.</CardDescription>
       </CardHeader>
       <CardContent>
-        <form action={action} className="space-y-4">
+        <form onSubmit={handleLogin} className="space-y-4">
           <div className="space-y-2">
             <Label htmlFor="email">Email</Label>
-            <Input id="email" name="email" type="email" placeholder="m@example.com" required suppressHydrationWarning />
+            <Input id="email" name="email" type="email" placeholder="m@example.com" required ref={emailRef} />
           </div>
           <div className="space-y-2">
             <Label htmlFor="password">Password</Label>
-            <Input id="password" name="password" type="password" required suppressHydrationWarning />
+            <Input id="password" name="password" type="password" required ref={passwordRef} />
           </div>
-          {state?.error && (
-            <p className="text-sm text-destructive">{state.error}</p>
+          {error && (
+            <p className="text-sm text-destructive">{error}</p>
           )}
-          <LoginButton />
+          <Button type="submit" className="w-full" disabled={loading}>
+            {loading && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
+            Login
+          </Button>
         </form>
       </CardContent>
     </Card>
-  );
-}
-
-function LoginButton() {
-  const { pending } = useFormStatus();
-  return (
-    <Button type="submit" className="w-full" disabled={pending}>
-      {pending && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
-      Login
-    </Button>
   );
 }

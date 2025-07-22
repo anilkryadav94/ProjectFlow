@@ -1,10 +1,6 @@
 
-"use server";
-
 import { z } from "zod";
 import type { Project, Role, ProjectEntry } from "@/lib/data";
-import { redirect } from "next/navigation";
-import { revalidatePath } from "next/cache";
 import { db } from "@/lib/firebase";
 import { collection, doc, writeBatch, getDocs, updateDoc } from "firebase/firestore";
 
@@ -21,8 +17,6 @@ export async function bulkUpdateProjects(data: z.infer<typeof bulkUpdateSchema>)
     const batch = writeBatch(db);
     const projectsCollection = collection(db, "projects");
 
-    // Fetch all projects to find the ones to update
-    // In a larger app, you'd fetch only the docs with the specified IDs.
     const querySnapshot = await getDocs(projectsCollection);
     const allProjects: Project[] = [];
     querySnapshot.forEach(doc => {
@@ -42,8 +36,6 @@ export async function bulkUpdateProjects(data: z.infer<typeof bulkUpdateSchema>)
     });
 
     await batch.commit();
-
-    revalidatePath('/');
 
     return { success: true, updatedProjects };
 }
@@ -82,10 +74,7 @@ const projectSchema = z.object({
 export async function saveProject(
   data: z.infer<typeof projectSchema>, 
   submitAction: 'save' | 'submit_for_qa' | 'submit_qa' | 'send_rework',
-  nextProjectId?: string | null,
-  filteredIds?: string | undefined,
-  activeRole?: Role | undefined,
-): Promise<Project | void> {
+): Promise<Project> {
     
     const validatedData = projectSchema.parse(data);
     const projectRef = doc(db, "projects", validatedData.id);
@@ -103,10 +92,8 @@ export async function saveProject(
         projectToSave.processorStatus = 'Re-Work';
     }
 
-    // In Firestore, we don't save the id inside the document itself.
     const { id, ...saveData } = projectToSave;
     await updateDoc(projectRef, saveData);
-
-    revalidatePath('/');
-    revalidatePath(`/task/${projectToSave.id}`);
+    
+    return projectToSave;
 }
