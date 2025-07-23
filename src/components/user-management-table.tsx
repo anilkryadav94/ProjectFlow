@@ -17,7 +17,7 @@ import { Button } from "@/components/ui/button";
 import { type User, roles, type Role } from "@/lib/data";
 import { useToast } from "@/hooks/use-toast";
 import { updateUser, addUser, addBulkUsers, getUsers } from "@/lib/auth";
-import { ChevronsUpDown, Loader2, PlusCircle, Upload, Search } from "lucide-react";
+import { ChevronsUpDown, Loader2, PlusCircle, Upload, Search, FileSpreadsheet } from "lucide-react";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "./ui/card";
 import { AddUserDialog } from "./add-user-dialog";
 import { useRouter } from "next/navigation";
@@ -163,8 +163,36 @@ export function UserManagementTable({ sessionUser }: { sessionUser: User }) {
         event.target.value = '';
     };
 
+    const handleDownloadUsers = () => {
+        if (filteredUsers.length === 0) {
+            toast({ title: "No users to export", variant: "destructive" });
+            return;
+        }
+
+        const usersToExport = filteredUsers.map(user => {
+            // Omitting password for security
+            const { password, ...rest } = user;
+            return {
+                ...rest,
+                roles: user.roles.join(', ') // Convert roles array to a comma-separated string
+            };
+        });
+
+        const csv = Papa.unparse(usersToExport);
+        const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
+        const link = document.createElement("a");
+        const url = URL.createObjectURL(blob);
+        link.setAttribute("href", url);
+        link.setAttribute("download", `projectflow_users_${new Date().toISOString().split('T')[0]}.csv`);
+        link.style.visibility = 'hidden';
+        document.body.appendChild(link);
+        link.click();
+        document.body.removeChild(link);
+    };
+
     const filteredUsers = users.filter(user => 
-        user.name.toLowerCase().includes(searchTerm.toLowerCase())
+        user.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
+        user.email.toLowerCase().includes(searchTerm.toLowerCase())
     );
 
     return (
@@ -181,7 +209,7 @@ export function UserManagementTable({ sessionUser }: { sessionUser: User }) {
                                  <div className="relative">
                                     <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground/80" />
                                     <Input
-                                        placeholder="Search by username..."
+                                        placeholder="Search by username or email..."
                                         className="pl-9 h-9 w-64"
                                         value={searchTerm}
                                         onChange={(e) => setSearchTerm(e.target.value)}
@@ -197,6 +225,10 @@ export function UserManagementTable({ sessionUser }: { sessionUser: User }) {
                                 <Button variant="outline" onClick={() => fileInputRef.current?.click()}>
                                     <Upload className="mr-2 h-4 w-4" />
                                     Bulk Upload
+                                </Button>
+                                <Button variant="outline" onClick={handleDownloadUsers} disabled={filteredUsers.length === 0}>
+                                    <FileSpreadsheet className="mr-2 h-4 w-4" />
+                                    Download
                                 </Button>
                                 <Button onClick={() => setIsAddUserDialogOpen(true)}>
                                     <PlusCircle className="mr-2 h-4 w-4" />
