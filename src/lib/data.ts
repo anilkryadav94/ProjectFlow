@@ -1,5 +1,6 @@
 
 
+
 export type Role = 'Admin' | 'Manager' | 'Processor' | 'QA' | 'Case Manager';
 export const roles: Role[] = ['Admin', 'Manager', 'Processor', 'QA', 'Case Manager'];
 
@@ -42,6 +43,7 @@ export type ProjectEntry = {
 
 export type Project = {
     id: string;
+    ref_number: string | null;
     client_name: string;
     process: ProcessType;
     processor: string;
@@ -54,7 +56,6 @@ export type Project = {
     processing_status: ProcessorStatus;
     application_number: string | null;
     patent_number: string | null;
-    ref_number: string;
     country: string | null;
     document_type: string | null;
     action_taken: string | null;
@@ -117,8 +118,9 @@ export function generateAlphanumericId() {
 }
 
 
-let initialProjects: Omit<Project, 'id' | 'ref_number'>[] = [
+let initialProjects: Omit<Project, 'id'>[] = [
   {
+    ref_number: '',
     client_name: 'Client A',
     process: 'Patent',
     application_number: 'US16/123,456',
@@ -155,6 +157,7 @@ let initialProjects: Omit<Project, 'id' | 'ref_number'>[] = [
     manager_name: 'Manager User'
   },
   {
+    ref_number: '',
     client_name: 'Client B',
     process: 'Patent',
     application_number: 'US16/234,567',
@@ -189,6 +192,7 @@ let initialProjects: Omit<Project, 'id' | 'ref_number'>[] = [
     manager_name: 'Manager User'
   },
   {
+    ref_number: '',
     client_name: 'Client C',
     process: 'TM',
     application_number: null,
@@ -223,6 +227,7 @@ let initialProjects: Omit<Project, 'id' | 'ref_number'>[] = [
     manager_name: 'Manager User'
   },
   {
+    ref_number: '',
     client_name: 'Client A',
     process: 'IDS',
     application_number: 'US16/123,456',
@@ -257,6 +262,7 @@ let initialProjects: Omit<Project, 'id' | 'ref_number'>[] = [
     manager_name: 'Manager User'
   },
   {
+    ref_number: '',
     client_name: 'Client B',
     process: 'Patent',
     application_number: null,
@@ -291,6 +297,7 @@ let initialProjects: Omit<Project, 'id' | 'ref_number'>[] = [
     manager_name: 'Manager User'
   },
   {
+    ref_number: '',
     client_name: 'Client C',
     process: 'Project',
     application_number: null,
@@ -325,6 +332,7 @@ let initialProjects: Omit<Project, 'id' | 'ref_number'>[] = [
     manager_name: 'Manager User'
   },
   {
+    ref_number: '',
     client_name: 'Client A',
     process: 'Patent',
     application_number: 'EP3456789',
@@ -359,6 +367,7 @@ let initialProjects: Omit<Project, 'id' | 'ref_number'>[] = [
     manager_name: 'Manager User'
   },
   {
+    ref_number: '',
     client_name: 'Client B',
     process: 'TM',
     application_number: 'UK000012345',
@@ -393,6 +402,7 @@ let initialProjects: Omit<Project, 'id' | 'ref_number'>[] = [
     manager_name: 'Manager User'
   },
   {
+    ref_number: '',
     client_name: 'Client C',
     process: 'Patent',
     application_number: 'IN202312345',
@@ -427,6 +437,7 @@ let initialProjects: Omit<Project, 'id' | 'ref_number'>[] = [
     manager_name: 'Manager User'
   },
   {
+    ref_number: '',
     client_name: 'Client A',
     process: 'IDS',
     application_number: 'US16/987,654',
@@ -461,6 +472,7 @@ let initialProjects: Omit<Project, 'id' | 'ref_number'>[] = [
     manager_name: 'Manager User'
   },
   {
+    ref_number: '',
     client_name: 'Client B',
     process: 'Patent',
     application_number: 'CA2987654',
@@ -495,6 +507,7 @@ let initialProjects: Omit<Project, 'id' | 'ref_number'>[] = [
     manager_name: 'Manager User'
   },
   {
+    ref_number: '',
     client_name: 'Client C',
     process: 'Project',
     application_number: null,
@@ -529,6 +542,7 @@ let initialProjects: Omit<Project, 'id' | 'ref_number'>[] = [
     manager_name: 'Manager User'
   },
   {
+    ref_number: '',
     client_name: 'Client A',
     process: 'TM',
     application_number: null,
@@ -563,6 +577,7 @@ let initialProjects: Omit<Project, 'id' | 'ref_number'>[] = [
     manager_name: 'Manager User'
   },
   {
+    ref_number: '',
     client_name: 'Client B',
     process: 'IDS',
     application_number: 'US16/234,567',
@@ -597,6 +612,7 @@ let initialProjects: Omit<Project, 'id' | 'ref_number'>[] = [
     manager_name: 'Manager User'
   },
   {
+    ref_number: '',
     client_name: 'Client C',
     process: 'Patent',
     application_number: 'IN202312345',
@@ -631,6 +647,7 @@ let initialProjects: Omit<Project, 'id' | 'ref_number'>[] = [
     manager_name: 'Manager User'
   },
   {
+    ref_number: '',
     client_name: 'Client A',
     process: 'Patent',
     application_number: 'US17/111,111',
@@ -665,6 +682,7 @@ let initialProjects: Omit<Project, 'id' | 'ref_number'>[] = [
     manager_name: 'Manager User',
   },
   {
+    ref_number: '',
     client_name: 'Client C',
     process: 'TM',
     application_number: null,
@@ -699,6 +717,7 @@ let initialProjects: Omit<Project, 'id' | 'ref_number'>[] = [
     manager_name: 'Manager User',
   },
   {
+    ref_number: '',
     client_name: 'Client B',
     process: 'Project',
     application_number: null,
@@ -733,6 +752,7 @@ let initialProjects: Omit<Project, 'id' | 'ref_number'>[] = [
     manager_name: 'Manager User',
   },
   {
+    ref_number: '',
     client_name: 'Client A',
     process: 'Patent',
     application_number: 'PCT/US2024/12345',
@@ -767,6 +787,7 @@ let initialProjects: Omit<Project, 'id' | 'ref_number'>[] = [
     manager_name: 'Manager User',
   },
   {
+    ref_number: '',
     client_name: 'Client C',
     process: 'IDS',
     application_number: 'IN202312345',
@@ -800,10 +821,186 @@ let initialProjects: Omit<Project, 'id' | 'ref_number'>[] = [
     reportout_date: null,
     manager_name: 'Manager User',
   },
+  {
+    ref_number: '',
+    client_name: 'Client A',
+    process: 'Patent',
+    application_number: 'US18/000,001',
+    patent_number: null,
+    received_date: '2024-06-01',
+    allocation_date: '2024-06-02',
+    processor: 'Alice',
+    qa: 'David',
+    case_manager: 'CM Alice',
+    workflowStatus: 'With Processor',
+    processing_status: 'Pending',
+    qa_status: 'Pending',
+    processing_date: null,
+    qa_date: null,
+    rework_reason: null,
+    subject_line: 'Project Dragonfly - New Invention',
+    client_comments: null,
+    clientquery_status: null,
+    entries: [],
+    sender: 'rndlead@clienta.com',
+    country: 'USA',
+    document_type: 'Invention Disclosure',
+    action_taken: 'Docketing',
+    renewal_agent: null,
+    client_query_description: null,
+    client_error_description: null,
+    qa_remark: null,
+    error: null,
+    email_renaming: null,
+    email_forwarded: null,
+
+    reportout_date: null,
+    manager_name: 'Manager User'
+  },
+  {
+    ref_number: '',
+    client_name: 'Client B',
+    process: 'TM',
+    application_number: 'EU018111222',
+    patent_number: null,
+    received_date: '2024-06-03',
+    allocation_date: '2024-06-04',
+    processor: 'Bob',
+    qa: 'Eve',
+    case_manager: 'CM Bob',
+    workflowStatus: 'With QA',
+    processing_status: 'Processed',
+    qa_status: 'Pending',
+    processing_date: '2024-06-07',
+    qa_date: null,
+    rework_reason: null,
+    subject_line: 'EU Trademark Opposition',
+    client_comments: null,
+    clientquery_status: null,
+    entries: [],
+    sender: 'eucounsel@clientb.com',
+    country: 'EU',
+    document_type: 'Opposition Notice',
+    action_taken: 'Reviewing',
+    renewal_agent: null,
+    client_query_description: null,
+    client_error_description: null,
+    qa_remark: null,
+    error: null,
+    email_renaming: 'REF022_EU_Opposition.eml',
+    email_forwarded: 'litigation@example.com',
+    reportout_date: null,
+    manager_name: 'Manager User'
+  },
+  {
+    ref_number: '',
+    client_name: 'Client C',
+    process: 'Patent',
+    application_number: 'JP2024-001234',
+    patent_number: null,
+    received_date: '2024-06-05',
+    allocation_date: '2024-06-06',
+    processor: 'Charlie',
+    qa: 'Anil',
+    case_manager: 'CM Alice',
+    workflowStatus: 'Completed',
+    processing_status: 'Processed',
+    qa_status: 'Complete',
+    processing_date: '2024-06-10',
+    qa_date: '2024-06-11',
+    rework_reason: null,
+    subject_line: 'Japanese Office Action Response Filed',
+    client_comments: 'Thank you for the quick turnaround.',
+    clientquery_status: 'Approved',
+    entries: [],
+    sender: 'jp_agent@clientc.com',
+    country: 'Japan',
+    document_type: 'Filing Confirmation',
+    action_taken: 'Noted',
+    renewal_agent: null,
+    client_query_description: null,
+    client_error_description: null,
+    qa_remark: 'Good work.',
+    error: null,
+    email_renaming: 'REF023_JP_Response.eml',
+    email_forwarded: null,
+    reportout_date: '2024-06-12',
+    manager_name: 'Manager User'
+  },
+  {
+    ref_number: '',
+    client_name: 'Client A',
+    process: 'IDS',
+    application_number: 'US17/111,111',
+    patent_number: null,
+    received_date: '2024-06-08',
+    allocation_date: '2024-06-09',
+    processor: 'Alice',
+    qa: 'Ankit',
+    case_manager: 'CM Bob',
+    workflowStatus: 'With Processor',
+    processing_status: 'Re-Work',
+    qa_status: 'Pending',
+    processing_date: null,
+    qa_date: null,
+    rework_reason: 'Missed a key reference from the list.',
+    subject_line: 'URGENT: Supplemental IDS for Wearable Tech',
+    client_comments: null,
+    clientquery_status: null,
+    entries: [],
+    sender: 'paralegal@clienta.com',
+    country: 'USA',
+    document_type: 'IDS Form',
+    action_taken: null,
+    renewal_agent: null,
+    client_query_description: null,
+    client_error_description: null,
+    qa_remark: null,
+    error: null,
+    email_renaming: null,
+    email_forwarded: null,
+    reportout_date: null,
+    manager_name: 'Manager User'
+  },
+  {
+    ref_number: '',
+    client_name: 'Client B',
+    process: 'Patent',
+    application_number: 'CA2987654',
+    patent_number: null,
+    received_date: '2024-06-11',
+    allocation_date: '2024-06-12',
+    processor: 'Bob',
+    qa: 'Rahul',
+    case_manager: 'CM Alice',
+    workflowStatus: 'With QA',
+    processing_status: 'Processed',
+    qa_status: 'Client Query',
+    processing_date: '2024-06-15',
+    qa_date: null,
+    rework_reason: null,
+    subject_line: 'Client Query on Canadian OA Response',
+    client_comments: null,
+    clientquery_status: null,
+    entries: [],
+    sender: 'foreignfiling@clientb.com',
+    country: 'Canada',
+    document_type: 'Client Email',
+    action_taken: 'Awaiting client response',
+    renewal_agent: null,
+    client_query_description: 'Client is asking about the potential cost implications of the proposed amendment.',
+    client_error_description: null,
+    qa_remark: 'Forwarded to Case Manager for client communication.',
+    error: null,
+    email_renaming: 'REF025_CA_Query.eml',
+    email_forwarded: 'cm.alice@example.com',
+    reportout_date: null,
+    manager_name: 'Manager User'
+  },
 ];
 
-export let projects: Project[] = initialProjects.map((p, index) => ({
+
+export let projects: Project[] = initialProjects.map((p) => ({
   ...p,
-  id: `${index + 1}`,
-  ref_number: generateAlphanumericId(),
+  id: generateAlphanumericId(),
 }));

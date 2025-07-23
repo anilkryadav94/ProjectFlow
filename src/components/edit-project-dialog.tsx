@@ -52,7 +52,7 @@ const projectEntrySchema = z.object({
 
 const formSchema = z.object({
   id: z.string(),
-  ref_number: z.string(),
+  ref_number: z.string().nullable(),
   client_name: z.string(),
   process: z.enum(["Patent", "TM", "IDS", "Project"]),
   subject_line: z.string(),
@@ -106,6 +106,7 @@ export function EditProjectDialog({
     if (project) {
        form.reset({
         ...project,
+        ref_number: project.ref_number ?? "",
         received_date: project.received_date,
         allocation_date: project.allocation_date,
         entries: project.entries ?? [],
@@ -198,7 +199,7 @@ export function EditProjectDialog({
               <DialogHeader>
                   <div className="flex justify-between items-center">
                     <div>
-                        <DialogTitle>Edit Project: {form.watch('ref_number')}</DialogTitle>
+                        <DialogTitle>Edit Project: {form.watch('id')}</DialogTitle>
                         <DialogDescription>Update details for {form.watch('subject_line')}</DialogDescription>
                     </div>
                   </div>
@@ -207,7 +208,7 @@ export function EditProjectDialog({
               <div className="flex-grow overflow-y-auto py-4 pr-2 grid grid-cols-1 md:grid-cols-2 gap-4">
                 {/* Column 1 */}
                 <div className="space-y-4">
-                    <FormField control={form.control} name="ref_number" render={({ field }) => (<FormItem><FormLabel>Ref Number</FormLabel><FormControl><Input {...field} disabled={!canEditMainFields} /></FormControl><FormMessage /></FormItem>)} />
+                    <FormField control={form.control} name="ref_number" render={({ field }) => (<FormItem><FormLabel>Ref Number (Manual)</FormLabel><FormControl><Input {...field} value={field.value ?? ""} disabled={!canEditMainFields} /></FormControl><FormMessage /></FormItem>)} />
                     <FormField control={form.control} name="client_name" render={({ field }) => (<FormItem><FormLabel>Client Name</FormLabel><Select onValueChange={field.onChange} value={field.value} disabled={!canEditMainFields}><FormControl><SelectTrigger><SelectValue /></SelectTrigger></FormControl><SelectContent>{clientNames.map(c => <SelectItem key={c} value={c}>{c}</SelectItem>)}</SelectContent></Select><FormMessage /></FormItem>)} />
                     <FormField control={form.control} name="process" render={({ field }) => (<FormItem><FormLabel>Process</FormLabel><Select onValueChange={field.onChange} value={field.value} disabled={!canEditMainFields}><FormControl><SelectTrigger><SelectValue /></SelectTrigger></FormControl><SelectContent>{processes.map(p => <SelectItem key={p} value={p}>{p}</SelectItem>)}</SelectContent></Select><FormMessage /></FormItem>)} />
                     <FormField control={form.control} name="subject_line" render={({ field }) => (<FormItem><FormLabel>Subject</FormLabel><FormControl><Textarea {...field} disabled={!canEditMainFields} /></FormControl><FormMessage /></FormItem>)} />

@@ -45,7 +45,7 @@ const projectEntrySchema = z.object({
 
 const updateProjectSchema = z.object({
   id: z.string(),
-  ref_number: z.string(),
+  ref_number: z.string().nullable(),
   client_name: z.string(),
   process: z.enum(["Patent", "TM", "IDS", "Project"]),
   subject_line: z.string(),
@@ -146,8 +146,8 @@ export async function addRows(
   for (let i = 0; i < count; i++) {
     const newProject: Project = {
         // Default values
-        id: `proj_${Date.now()}_${i}`,
-        ref_number: generateAlphanumericId(),
+        id: generateAlphanumericId(),
+        ref_number: '', // Manual entry
         application_number: null,
         patent_number: null,
         workflowStatus: 'With Processor',
