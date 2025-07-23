@@ -543,7 +543,6 @@ function Dashboard({
             isDownloadDisabled={dashboardProjects.length === 0}
             isManagerOrAdmin={isManagerOrAdmin}
             hasSearchResults={filteredProjects !== null}
-            onAmendSearch={handleResetAdvancedSearch}
             onResetSearch={handleResetAdvancedSearch}
             clientNameFilter={clientNameFilter}
             setClientNameFilter={setClientNameFilter}

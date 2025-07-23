@@ -60,7 +60,6 @@ interface HeaderProps {
     isDownloadDisabled?: boolean;
     isManagerOrAdmin: boolean;
     hasSearchResults?: boolean;
-    onAmendSearch?: () => void;
     onResetSearch?: () => void;
     
     clientNames: string[];
@@ -90,7 +89,6 @@ export function Header({
   isDownloadDisabled,
   isManagerOrAdmin,
   hasSearchResults,
-  onAmendSearch,
   onResetSearch,
   clientNames,
   processes,
@@ -164,11 +162,8 @@ export function Header({
 
         <div className="flex items-center gap-2 flex-shrink-0">
             
-            {isManagerOrAdmin && hasSearchResults && onAmendSearch && onResetSearch && (
+            {isManagerOrAdmin && hasSearchResults && onResetSearch && (
                 <div className="flex items-center gap-2">
-                    <Button variant="outline" size="sm" onClick={onAmendSearch} className="text-foreground">
-                        <Edit /> Amend Search
-                    </Button>
                      <Button variant="outline" size="sm" onClick={onResetSearch} className="text-foreground">
                         <RotateCcw /> Reset Search
                     </Button>
