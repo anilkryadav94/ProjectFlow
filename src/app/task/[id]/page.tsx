@@ -1,12 +1,12 @@
 
 import * as React from 'react';
-import { projects as mockProjects } from '@/lib/data';
+import { projects } from '@/lib/data';
 import { TaskPageClient } from '@/components/task-page-client';
 
 // This function is required for static export with dynamic routes.
 // It tells Next.js which pages to generate at build time.
 export async function generateStaticParams() {
-    return mockProjects.map((project) => ({
+    return projects.map((project) => ({
         id: project.id,
     }));
 }

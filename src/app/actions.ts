@@ -3,7 +3,7 @@
 
 import { revalidatePath } from 'next/cache'
 import { projects } from '@/lib/data'
-import type { Project } from '@/lib/data'
+import type { Project, Role } from '@/lib/data'
 
 type Action = 'save' | 'submit_for_qa' | 'submit_qa' | 'send_rework';
 
