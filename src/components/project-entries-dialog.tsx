@@ -1,4 +1,3 @@
-
 "use client";
 
 import * as React from "react";
@@ -31,7 +30,8 @@ export function ProjectEntriesDialog({
 
   React.useEffect(() => {
     if (isOpen) {
-      setLocalEntries(JSON.parse(JSON.stringify(entries))); // Deep copy to avoid mutating parent state directly
+      // Create a deep copy to avoid mutating parent state directly. Fallback to empty array if entries is null/undefined.
+      setLocalEntries(JSON.parse(JSON.stringify(entries || [])));
     }
   }, [isOpen, entries]);
 
