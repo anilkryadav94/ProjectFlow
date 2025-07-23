@@ -1,5 +1,4 @@
 
-
 "use client";
 
 import * as React from "react";
@@ -50,7 +49,8 @@ const projectEntrySchema = z.object({
     notes: z.string().nullable(),
 });
 
-const formSchema = z.object({
+// Default schema for Admin/Manager
+const fullFormSchema = z.object({
   id: z.string(),
   ref_number: z.string().nullable(),
   client_name: z.string(),
@@ -69,9 +69,44 @@ const formSchema = z.object({
   client_comments: z.string().nullable(),
   clientquery_status: z.enum(["Approved", "Clarification Required"]).nullable(),
   entries: z.array(projectEntrySchema).optional(),
+   // Adding all new fields to be safe
+  sender: z.string().nullable(),
+  country: z.string().nullable(),
+  document_type: z.string().nullable(),
+  action_taken: z.string().nullable(),
+  renewal_agent: z.string().nullable(),
+  client_query_description: z.string().nullable(),
+  client_error_description: z.string().nullable(),
+  qa_remark: z.string().nullable(),
+  error: z.string().nullable(),
+  email_renaming: z.string().nullable(),
+  email_forwarded: z.string().nullable(),
+  reportout_date: z.string().nullable(),
+  manager_name: z.string().nullable(),
 });
 
-type EditProjectFormValues = z.infer<typeof formSchema>;
+
+// Stricter schema for Processors
+const processorFormSchema = fullFormSchema.extend({
+  ref_number: z.string().min(1, "Ref Number is required."),
+  application_number: z.string().min(1, "Application Number is required."),
+  patent_number: z.string().min(1, "Patent Number is required."),
+  email_renaming: z.string().min(1, "Email Renaming is required."),
+  processing_status: z.enum(["Processed", "NTP", "Client Query", "Already Processed"], { errorMap: () => ({ message: "Processing status is required."}) }),
+  subject_line: z.string().min(1, "Subject is required."),
+  sender: z.string().min(1, "Sender is required."),
+  received_date: z.string().min(1, "Email Date is required."),
+  case_manager: z.string().min(1, "Case Manager is required."),
+  country: z.string().min(1, "Country is required."),
+  document_type: z.string().min(1, "Document Type is required."),
+  action_taken: z.string().min(1, "Action Taken is required."),
+  renewal_agent: z.string().min(1, "Renewal Agent is required."),
+  client_query_description: z.string().min(1, "Client Query Description is required."),
+  rework_reason: z.string().nullable(), // Not always required
+});
+
+
+type EditProjectFormValues = z.infer<typeof fullFormSchema>;
 
 interface EditProjectDialogProps {
   isOpen: boolean;
@@ -96,9 +131,11 @@ export function EditProjectDialog({
   const [submitAction, setSubmitAction] = React.useState<'save' | 'submit_for_qa' | 'submit_qa' | 'send_rework' | 'client_submit' | null>(null);
   
   const { toast } = useToast();
+  
+  const isProcessorView = userRole === 'Processor' && project.workflowStatus === 'With Processor';
 
   const form = useForm<EditProjectFormValues>({
-    resolver: zodResolver(formSchema),
+    resolver: zodResolver(isProcessorView ? processorFormSchema : fullFormSchema),
     defaultValues: project,
   });
 
@@ -183,12 +220,68 @@ export function EditProjectDialog({
     })();
   }
   
-  const isProcessorView = userRole === 'Processor' && project.workflowStatus === 'With Processor';
   const isQaView = userRole === 'QA' && project.workflowStatus === 'With QA';
   const isCaseManagerView = userRole === 'Case Manager';
   const isManagerOrAdmin = userRole === 'Manager' || userRole === 'Admin';
   const canEditMainFields = isManagerOrAdmin;
-  const canEditStatusFields = isProcessorView || isQaView || isManagerOrAdmin;
+
+  const renderProcessorForm = () => (
+    <>
+      <div className="space-y-4">
+        <FormField control={form.control} name="ref_number" render={({ field }) => (<FormItem><FormLabel>Ref Number (Manual)</FormLabel><FormControl><Input {...field} value={field.value ?? ""} /></FormControl><FormMessage /></FormItem>)} />
+        <FormField control={form.control} name="application_number" render={({ field }) => (<FormItem><FormLabel>Application No.</FormLabel><FormControl><Input {...field} value={field.value ?? ""} /></FormControl><FormMessage /></FormItem>)} />
+        <FormField control={form.control} name="patent_number" render={({ field }) => (<FormItem><FormLabel>Patent No.</FormLabel><FormControl><Input {...field} value={field.value ?? ""} /></FormControl><FormMessage /></FormItem>)} />
+        <FormField control={form.control} name="email_renaming" render={({ field }) => (<FormItem><FormLabel>Email Renaming</FormLabel><FormControl><Input {...field} value={field.value ?? ""} /></FormControl><FormMessage /></FormItem>)} />
+        <FormField control={form.control} name="processing_status" render={({ field }) => (<FormItem><FormLabel>Processor Status</FormLabel><Select onValueChange={field.onChange} value={field.value}><FormControl><SelectTrigger><SelectValue /></SelectTrigger></FormControl><SelectContent>{processorSubmissionStatuses.map(s => <SelectItem key={s} value={s}>{s}</SelectItem>)}</SelectContent></Select><FormMessage /></FormItem>)} />
+        <FormField control={form.control} name="subject_line" render={({ field }) => (<FormItem><FormLabel>Subject</FormLabel><FormControl><Textarea {...field} /></FormControl><FormMessage /></FormItem>)} />
+        {project.rework_reason && (<FormItem><FormLabel>Reason for Rework</FormLabel><Textarea value={project.rework_reason} readOnly className="h-24 bg-destructive/10 border-destructive" /></FormItem>)}
+      </div>
+      <div className="space-y-4">
+        <FormField control={form.control} name="sender" render={({ field }) => (<FormItem><FormLabel>Sender</FormLabel><FormControl><Input {...field} value={field.value ?? ""} /></FormControl><FormMessage /></FormItem>)} />
+        <FormField control={form.control} name="received_date" render={({ field }) => (<FormItem className="flex flex-col"><FormLabel>Email Date</FormLabel><Popover><PopoverTrigger asChild><FormControl><Button variant="outline" className={cn("font-normal w-full justify-start", !field.value && "text-muted-foreground")}><CalendarIcon className="mr-2 h-4 w-4" />{field.value ? format(new Date(field.value.replaceAll('-', '/')), "PPP") : <span>Pick a date</span>}</Button></FormControl></PopoverTrigger><PopoverContent className="w-auto p-0"><Calendar mode="single" selected={field.value ? new Date(field.value.replaceAll('-', '/')) : undefined} onSelect={(date) => field.onChange(date ? format(date, 'yyyy-MM-dd') : '')} /></PopoverContent></Popover><FormMessage /></FormItem>)} />
+        <FormField control={form.control} name="case_manager" render={({ field }) => (<FormItem><FormLabel>Case Manager</FormLabel><Select onValueChange={field.onChange} defaultValue={field.value}><FormControl><SelectTrigger><SelectValue /></SelectTrigger></FormControl><SelectContent>{caseManagers.map(c => <SelectItem key={c} value={c}>{c}</SelectItem>)}</SelectContent></Select><FormMessage /></FormItem>)} />
+        <FormField control={form.control} name="country" render={({ field }) => (<FormItem><FormLabel>Country</FormLabel><FormControl><Input {...field} value={field.value ?? ""} /></FormControl><FormMessage /></FormItem>)} />
+        <FormField control={form.control} name="document_type" render={({ field }) => (<FormItem><FormLabel>Document Type</FormLabel><FormControl><Input {...field} value={field.value ?? ""} /></FormControl><FormMessage /></FormItem>)} />
+        <FormField control={form.control} name="action_taken" render={({ field }) => (<FormItem><FormLabel>Action Taken</FormLabel><FormControl><Input {...field} value={field.value ?? ""} /></FormControl><FormMessage /></FormItem>)} />
+        <FormField control={form.control} name="renewal_agent" render={({ field }) => (<FormItem><FormLabel>Renewal Agent</FormLabel><FormControl><Input {...field} value={field.value ?? ""} /></FormControl><FormMessage /></FormItem>)} />
+        <FormField control={form.control} name="client_query_description" render={({ field }) => (<FormItem><FormLabel>Client Query Description</FormLabel><FormControl><Textarea {...field} value={field.value ?? ""} /></FormControl><FormMessage /></FormItem>)} />
+      </div>
+    </>
+  );
+
+  const renderFullForm = () => (
+     <>
+        {/* Column 1 */}
+        <div className="space-y-4">
+            <FormField control={form.control} name="ref_number" render={({ field }) => (<FormItem><FormLabel>Ref Number (Manual)</FormLabel><FormControl><Input {...field} value={field.value ?? ""} disabled={!canEditMainFields} /></FormControl><FormMessage /></FormItem>)} />
+            <FormField control={form.control} name="client_name" render={({ field }) => (<FormItem><FormLabel>Client Name</FormLabel><Select onValueChange={field.onChange} value={field.value} disabled={!canEditMainFields}><FormControl><SelectTrigger><SelectValue /></SelectTrigger></FormControl><SelectContent>{clientNames.map(c => <SelectItem key={c} value={c}>{c}</SelectItem>)}</SelectContent></Select><FormMessage /></FormItem>)} />
+            <FormField control={form.control} name="process" render={({ field }) => (<FormItem><FormLabel>Process</FormLabel><Select onValueChange={field.onChange} value={field.value} disabled={!canEditMainFields}><FormControl><SelectTrigger><SelectValue /></SelectTrigger></FormControl><SelectContent>{processes.map(p => <SelectItem key={p} value={p}>{p}</SelectItem>)}</SelectContent></Select><FormMessage /></FormItem>)} />
+            <FormField control={form.control} name="subject_line" render={({ field }) => (<FormItem><FormLabel>Subject</FormLabel><FormControl><Textarea {...field} disabled={!canEditMainFields} /></FormControl><FormMessage /></FormItem>)} />
+            <FormField control={form.control} name="application_number" render={({ field }) => (<FormItem><FormLabel>Application No.</FormLabel><FormControl><Input {...field} value={field.value ?? ""} disabled={!canEditMainFields} /></FormControl><FormMessage /></FormItem>)} />
+            <FormField control={form.control} name="patent_number" render={({ field }) => (<FormItem><FormLabel>Patent No.</FormLabel><FormControl><Input {...field} value={field.value ?? ""} disabled={!canEditMainFields} /></FormControl><FormMessage /></FormItem>)} />
+            
+            {isCaseManagerView && (
+                <>
+                <FormField control={form.control} name="clientquery_status" render={({ field }) => (<FormItem><FormLabel>Client Status</FormLabel><Select onValueChange={v => field.onChange(v as ClientStatus)} value={field.value ?? ""} disabled={!isCaseManagerView}><FormControl><SelectTrigger><SelectValue placeholder="Select a status" /></SelectTrigger></FormControl><SelectContent>{clientStatuses.map(s => <SelectItem key={s} value={s}>{s}</SelectItem>)}</SelectContent></Select><FormMessage /></FormItem>)} />
+                <FormField control={form.control} name="client_comments" render={({ field }) => (<FormItem><FormLabel>Client Comments</FormLabel><FormControl><Textarea {...field} value={field.value ?? ""} disabled={!isCaseManagerView} className="h-24" /></FormControl><FormMessage /></FormItem>)} />
+                </>
+            )}
+        </div>
+        {/* Column 2 */}
+        <div className="space-y-4">
+              <FormField control={form.control} name="received_date" render={({ field }) => (<FormItem className="flex flex-col"><FormLabel>Email Date</FormLabel><Popover><PopoverTrigger asChild><FormControl><Button variant="outline" className={cn("font-normal w-full justify-start", !field.value && "text-muted-foreground")} disabled={!canEditMainFields}><CalendarIcon className="mr-2 h-4 w-4" />{field.value ? format(new Date(field.value.replaceAll('-', '/')), "PPP") : <span>Pick a date</span>}</Button></FormControl></PopoverTrigger><PopoverContent className="w-auto p-0"><Calendar mode="single" selected={field.value ? new Date(field.value.replaceAll('-', '/')) : undefined} onSelect={(date) => field.onChange(date ? format(date, 'yyyy-MM-dd') : '')} /></PopoverContent></Popover><FormMessage /></FormItem>)} />
+            <FormField control={form.control} name="allocation_date" render={({ field }) => (<FormItem className="flex flex-col"><FormLabel>Allocation Date</FormLabel><Popover><PopoverTrigger asChild><FormControl><Button variant="outline" className={cn("font-normal w-full justify-start", !field.value && "text-muted-foreground")} disabled={!canEditMainFields}><CalendarIcon className="mr-2 h-4 w-4" />{field.value ? format(new Date(field.value.replaceAll('-', '/')), "PPP") : <span>Pick a date</span>}</Button></FormControl></PopoverTrigger><PopoverContent className="w-auto p-0"><Calendar mode="single" selected={field.value ? new Date(field.value.replaceAll('-', '/')) : undefined} onSelect={(date) => field.onChange(date ? format(date, 'yyyy-MM-dd') : '')} /></PopoverContent></Popover><FormMessage /></FormItem>)} />
+            <FormField control={form.control} name="processor" render={({ field }) => (<FormItem><FormLabel>Processor</FormLabel><Select onValueChange={field.onChange} value={field.value} disabled={!canEditMainFields}><FormControl><SelectTrigger><SelectValue /></SelectTrigger></FormControl><SelectContent>{processors.map(p => <SelectItem key={p} value={p}>{p}</SelectItem>)}</SelectContent></Select><FormMessage /></FormItem>)} />
+            <FormField control={form.control} name="qa" render={({ field }) => (<FormItem><FormLabel>QA</FormLabel><Select onValueChange={field.onChange} value={field.value} disabled={!canEditMainFields}><FormControl><SelectTrigger><SelectValue /></SelectTrigger></FormControl><SelectContent>{qas.map(q => <SelectItem key={q} value={q}>{q}</SelectItem>)}</SelectContent></Select><FormMessage /></FormItem>)} />
+            <FormField control={form.control} name="case_manager" render={({ field }) => (<FormItem><FormLabel>Case Manager</FormLabel><Select onValueChange={field.onChange} value={field.value} disabled={!canEditMainFields}><FormControl><SelectTrigger><SelectValue /></SelectTrigger></FormControl><SelectContent>{caseManagers.map(c => <SelectItem key={c} value={c}>{c}</SelectItem>)}</SelectContent></Select><FormMessage /></FormItem>)} />
+
+            {(isProcessorView || isManagerOrAdmin || (project.workflowStatus !== 'With Processor' && !isCaseManagerView) ) && <FormField control={form.control} name="processing_status" render={({ field }) => (<FormItem><FormLabel>Processor Status</FormLabel><Select onValueChange={field.onChange} value={field.value} disabled={!isProcessorView && !isManagerOrAdmin}><FormControl><SelectTrigger><SelectValue /></SelectTrigger></FormControl><SelectContent>{(isProcessorView || isManagerOrAdmin ? processorSubmissionStatuses : processorStatuses).map(s => <SelectItem key={s} value={s}>{s}</SelectItem>)}</SelectContent></Select><FormMessage /></FormItem>)} />}
+            {(isQaView || isManagerOrAdmin || (project.workflowStatus !== 'With QA' && !isCaseManagerView)) && <FormField control={form.control} name="qa_status" render={({ field }) => (<FormItem><FormLabel>QA Status</FormLabel><Select onValueChange={field.onChange} value={field.value} disabled={!isQaView && !isManagerOrAdmin}><FormControl><SelectTrigger><SelectValue /></SelectTrigger></FormControl><SelectContent>{(isQaView || isManagerOrAdmin ? qaSubmissionStatuses : qaStatuses).map(s => <SelectItem key={s} value={s}>{s}</SelectItem>)}</SelectContent></Select><FormMessage /></FormItem>)} />}
+            {project.rework_reason && !isQaView && !isCaseManagerView && (<FormItem><FormLabel>Rework Reason</FormLabel><Textarea value={project.rework_reason} readOnly className="h-24 bg-destructive/10 border-destructive" /></FormItem>)}
+            {isQaView && (<FormField control={form.control} name="rework_reason" render={({ field }) => (<FormItem className="md:col-span-2"><FormLabel>Rework Reason (if sending back)</FormLabel><FormControl><Textarea {...field} value={field.value ?? ""} disabled={!isQaView} /></FormControl><FormMessage /></FormItem>)} />)}
+          </div>
+     </>
+  );
 
   return (
     <>
@@ -206,35 +299,7 @@ export function EditProjectDialog({
               </DialogHeader>
 
               <div className="flex-grow overflow-y-auto py-4 pr-2 grid grid-cols-1 md:grid-cols-2 gap-4">
-                {/* Column 1 */}
-                <div className="space-y-4">
-                    <FormField control={form.control} name="ref_number" render={({ field }) => (<FormItem><FormLabel>Ref Number (Manual)</FormLabel><FormControl><Input {...field} value={field.value ?? ""} disabled={!canEditMainFields} /></FormControl><FormMessage /></FormItem>)} />
-                    <FormField control={form.control} name="client_name" render={({ field }) => (<FormItem><FormLabel>Client Name</FormLabel><Select onValueChange={field.onChange} value={field.value} disabled={!canEditMainFields}><FormControl><SelectTrigger><SelectValue /></SelectTrigger></FormControl><SelectContent>{clientNames.map(c => <SelectItem key={c} value={c}>{c}</SelectItem>)}</SelectContent></Select><FormMessage /></FormItem>)} />
-                    <FormField control={form.control} name="process" render={({ field }) => (<FormItem><FormLabel>Process</FormLabel><Select onValueChange={field.onChange} value={field.value} disabled={!canEditMainFields}><FormControl><SelectTrigger><SelectValue /></SelectTrigger></FormControl><SelectContent>{processes.map(p => <SelectItem key={p} value={p}>{p}</SelectItem>)}</SelectContent></Select><FormMessage /></FormItem>)} />
-                    <FormField control={form.control} name="subject_line" render={({ field }) => (<FormItem><FormLabel>Subject</FormLabel><FormControl><Textarea {...field} disabled={!canEditMainFields} /></FormControl><FormMessage /></FormItem>)} />
-                    <FormField control={form.control} name="application_number" render={({ field }) => (<FormItem><FormLabel>Application No.</FormLabel><FormControl><Input {...field} value={field.value ?? ""} disabled={!canEditMainFields} /></FormControl><FormMessage /></FormItem>)} />
-                    <FormField control={form.control} name="patent_number" render={({ field }) => (<FormItem><FormLabel>Patent No.</FormLabel><FormControl><Input {...field} value={field.value ?? ""} disabled={!canEditMainFields} /></FormControl><FormMessage /></FormItem>)} />
-                    
-                    {isCaseManagerView && (
-                       <>
-                        <FormField control={form.control} name="clientquery_status" render={({ field }) => (<FormItem><FormLabel>Client Status</FormLabel><Select onValueChange={v => field.onChange(v as ClientStatus)} value={field.value ?? ""} disabled={!isCaseManagerView}><FormControl><SelectTrigger><SelectValue placeholder="Select a status" /></SelectTrigger></FormControl><SelectContent>{clientStatuses.map(s => <SelectItem key={s} value={s}>{s}</SelectItem>)}</SelectContent></Select><FormMessage /></FormItem>)} />
-                        <FormField control={form.control} name="client_comments" render={({ field }) => (<FormItem><FormLabel>Client Comments</FormLabel><FormControl><Textarea {...field} value={field.value ?? ""} disabled={!isCaseManagerView} className="h-24" /></FormControl><FormMessage /></FormItem>)} />
-                       </>
-                    )}
-                </div>
-                {/* Column 2 */}
-                <div className="space-y-4">
-                     <FormField control={form.control} name="received_date" render={({ field }) => (<FormItem className="flex flex-col"><FormLabel>Email Date</FormLabel><Popover><PopoverTrigger asChild><FormControl><Button variant="outline" className={cn("font-normal w-full justify-start", !field.value && "text-muted-foreground")} disabled={!canEditMainFields}><CalendarIcon className="mr-2 h-4 w-4" />{field.value ? format(new Date(field.value.replaceAll('-', '/')), "PPP") : <span>Pick a date</span>}</Button></FormControl></PopoverTrigger><PopoverContent className="w-auto p-0"><Calendar mode="single" selected={field.value ? new Date(field.value.replaceAll('-', '/')) : undefined} onSelect={(date) => field.onChange(date ? format(date, 'yyyy-MM-dd') : '')} /></PopoverContent></Popover><FormMessage /></FormItem>)} />
-                    <FormField control={form.control} name="allocation_date" render={({ field }) => (<FormItem className="flex flex-col"><FormLabel>Allocation Date</FormLabel><Popover><PopoverTrigger asChild><FormControl><Button variant="outline" className={cn("font-normal w-full justify-start", !field.value && "text-muted-foreground")} disabled={!canEditMainFields}><CalendarIcon className="mr-2 h-4 w-4" />{field.value ? format(new Date(field.value.replaceAll('-', '/')), "PPP") : <span>Pick a date</span>}</Button></FormControl></PopoverTrigger><PopoverContent className="w-auto p-0"><Calendar mode="single" selected={field.value ? new Date(field.value.replaceAll('-', '/')) : undefined} onSelect={(date) => field.onChange(date ? format(date, 'yyyy-MM-dd') : '')} /></PopoverContent></Popover><FormMessage /></FormItem>)} />
-                    <FormField control={form.control} name="processor" render={({ field }) => (<FormItem><FormLabel>Processor</FormLabel><Select onValueChange={field.onChange} value={field.value} disabled={!canEditMainFields}><FormControl><SelectTrigger><SelectValue /></SelectTrigger></FormControl><SelectContent>{processors.map(p => <SelectItem key={p} value={p}>{p}</SelectItem>)}</SelectContent></Select><FormMessage /></FormItem>)} />
-                    <FormField control={form.control} name="qa" render={({ field }) => (<FormItem><FormLabel>QA</FormLabel><Select onValueChange={field.onChange} value={field.value} disabled={!canEditMainFields}><FormControl><SelectTrigger><SelectValue /></SelectTrigger></FormControl><SelectContent>{qas.map(q => <SelectItem key={q} value={q}>{q}</SelectItem>)}</SelectContent></Select><FormMessage /></FormItem>)} />
-                    <FormField control={form.control} name="case_manager" render={({ field }) => (<FormItem><FormLabel>Case Manager</FormLabel><Select onValueChange={field.onChange} value={field.value} disabled={!canEditMainFields}><FormControl><SelectTrigger><SelectValue /></SelectTrigger></FormControl><SelectContent>{caseManagers.map(c => <SelectItem key={c} value={c}>{c}</SelectItem>)}</SelectContent></Select><FormMessage /></FormItem>)} />
-
-                    {(isProcessorView || isManagerOrAdmin || (project.workflowStatus !== 'With Processor' && !isCaseManagerView) ) && <FormField control={form.control} name="processing_status" render={({ field }) => (<FormItem><FormLabel>Processor Status</FormLabel><Select onValueChange={field.onChange} value={field.value} disabled={!isProcessorView && !isManagerOrAdmin}><FormControl><SelectTrigger><SelectValue /></SelectTrigger></FormControl><SelectContent>{(isProcessorView || isManagerOrAdmin ? processorSubmissionStatuses : processorStatuses).map(s => <SelectItem key={s} value={s}>{s}</SelectItem>)}</SelectContent></Select><FormMessage /></FormItem>)} />}
-                    {(isQaView || isManagerOrAdmin || (project.workflowStatus !== 'With QA' && !isCaseManagerView)) && <FormField control={form.control} name="qa_status" render={({ field }) => (<FormItem><FormLabel>QA Status</FormLabel><Select onValueChange={field.onChange} value={field.value} disabled={!isQaView && !isManagerOrAdmin}><FormControl><SelectTrigger><SelectValue /></SelectTrigger></FormControl><SelectContent>{(isQaView || isManagerOrAdmin ? qaSubmissionStatuses : qaStatuses).map(s => <SelectItem key={s} value={s}>{s}</SelectItem>)}</SelectContent></Select><FormMessage /></FormItem>)} />}
-                    {project.rework_reason && !isQaView && !isCaseManagerView && (<FormItem><FormLabel>Rework Reason</FormLabel><Textarea value={project.rework_reason} readOnly className="h-24 bg-destructive/10 border-destructive" /></FormItem>)}
-                    {isQaView && (<FormField control={form.control} name="rework_reason" render={({ field }) => (<FormItem className="md:col-span-2"><FormLabel>Rework Reason (if sending back)</FormLabel><FormControl><Textarea {...field} value={field.value ?? ""} disabled={!isQaView} /></FormControl><FormMessage /></FormItem>)} />)}
-                 </div>
+                 {isProcessorView ? renderProcessorForm() : renderFullForm()}
               </div>
 
               <DialogFooter className="pt-4 border-t mt-auto">
