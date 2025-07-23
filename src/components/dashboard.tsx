@@ -173,7 +173,7 @@ function Dashboard({
   const [managerSearch, setManagerSearch] = React.useState('');
   const [managerSearchColumn, setManagerSearchColumn] = React.useState<SearchableColumn>('any');
 
-  const [sort, setSort] = React.useState<{ key: keyof Project; direction: 'asc' | 'desc' } | null>({ key: 'allocation_date', direction: 'desc' });
+  const [sort, setSort] = React.useState<{ key: keyof Project; direction: 'asc' | 'desc' } | null>({ key: 'id', direction: 'asc' });
   
   const [rowSelection, setRowSelection] = React.useState<Record<string, boolean>>({});
   const [bulkUpdateField, setBulkUpdateField] = React.useState<(typeof bulkUpdateFields)[number]['value']>('processor');
@@ -690,3 +690,5 @@ function Dashboard({
 }
 
 export default Dashboard;
+
+    
