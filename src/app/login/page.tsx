@@ -1,24 +1,19 @@
 
-// app/login/page.tsx
 "use client";
 
-import { LoginForm } from "@/components/login-form";
-import { useRouter } from "next/navigation";
 import * as React from 'react';
+import { Loader2 } from 'lucide-react';
+import dynamic from 'next/dynamic';
+
+const LoginPageClient = dynamic(() => import('@/components/login-page-client').then(mod => mod.LoginPageClient), {
+  ssr: false,
+  loading: () => (
+    <div className="flex items-center justify-center min-h-screen bg-background">
+      <Loader2 className="h-8 w-8 animate-spin" />
+    </div>
+  ),
+});
 
 export default function LoginPage() {
-  const router = useRouter();
-
-  React.useEffect(() => {
-    // In a fully mocked app, we often redirect away from login since it's not needed.
-    // Uncomment the line below to automatically redirect to the dashboard.
-    // router.push('/');
-  }, [router]);
-
-  // The login form can remain for UI testing, but it will use the mocked auth functions.
-  return (
-    <div className="flex items-center justify-center min-h-screen bg-background">
-      <LoginForm />
-    </div>
-  );
+  return <LoginPageClient />;
 }
