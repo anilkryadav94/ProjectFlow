@@ -37,6 +37,7 @@ export function TaskPageClient({ params }: { params: { id: string }}) {
         activeRole: Role;
     } | null>(null);
     const [loading, setLoading] = React.useState(true);
+    const [error, setError] = React.useState<string | null>(null);
 
     const id = params.id;
     const urlRole = searchParams.get('role') as Role | null;
@@ -71,10 +72,15 @@ export function TaskPageClient({ params }: { params: { id: string }}) {
                     }
 
                     const project = mockProjects.find(p => p.id === id);
-                    if (project) {
+                    const projectInQueue = userProjectList.find(p => p.id === id);
+                    const isManagerOrAdmin = activeRole === 'Manager' || activeRole === 'Admin';
+                    
+                    if (project && (projectInQueue || isManagerOrAdmin)) {
                         setProjectData({ project, userProjectList, activeRole });
+                    } else if (project) {
+                        setError(`Project not found in your current "${activeRole}" queue.`);
                     } else {
-                        setProjectData(null); 
+                        setError("Project not found or you do not have access.");
                     }
                 } else {
                     setSession(null);
@@ -97,46 +103,30 @@ export function TaskPageClient({ params }: { params: { id: string }}) {
             </div>
         );
     }
-
-    if (!session || !projectData) {
+    
+    const activeRole = projectData?.activeRole || urlRole || session?.user?.roles[0] || 'Processor';
+    const isManagerOrAdmin = activeRole === 'Manager' || activeRole === 'Admin';
+    
+    if (!session || !projectData || error) {
         return (
              <div className="flex flex-col h-screen bg-background w-full">
                 <Header 
                     user={session?.user || {id: '', email: '', name: 'Guest', roles: []}}
-                    activeRole={searchParams.get('role') as Role || 'Processor'}
-                    isManagerOrAdmin={false}
+                    activeRole={activeRole}
+                    isManagerOrAdmin={isManagerOrAdmin}
                     clientNames={clientNames}
                     processes={processes}
                 />
                 <main className="flex-1 h-full overflow-y-auto p-4 md:p-6 flex items-center justify-center">
-                    <p>Project not found or you do not have access.</p>
+                    <p>{error || "Project not found or you do not have access."}</p>
                 </main>
             </div>
         );
     }
     
-    const { project, userProjectList, activeRole } = projectData;
+    const { project, userProjectList } = projectData;
 
     const currentProjectIndex = userProjectList.findIndex(p => p.id === project.id);
-    const isManagerOrAdmin = activeRole === 'Manager' || activeRole === 'Admin';
-    
-    // This check is now more robust.
-    if (currentProjectIndex === -1 && !isManagerOrAdmin) {
-       return (
-          <div className="flex flex-col h-screen bg-background w-full">
-              <Header 
-                  user={session.user}
-                  activeRole={activeRole}
-                  isManagerOrAdmin={isManagerOrAdmin}
-                  clientNames={clientNames}
-                  processes={processes}
-              />
-              <main className="flex-1 h-full overflow-y-auto p-4 md:p-6 flex items-center justify-center">
-                  <p>Project not found in your current "{activeRole}" queue.</p>
-              </main>
-          </div>
-      );
-    }
   
     const nextProjectId = currentProjectIndex !== -1 && currentProjectIndex < userProjectList.length - 1 ? userProjectList[currentProjectIndex + 1].id : null;
     const prevProjectId = currentProjectIndex > 0 ? userProjectList[currentProjectIndex - 1].id : null;
