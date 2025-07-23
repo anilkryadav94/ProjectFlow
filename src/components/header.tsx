@@ -3,7 +3,7 @@
 "use client"
 
 import * as React from "react"
-import { LogOut, Settings, FileSpreadsheet, Workflow, Edit, RotateCcw, ChevronLeft, ChevronRight } from "lucide-react"
+import { LogOut, Settings, FileSpreadsheet, Workflow, Edit, RotateCcw, ChevronLeft, ChevronRight, Search } from "lucide-react"
 import type { Role, User, ProcessType } from "@/lib/data"
 import { roleHierarchy } from "@/lib/data"
 import { Button } from "@/components/ui/button"
@@ -39,20 +39,31 @@ interface HeaderProps {
     user: User;
     activeRole: Role;
     setActiveRole?: (role: Role) => void;
+    
+    // For non-manager roles
     search?: string;
     setSearch?: (search: string) => void;
     searchColumn?: SearchableColumn;
     setSearchColumn?: (column: SearchableColumn) => void;
+    clientNameFilter?: string;
+    setClientNameFilter?: (value: string) => void;
+    processFilter?: string | 'all';
+    setProcessFilter?: (value: string | 'all') => void;
+
+    // For manager roles
+    managerSearch?: string;
+    setManagerSearch?: (search: string) => void;
+    managerSearchColumn?: SearchableColumn;
+    setManagerSearchColumn?: (column: SearchableColumn) => void;
+    handleManagerQuickSearch?: () => void;
+
     handleDownload?: () => void;
     isDownloadDisabled?: boolean;
     isManagerOrAdmin: boolean;
     hasSearchResults?: boolean;
     onAmendSearch?: () => void;
     onResetSearch?: () => void;
-    clientNameFilter?: string;
-    setClientNameFilter?: (value: string) => void;
-    processFilter?: string | 'all';
-    setProcessFilter?: (value: string | 'all') => void;
+    
     clientNames: string[];
     processes: ProcessType[];
     children?: React.ReactNode;
@@ -67,16 +78,21 @@ export function Header({
   setSearch,
   searchColumn,
   setSearchColumn,
+  clientNameFilter,
+  setClientNameFilter,
+  processFilter,
+  setProcessFilter,
+  managerSearch,
+  setManagerSearch,
+  managerSearchColumn,
+  setManagerSearchColumn,
+  handleManagerQuickSearch,
   handleDownload,
   isDownloadDisabled,
   isManagerOrAdmin,
   hasSearchResults,
   onAmendSearch,
   onResetSearch,
-  clientNameFilter,
-  setClientNameFilter,
-  processFilter,
-  setProcessFilter,
   clientNames,
   processes,
   children,
@@ -215,6 +231,36 @@ export function Header({
                   </>
                 )}
               </div>
+            )}
+
+            {isManagerOrAdmin && !hasSearchResults && setManagerSearch && setManagerSearchColumn && handleManagerQuickSearch && (
+                 <div className="flex items-center space-x-0">
+                    <Select value={managerSearchColumn} onValueChange={(v) => setManagerSearchColumn(v as SearchableColumn)}>
+                        <SelectTrigger className="w-[180px] rounded-r-none focus:ring-0 text-foreground h-9">
+                            <SelectValue placeholder="Select column" />
+                        </SelectTrigger>
+                        <SelectContent>
+                            <SelectItem value="any">Any Text/Number</SelectItem>
+                            <SelectItem value="refNumber">Ref Number</SelectItem>
+                            <SelectItem value="applicationNumber">Application No.</SelectItem>
+                            <SelectItem value="patentNumber">Patent No.</SelectItem>
+                            <SelectItem value="subject">Subject</SelectItem>
+                            <SelectItem value="processorStatus">Processor Status</SelectItem>
+                            <SelectItem value="qaStatus">QA Status</SelectItem>
+                            <SelectItem value="workflowStatus">Workflow Status</SelectItem>
+                        </SelectContent>
+                    </Select>
+                    <Input
+                        type="text"
+                        placeholder="Manager quick search..."
+                        value={managerSearch}
+                        onChange={(e) => setManagerSearch(e.target.value)}
+                        className="rounded-l-none focus-visible:ring-0 h-9 w-48 text-foreground"
+                    />
+                     <Button variant="outline" size="icon" onClick={handleManagerQuickSearch} className="h-9 w-9 rounded-l-none border-l-0 text-foreground">
+                        <Search className="h-4 w-4" />
+                    </Button>
+                </div>
             )}
 
             {taskPagination && (

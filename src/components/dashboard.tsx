@@ -165,8 +165,14 @@ function Dashboard({
 
   const [activeRole, setActiveRole] = React.useState<Role | null>(null);
   const [projects, setProjects] = React.useState<Project[]>(initialProjects);
+  // State for non-manager quick search
   const [search, setSearch] = React.useState('');
   const [searchColumn, setSearchColumn] = React.useState<SearchableColumn>('any');
+  
+  // State for manager quick search
+  const [managerSearch, setManagerSearch] = React.useState('');
+  const [managerSearchColumn, setManagerSearchColumn] = React.useState<SearchableColumn>('any');
+
   const [sort, setSort] = React.useState<{ key: keyof Project; direction: 'asc' | 'desc' } | null>({ key: 'allocationDate', direction: 'desc' });
   
   const [rowSelection, setRowSelection] = React.useState<Record<string, boolean>>({});
@@ -375,9 +381,33 @@ function Dashboard({
     setFilteredProjects(results);
   };
   
+  const handleManagerQuickSearch = () => {
+    const lowercasedSearch = managerSearch.toLowerCase();
+    let results = [...projects];
+
+    if (!lowercasedSearch) {
+        setFilteredProjects(results);
+        return;
+    }
+
+    results = results.filter(p => {
+        if (managerSearchColumn === 'any') {
+            return Object.values(p).some(val => 
+                String(val).toLowerCase().includes(lowercasedSearch)
+            );
+        } else {
+            return (p[managerSearchColumn] as string)?.toString().toLowerCase().includes(lowercasedSearch);
+        }
+    });
+    
+    setFilteredProjects(results);
+  };
+
   const handleResetAdvancedSearch = () => {
       setSearchCriteria(null);
       setFilteredProjects(null);
+      setManagerSearch('');
+      setManagerSearchColumn('any');
   }
   
   const handleOpenEditDialog = (project: Project) => {
@@ -397,11 +427,8 @@ function Dashboard({
     let baseProjects: Project[];
 
     if (isManagerOrAdminView) {
-        if (filteredProjects === null) {
-            // For manager/admin, don't show any projects until a search is performed
-            return [];
-        }
-        baseProjects = filteredProjects;
+        // For manager/admin, filteredProjects holds the results. If null, show nothing.
+        baseProjects = filteredProjects ?? [];
     } else {
         baseProjects = [...projects];
         if (activeRole === 'Processor') {
@@ -413,7 +440,7 @@ function Dashboard({
     
     let filtered = baseProjects;
     
-    // Quick search only applies if there are no advanced search results
+    // Quick search for non-manager roles (client-side filtering)
     if (search && !isManagerOrAdminView) {
         if (searchColumn === 'any') {
             const lowercasedSearch = search.toLowerCase();
@@ -504,6 +531,11 @@ function Dashboard({
             setSearch={setSearch}
             searchColumn={searchColumn}
             setSearchColumn={setSearchColumn}
+            managerSearch={managerSearch}
+            setManagerSearch={setManagerSearch}
+            managerSearchColumn={managerSearchColumn}
+            setManagerSearchColumn={setManagerSearchColumn}
+            handleManagerQuickSearch={handleManagerQuickSearch}
             handleDownload={handleDownload}
             isDownloadDisabled={dashboardProjects.length === 0}
             isManagerOrAdmin={isManagerOrAdmin}
