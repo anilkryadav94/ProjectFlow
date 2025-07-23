@@ -5,7 +5,7 @@ import type { Project, Role } from "@/lib/data";
 import { Badge } from "@/components/ui/badge";
 import { cn } from "@/lib/utils";
 import { Checkbox } from "./ui/checkbox";
-import { MoreHorizontal, Save, XCircle, Edit, Trash2 } from "lucide-react";
+import { Save, XCircle, Edit } from "lucide-react";
 import { Button } from "./ui/button";
 import {
   DropdownMenu,
@@ -164,6 +164,31 @@ export const getColumns = (
 
   let columns = [...baseColumns];
 
+  const actionColumn = {
+      key: 'actions',
+      header: 'Actions',
+      render: (project: Project) => {
+          if (editingRowId === project.id) {
+              return (
+                  <div className="flex items-center gap-2">
+                      <Button size="icon" variant="ghost" onClick={handleUpdateProject} disabled={isUpdating}>
+                          <Save className="h-4 w-4 text-green-600"/>
+                      </Button>
+                      <Button size="icon" variant="ghost" onClick={cancelEditing} disabled={isUpdating}>
+                          <XCircle className="h-4 w-4 text-red-600"/>
+                      </Button>
+                  </div>
+              )
+          }
+          return (
+              <Button size="icon" variant="ghost" onClick={() => startEditing(project.id)}>
+                  <Edit className="h-4 w-4"/>
+              </Button>
+          )
+      }
+  }
+  columns.unshift(actionColumn);
+
   if (isManagerOrAdmin) {
     const selectionColumn = {
       key: "select",
@@ -206,32 +231,6 @@ export const getColumns = (
     };
     columns.unshift(selectionColumn);
   }
-  
-    const actionColumn = {
-        key: 'actions',
-        header: 'Actions',
-        render: (project: Project) => {
-            if (editingRowId === project.id) {
-                return (
-                    <div className="flex items-center gap-2">
-                        <Button size="icon" variant="ghost" onClick={handleUpdateProject} disabled={isUpdating}>
-                            <Save className="h-4 w-4 text-green-600"/>
-                        </Button>
-                        <Button size="icon" variant="ghost" onClick={cancelEditing} disabled={isUpdating}>
-                            <XCircle className="h-4 w-4 text-red-600"/>
-                        </Button>
-                    </div>
-                )
-            }
-            return (
-                <Button size="icon" variant="ghost" onClick={() => startEditing(project.id)}>
-                    <Edit className="h-4 w-4"/>
-                </Button>
-            )
-        }
-    }
-    columns.push(actionColumn);
-
 
   return columns;
 };
