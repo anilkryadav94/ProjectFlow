@@ -11,9 +11,12 @@ import { UserManagementTable } from './user-management-table';
 import { Button } from './ui/button';
 import { useToast } from '@/hooks/use-toast';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from './ui/select';
-import { Loader2, Upload } from 'lucide-react';
+import { FileUp, Loader2, Upload, X } from 'lucide-react';
 import { AdvancedSearchForm, type SearchCriteria } from './advanced-search-form';
 import { useSearchParams, useRouter } from 'next/navigation';
+import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from './ui/card';
+import { Input } from './ui/input';
+import { cn } from '@/lib/utils';
 
 interface DashboardProps {
   user: User;
@@ -38,7 +41,6 @@ function Dashboard({
 }: DashboardProps) {
   const searchParams = useSearchParams();
   const router = useRouter();
-  const urlRole = searchParams.get('role') as Role;
   const fileInputRef = React.useRef<HTMLInputElement>(null);
 
   const [activeRole, setActiveRole] = React.useState<Role | null>(null);
@@ -58,6 +60,9 @@ function Dashboard({
 
   const [clientNameFilter, setClientNameFilter] = React.useState('all');
   const [processFilter, setProcessFilter] = React.useState<string | 'all'>('all');
+
+  const [selectedFile, setSelectedFile] = React.useState<File | null>(null);
+  const [isUploading, setIsUploading] = React.useState(false);
   
   const { toast } = useToast();
   
@@ -125,12 +130,24 @@ function Dashboard({
     setBulkUpdateValue('');
     setIsBulkUpdating(false);
   };
-
-  const handleFileUpload = (event: React.ChangeEvent<HTMLInputElement>) => {
+  
+  const handleFileSelect = (event: React.ChangeEvent<HTMLInputElement>) => {
     const file = event.target.files?.[0];
-    if (!file) return;
+    if (file) {
+        setSelectedFile(file);
+    }
+     // Reset file input to allow selecting the same file again
+    event.target.value = '';
+  }
 
-    Papa.parse(file, {
+  const handleProcessUpload = () => {
+    if (!selectedFile) {
+        toast({ title: "No file selected", description: "Please select a CSV file to upload.", variant: "destructive" });
+        return;
+    }
+    setIsUploading(true);
+
+    Papa.parse(selectedFile, {
         header: true,
         skipEmptyLines: true,
         complete: (results) => {
@@ -175,14 +192,14 @@ function Dashboard({
             } else {
                  toast({ title: "Upload Error", description: "CSV file is empty or does not contain required 'refNumber' column.", variant: "destructive" });
             }
+            setIsUploading(false);
+            setSelectedFile(null);
         },
         error: (error: any) => {
             toast({ title: "Parsing Error", description: error.message, variant: "destructive" });
+            setIsUploading(false);
         }
     });
-
-    // Reset file input
-    event.target.value = '';
   }
 
 
@@ -305,7 +322,7 @@ function Dashboard({
          <input
             type="file"
             ref={fileInputRef}
-            onChange={handleFileUpload}
+            onChange={handleFileSelect}
             className="hidden"
             accept=".csv"
         />
@@ -329,20 +346,46 @@ function Dashboard({
             setProcessFilter={setProcessFilter}
             clientNames={clientNames}
             processes={processes}
-        >
-             {isManagerOrAdmin && (
-                 <Button variant="outline" size="sm" onClick={() => fileInputRef.current?.click()} className="text-foreground">
-                    <Upload className="mr-2" />
-                    Bulk Add Projects
-                </Button>
-            )}
-        </Header>
-        <div className="flex flex-col flex-grow overflow-hidden p-4 gap-4">
+        />
+        <div className="flex flex-col flex-grow overflow-y-auto p-4 gap-4">
             {activeRole === 'Admin' ? (
                 <UserManagementTable sessionUser={user} />
             ) : isManagerOrAdmin ? (
               <>
-                {showSearchForm && <AdvancedSearchForm onSearch={handleAdvancedSearch} initialCriteria={searchCriteria} />}
+                {showSearchForm && (
+                  <div className="space-y-4">
+                     <div className="animated-border shadow-xl">
+                        <Card>
+                          <CardHeader>
+                            <CardTitle>Work Allocation / Records Addition</CardTitle>
+                          </CardHeader>
+                          <CardContent>
+                              <div className="flex items-center gap-4">
+                                  <div 
+                                    className="flex items-center justify-center border-2 border-dashed rounded-md p-4 w-full cursor-pointer hover:bg-muted/50"
+                                    onClick={() => fileInputRef.current?.click()}
+                                  >
+                                      <div className="flex-grow flex items-center gap-2 text-muted-foreground">
+                                        <FileUp className="h-5 w-5" />
+                                        <span>{selectedFile ? selectedFile.name : 'Click to select a CSV file'}</span>
+                                      </div>
+                                  </div>
+                              </div>
+                          </CardContent>
+                           <CardFooter className="flex justify-end gap-2">
+                                <Button variant="outline" onClick={() => setSelectedFile(null)} disabled={!selectedFile || isUploading}>
+                                  <X className="mr-2 h-4 w-4" /> Cancel
+                                </Button>
+                                <Button onClick={handleProcessUpload} disabled={!selectedFile || isUploading}>
+                                    {isUploading ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Upload className="mr-2 h-4 w-4" />}
+                                    Upload
+                                </Button>
+                            </CardFooter>
+                        </Card>
+                      </div>
+                      <AdvancedSearchForm onSearch={handleAdvancedSearch} initialCriteria={searchCriteria} />
+                  </div>
+                )}
                 
                 {!showSearchForm && (
                    <DataTable 
