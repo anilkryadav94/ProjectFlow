@@ -1,4 +1,3 @@
-
 "use client"
 
 import * as React from "react"
@@ -120,8 +119,8 @@ export function ProjectForm({ project, userRole, nextProjectId, filteredIds }: P
           description: `Project has been ${action === 'save' ? 'saved' : 'submitted'}.`,
         });
         
-        router.push(nextUrl);
         router.refresh();
+        router.push(nextUrl);
 
       } catch (error) {
         toast({
