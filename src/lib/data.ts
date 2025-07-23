@@ -1,4 +1,5 @@
 
+
 export type Role = 'Admin' | 'Manager' | 'Processor' | 'QA' | 'Case Manager';
 export const roles: Role[] = ['Admin', 'Manager', 'Processor', 'QA', 'Case Manager'];
 
@@ -101,10 +102,23 @@ export let users: Omit<User, 'id'>[] = [
     { email: 'cm.bob@example.com', password: 'password', name: 'CM Bob', roles: ['Case Manager'] },
 ];
 
-export let projects: Project[] = [
+export function generateAlphanumericId() {
+    const letters = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ';
+    const numbers = '0123456789';
+    let result = '';
+    for (let i = 0; i < 3; i++) {
+        result += letters.charAt(Math.floor(Math.random() * letters.length));
+    }
+    for (let i = 0; i < 3; i++) {
+        result += numbers.charAt(Math.floor(Math.random() * numbers.length));
+    }
+    // Shuffle the result
+    return result.split('').sort(() => 0.5 - Math.random()).join('');
+}
+
+
+let initialProjects: Omit<Project, 'id' | 'ref_number'>[] = [
   {
-    id: '1',
-    ref_number: 'REF001',
     client_name: 'Client A',
     process: 'Patent',
     application_number: 'US16/123,456',
@@ -141,8 +155,6 @@ export let projects: Project[] = [
     manager_name: 'Manager User'
   },
   {
-    id: '2',
-    ref_number: 'REF002',
     client_name: 'Client B',
     process: 'Patent',
     application_number: 'US16/234,567',
@@ -177,8 +189,6 @@ export let projects: Project[] = [
     manager_name: 'Manager User'
   },
   {
-    id: '3',
-    ref_number: 'REF003',
     client_name: 'Client C',
     process: 'TM',
     application_number: null,
@@ -213,8 +223,6 @@ export let projects: Project[] = [
     manager_name: 'Manager User'
   },
   {
-    id: '4',
-    ref_number: 'REF004',
     client_name: 'Client A',
     process: 'IDS',
     application_number: 'US16/123,456',
@@ -249,8 +257,6 @@ export let projects: Project[] = [
     manager_name: 'Manager User'
   },
   {
-    id: '5',
-    ref_number: 'REF005',
     client_name: 'Client B',
     process: 'Patent',
     application_number: null,
@@ -285,8 +291,6 @@ export let projects: Project[] = [
     manager_name: 'Manager User'
   },
   {
-    id: '6',
-    ref_number: 'REF006',
     client_name: 'Client C',
     process: 'Project',
     application_number: null,
@@ -321,8 +325,6 @@ export let projects: Project[] = [
     manager_name: 'Manager User'
   },
   {
-    id: '7',
-    ref_number: 'REF007',
     client_name: 'Client A',
     process: 'Patent',
     application_number: 'EP3456789',
@@ -357,8 +359,6 @@ export let projects: Project[] = [
     manager_name: 'Manager User'
   },
   {
-    id: '8',
-    ref_number: 'REF008',
     client_name: 'Client B',
     process: 'TM',
     application_number: 'UK000012345',
@@ -393,8 +393,6 @@ export let projects: Project[] = [
     manager_name: 'Manager User'
   },
   {
-    id: '9',
-    ref_number: 'REF009',
     client_name: 'Client C',
     process: 'Patent',
     application_number: 'IN202312345',
@@ -429,8 +427,6 @@ export let projects: Project[] = [
     manager_name: 'Manager User'
   },
   {
-    id: '10',
-    ref_number: 'REF010',
     client_name: 'Client A',
     process: 'IDS',
     application_number: 'US16/987,654',
@@ -465,8 +461,6 @@ export let projects: Project[] = [
     manager_name: 'Manager User'
   },
   {
-    id: '11',
-    ref_number: 'REF011',
     client_name: 'Client B',
     process: 'Patent',
     application_number: 'CA2987654',
@@ -501,8 +495,6 @@ export let projects: Project[] = [
     manager_name: 'Manager User'
   },
   {
-    id: '12',
-    ref_number: 'REF012',
     client_name: 'Client C',
     process: 'Project',
     application_number: null,
@@ -537,8 +529,6 @@ export let projects: Project[] = [
     manager_name: 'Manager User'
   },
   {
-    id: '13',
-    ref_number: 'REF013',
     client_name: 'Client A',
     process: 'TM',
     application_number: null,
@@ -573,8 +563,6 @@ export let projects: Project[] = [
     manager_name: 'Manager User'
   },
   {
-    id: '14',
-    ref_number: 'REF014',
     client_name: 'Client B',
     process: 'IDS',
     application_number: 'US16/234,567',
@@ -609,8 +597,6 @@ export let projects: Project[] = [
     manager_name: 'Manager User'
   },
   {
-    id: '15',
-    ref_number: 'REF015',
     client_name: 'Client C',
     process: 'Patent',
     application_number: 'IN202312345',
@@ -643,5 +629,181 @@ export let projects: Project[] = [
     email_forwarded: 'billing@example.com',
     reportout_date: '2024-05-17',
     manager_name: 'Manager User'
-  }
+  },
+  {
+    client_name: 'Client A',
+    process: 'Patent',
+    application_number: 'US17/111,111',
+    patent_number: null,
+    received_date: '2024-05-12',
+    allocation_date: '2024-05-13',
+    processor: 'Rahul',
+    qa: 'Anil',
+    case_manager: 'CM Alice',
+    workflowStatus: 'With Processor',
+    processing_status: 'Pending',
+    qa_status: 'Pending',
+    processing_date: null,
+    qa_date: null,
+    rework_reason: null,
+    subject_line: 'New Wearable Tech Disclosure',
+    client_comments: null,
+    clientquery_status: null,
+    entries: [],
+    sender: 'rnd@clienta.com',
+    country: 'USA',
+    document_type: 'Disclosure',
+    action_taken: 'Reviewing',
+    renewal_agent: null,
+    client_query_description: null,
+    client_error_description: null,
+    qa_remark: null,
+    error: null,
+    email_renaming: null,
+    email_forwarded: null,
+    reportout_date: null,
+    manager_name: 'Manager User',
+  },
+  {
+    client_name: 'Client C',
+    process: 'TM',
+    application_number: null,
+    patent_number: null,
+    received_date: '2024-05-14',
+    allocation_date: '2024-05-15',
+    processor: 'Bob',
+    qa: 'Eve',
+    case_manager: 'CM Bob',
+    workflowStatus: 'Completed',
+    processing_status: 'Processed',
+    qa_status: 'Complete',
+    processing_date: '2024-05-18',
+    qa_date: '2024-05-19',
+    rework_reason: null,
+    subject_line: 'Cease and Desist letter draft',
+    client_comments: null,
+    clientquery_status: null,
+    entries: [],
+    sender: 'legal@clientc.com',
+    country: 'USA',
+    document_type: 'Legal Draft',
+    action_taken: 'Sent to client for approval',
+    renewal_agent: null,
+    client_query_description: null,
+    client_error_description: null,
+    qa_remark: 'Draft looks solid.',
+    error: null,
+    email_renaming: 'REF017_CD_Draft.eml',
+    email_forwarded: 'seniorcounsel@clientc.com',
+    reportout_date: '2024-05-20',
+    manager_name: 'Manager User',
+  },
+  {
+    client_name: 'Client B',
+    process: 'Project',
+    application_number: null,
+    patent_number: null,
+    received_date: '2024-05-16',
+    allocation_date: '2024-05-17',
+    processor: 'Alice',
+    qa: 'Ankit',
+    case_manager: 'CM Alice',
+    workflowStatus: 'With Processor',
+    processing_status: 'On Hold',
+    qa_status: 'Pending',
+    processing_date: null,
+    qa_date: null,
+    rework_reason: null,
+    subject_line: 'IP Due Diligence for M&A',
+    client_comments: 'Awaiting target company data room access.',
+    clientquery_status: null,
+    entries: [],
+    sender: 'corpdev@clientb.com',
+    country: null,
+    document_type: 'M&A Request',
+    action_taken: null,
+    renewal_agent: null,
+    client_query_description: null,
+    client_error_description: null,
+    qa_remark: null,
+    error: null,
+    email_renaming: null,
+    email_forwarded: null,
+    reportout_date: null,
+    manager_name: 'Manager User',
+  },
+  {
+    client_name: 'Client A',
+    process: 'Patent',
+    application_number: 'PCT/US2024/12345',
+    patent_number: null,
+    received_date: '2024-05-18',
+    allocation_date: '2024-05-20',
+    processor: 'Charlie',
+    qa: 'David',
+    case_manager: 'CM Bob',
+    workflowStatus: 'With QA',
+    processing_status: 'Processed',
+    qa_status: 'Pending',
+    processing_date: '2024-05-22',
+    qa_date: null,
+    rework_reason: null,
+    subject_line: 'PCT Filing and Search Report',
+    client_comments: null,
+    clientquery_status: null,
+    entries: [],
+    sender: 'client@clienta.com',
+    country: 'International',
+    document_type: 'PCT Filing',
+    action_taken: 'Docketed Search Report deadline.',
+    renewal_agent: null,
+    client_query_description: null,
+    client_error_description: null,
+    qa_remark: null,
+    error: null,
+    email_renaming: 'REF019_PCT_Filing.eml',
+    email_forwarded: null,
+    reportout_date: null,
+    manager_name: 'Manager User',
+  },
+  {
+    client_name: 'Client C',
+    process: 'IDS',
+    application_number: 'IN202312345',
+    patent_number: null,
+    received_date: '2024-05-21',
+    allocation_date: '2024-05-22',
+    processor: 'Bob',
+    qa: 'Rahul',
+    case_manager: 'CM Alice',
+    workflowStatus: 'With Processor',
+    processing_status: 'Pending',
+    qa_status: 'Pending',
+    processing_date: null,
+    qa_date: null,
+    rework_reason: null,
+    subject_line: 'New references for Indian application',
+    client_comments: null,
+    clientquery_status: null,
+    entries: [],
+    sender: 'ipcounsel@clientc.com',
+    country: 'India',
+    document_type: 'Prior Art',
+    action_taken: 'To prepare IDS',
+    renewal_agent: null,
+    client_query_description: null,
+    client_error_description: null,
+    qa_remark: null,
+    error: null,
+    email_renaming: null,
+    email_forwarded: null,
+    reportout_date: null,
+    manager_name: 'Manager User',
+  },
 ];
+
+export let projects: Project[] = initialProjects.map((p, index) => ({
+  ...p,
+  id: `${index + 1}`,
+  ref_number: generateAlphanumericId(),
+}));

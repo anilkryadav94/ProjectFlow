@@ -4,7 +4,7 @@
 
 import { z } from "zod";
 import type { Project, Role, ClientStatus } from "@/lib/data";
-import { projects } from "@/lib/data";
+import { projects, generateAlphanumericId } from "@/lib/data";
 import { revalidatePath } from "next/cache";
 
 const bulkUpdateSchema = z.object({
@@ -126,19 +126,6 @@ const fieldsToCopy = z.enum([
 
 type FieldToCopyId = z.infer<typeof fieldsToCopy>;
 
-function generateAlphanumericId() {
-    const letters = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ';
-    const numbers = '0123456789';
-    let result = '';
-    for (let i = 0; i < 3; i++) {
-        result += letters.charAt(Math.floor(Math.random() * letters.length));
-    }
-    for (let i = 0; i < 3; i++) {
-        result += numbers.charAt(Math.floor(Math.random() * numbers.length));
-    }
-    // Shuffle the result
-    return result.split('').sort(() => 0.5 - Math.random()).join('');
-}
 
 
 export async function addRows(
