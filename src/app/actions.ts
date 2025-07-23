@@ -1,49 +1,112 @@
+"use server";
 
-'use server'
+import { z } from "zod";
+import type { Project, Role, ProjectEntry } from "@/lib/data";
+import { projects } from "@/lib/data";
+import { redirect } from "next/navigation";
+import { revalidatePath } from "next/cache";
 
-import { revalidatePath } from 'next/cache'
-import { projects } from '@/lib/data'
-import type { Project, Role } from '@/lib/data'
+const bulkUpdateSchema = z.object({
+  projectIds: z.array(z.string()),
+  field: z.enum(['processor', 'qa']),
+  value: z.string().min(1, "New value cannot be empty."),
+});
 
-type Action = 'save' | 'submit_for_qa' | 'submit_qa' | 'send_rework';
+export async function bulkUpdateProjects(data: z.infer<typeof bulkUpdateSchema>): Promise<{ success: boolean; updatedProjects: Project[] }> {
+    const validatedData = bulkUpdateSchema.parse(data);
+    const updatedProjects: Project[] = [];
+
+    validatedData.projectIds.forEach(id => {
+        const projectIndex = projects.findIndex(p => p.id === id);
+        if (projectIndex !== -1) {
+            const updatedProject = {
+                ...projects[projectIndex],
+                [validatedData.field]: validatedData.value,
+            };
+            projects[projectIndex] = updatedProject;
+            updatedProjects.push(updatedProject);
+        }
+    });
+
+    revalidatePath('/');
+
+    return { success: true, updatedProjects };
+}
+
+const projectEntrySchema = z.object({
+    id: z.string(),
+    applicationNumber: z.string().nullable(),
+    patentNumber: z.string().nullable(),
+    country: z.string().nullable(),
+    status: z.string().nullable(),
+    notes: z.string().nullable(),
+});
+
+const projectSchema = z.object({
+  id: z.string(),
+  refNumber: z.string().min(1, "Ref Number is required."),
+  clientName: z.string().min(1, "Client Name is required."),
+  process: z.enum(["Patent", "TM", "IDS", "Project"]),
+  applicationNumber: z.string().nullable(),
+  patentNumber: z.string().nullable(),
+  emailDate: z.string().min(1, "Email Date is required."),
+  allocationDate: z.string().min(1, "Allocation Date is required."),
+  processor: z.string().min(1, "Processor is required."),
+  qa: z.string().min(1, "QA is required."),
+  processorStatus: z.enum(["Pending", "On Hold", "Re-Work", "Processed", "NTP", "Client Query", "Already Processed"]),
+  qaStatus: z.enum(["Pending", "Complete", "NTP", "Client Query", "Already Processed"]),
+  reworkReason: z.string().nullable(),
+  subject: z.string().min(1, "Subject is required."),
+  processingDate: z.string().nullable(),
+  qaDate: z.string().nullable(),
+  workflowStatus: z.enum(['Pending Allocation', 'With Processor', 'With QA', 'Completed']),
+  entries: z.array(projectEntrySchema).optional(),
+});
+
 
 export async function saveProject(
-    projectData: Project,
-    action: Action
-) {
-    console.log(`Saving project ${projectData.id} with action: ${action}`);
-
-    // This is where you'd typically save to a database.
-    // For this mock implementation, we'll find and update the project in the in-memory array.
+  data: z.infer<typeof projectSchema>, 
+  submitAction: 'save' | 'submit_for_qa' | 'submit_qa' | 'send_rework'
+): Promise<Project | void> {
     
-    let projectToSave = { ...projectData };
+    const validatedData = projectSchema.parse(data);
 
-    if (action === 'submit_for_qa') {
-        projectToSave.workflowStatus = 'With QA';
-        projectToSave.processingDate = new Date().toISOString().split('T')[0];
-    } else if (action === 'submit_qa') {
-        projectToSave.workflowStatus = 'Completed';
-        projectToSave.qaDate = new Date().toISOString().split('T')[0];
-    } else if (action === 'send_rework') {
-        projectToSave.workflowStatus = 'With Processor';
-        projectToSave.processorStatus = 'Re-Work';
-        // The reworkReason is already part of projectData from the form
-    }
-    
-    const projectIndex = projects.findIndex(p => p.id === projectToSave.id);
+    let savedProject: Project;
+    const projectIndex = projects.findIndex(p => p.id === validatedData.id);
 
     if (projectIndex !== -1) {
-        projects[projectIndex] = projectToSave;
-        console.log("Project updated in mock data store.");
-    } else {
-        // If it's a new project (though our current flow doesn't support it from this form)
-        projects.push(projectToSave);
-        console.log("New project added to mock data store.");
-    }
-    
-    // Revalidate the paths to reflect the changes immediately
-    revalidatePath('/');
-    revalidatePath(`/task/${projectToSave.id}`);
+        // Update existing project
+        const project = projects[projectIndex];
+        
+        const updatedProject: Project = {
+            ...project,
+            ...validatedData,
+        };
 
-    return { success: true, project: projectToSave };
+        if (submitAction === 'submit_for_qa') {
+            updatedProject.workflowStatus = 'With QA';
+            updatedProject.processingDate = new Date().toISOString().split('T')[0];
+        } else if (submitAction === 'submit_qa') {
+            updatedProject.workflowStatus = 'Completed';
+            updatedProject.qaDate = new Date().toISOString().split('T')[0];
+        } else if (submitAction === 'send_rework') {
+            updatedProject.workflowStatus = 'With Processor';
+            updatedProject.processorStatus = 'Re-Work';
+        }
+
+        projects[projectIndex] = updatedProject;
+        savedProject = updatedProject;
+    } else {
+       // This part is for creating new projects
+        const newId = (Math.max(...projects.map(p => parseInt(p.id, 10))) + 1).toString();
+        const newProject: Project = {
+            ...validatedData,
+            id: newId,
+        };
+        projects.unshift(newProject);
+        savedProject = newProject;
+    }
+
+    revalidatePath('/');
+    revalidatePath(`/task/${savedProject.id}`);
 }
