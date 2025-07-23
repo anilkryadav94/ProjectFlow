@@ -38,15 +38,17 @@ const bulkUpdateFields = [
     { value: 'qa', label: 'QA', options: qas },
 ] as const;
 
-type SummaryData = Record<string, { pending: number, processed: number }>;
+type ProcessingSummaryData = Record<string, { pending: number, processed: number }>;
+type QASummaryData = Record<string, { pending: number, processed: number, clientQuery: number }>;
+
 
 const ProcessingStatusSummary = ({ projects }: { projects: Project[] }) => {
     const summary = React.useMemo(() => {
         const today = new Date().toISOString().split('T')[0];
-        const data: SummaryData = clientNames.reduce((acc, name) => {
+        const data: ProcessingSummaryData = clientNames.reduce((acc, name) => {
             acc[name] = { pending: 0, processed: 0 };
             return acc;
-        }, {} as SummaryData);
+        }, {} as ProcessingSummaryData);
 
         projects.forEach(p => {
             if (!data[p.clientName]) return;
@@ -95,27 +97,29 @@ const ProcessingStatusSummary = ({ projects }: { projects: Project[] }) => {
 const QAStatusSummary = ({ projects }: { projects: Project[] }) => {
     const summary = React.useMemo(() => {
         const today = new Date().toISOString().split('T')[0];
-        const data: SummaryData = clientNames.reduce((acc, name) => {
-            acc[name] = { pending: 0, processed: 0 };
+        const data: QASummaryData = clientNames.reduce((acc, name) => {
+            acc[name] = { pending: 0, processed: 0, clientQuery: 0 };
             return acc;
-        }, {} as SummaryData);
+        }, {} as QASummaryData);
 
         projects.forEach(p => {
-             if (!data[p.clientName]) return;
+            if (!data[p.clientName]) return;
 
-            if (qaSubmissionStatuses.includes(p.qaStatus)) {
+            if (p.qaStatus === 'Complete') {
                 if (p.qaDate === today) {
                     data[p.clientName].processed++;
                 }
             } else if (p.qaStatus === 'Pending') {
                 data[p.clientName].pending++;
+            } else if (p.qaStatus === 'Client Query') {
+                data[p.clientName].clientQuery++;
             }
         });
 
         return data;
     }, [projects]);
 
-     return (
+    return (
         <Card>
             <CardHeader>
                 <CardTitle className="text-base">QA Work Status</CardTitle>
@@ -125,7 +129,8 @@ const QAStatusSummary = ({ projects }: { projects: Project[] }) => {
                     <TableHeader>
                         <TableRow>
                             <TableHead>Client Name</TableHead>
-                            <TableHead className="text-right">Pending (All Time)</TableHead>
+                            <TableHead className="text-right">Pending</TableHead>
+                            <TableHead className="text-right">Client Query</TableHead>
                             <TableHead className="text-right">Completed (Today)</TableHead>
                         </TableRow>
                     </TableHeader>
@@ -134,6 +139,7 @@ const QAStatusSummary = ({ projects }: { projects: Project[] }) => {
                             <TableRow key={client}>
                                 <TableCell className="font-medium">{client}</TableCell>
                                 <TableCell className="text-right">{counts.pending}</TableCell>
+                                <TableCell className="text-right">{counts.clientQuery}</TableCell>
                                 <TableCell className="text-right">{counts.processed}</TableCell>
                             </TableRow>
                         ))}
@@ -592,6 +598,7 @@ export default Dashboard;
     
 
     
+
 
 
 
