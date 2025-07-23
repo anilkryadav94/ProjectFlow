@@ -5,29 +5,19 @@ import * as React from 'react';
 import { useRouter, useSearchParams, useParams } from 'next/navigation';
 import { getSession, onAuthChanged } from '@/lib/auth';
 import type { Project, Role, User } from '@/lib/data';
-import { processorActionableStatuses, roleHierarchy } from '@/lib/data';
+import { processorActionableStatuses, roleHierarchy, projects as mockProjects, clientNames, processes } from '@/lib/data';
 import { ProjectForm } from '@/components/project-form';
 import { Header } from '@/components/header';
-import { clientNames, processes } from '@/lib/data';
-import { collection, getDocs, doc, getDoc } from "firebase/firestore";
-import { db } from '@/lib/firebase';
 import { Loader2 } from 'lucide-react';
 
+
 async function getAllProjects(): Promise<Project[]> {
-    const projectsCollection = collection(db, "projects");
-    const projectsSnapshot = await getDocs(projectsCollection);
-    const projectsList = projectsSnapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as Project));
-    return projectsList;
+    return mockProjects;
 }
 
 async function getProject(id: string): Promise<Project | null> {
-    const projectRef = doc(db, "projects", id);
-    const projectSnap = await getDoc(projectRef);
-
-    if (!projectSnap.exists()) {
-        return null;
-    }
-    return { id: projectSnap.id, ...projectSnap.data() } as Project;
+    const project = mockProjects.find(p => p.id === id);
+    return project || null;
 }
 
 async function getProjectsForUser(user: User, activeRole: Role): Promise<Project[]> {
@@ -63,14 +53,11 @@ export default function TaskPage() {
   
   React.useEffect(() => {
     const checkAuthAndLoadData = async (user: any) => {
-      if (!user) {
-        router.push('/login');
-        return;
-      }
-
+      // Mock auth always provides a user
       const sessionData = await getSession();
       if (!sessionData) {
-        router.push('/login');
+        console.error("Mock session not found");
+        setLoading(false);
         return;
       }
       setSession(sessionData);

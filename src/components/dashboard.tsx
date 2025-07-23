@@ -3,7 +3,7 @@
 
 import * as React from 'react';
 import Papa from "papaparse";
-import { type Project, type Role, type User, roleHierarchy, processors, qas, projectStatuses, clientNames, processes, processorActionableStatuses } from '@/lib/data';
+import { type Project, type Role, type User, roleHierarchy, processors, qas, projectStatuses, clientNames, processes, processorActionableStatuses, projects as mockProjects } from '@/lib/data';
 import { DataTable } from '@/components/data-table';
 import { getColumns } from '@/components/columns';
 import { Header } from '@/components/header';
@@ -14,8 +14,6 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '.
 import { Loader2 } from 'lucide-react';
 import { AdvancedSearchForm, type SearchCriteria } from './advanced-search-form';
 import { useSearchParams, useRouter } from 'next/navigation';
-import { collection, getDocs, writeBatch, doc } from 'firebase/firestore';
-import { db } from '@/lib/firebase';
 
 interface DashboardProps {
   user: User;
@@ -63,10 +61,8 @@ function Dashboard({
   const { toast } = useToast();
   
   const refreshProjects = React.useCallback(async () => {
-    const projectsCollection = collection(db, "projects");
-    const projectsSnapshot = await getDocs(projectsCollection);
-    const projectsList = projectsSnapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as Project));
-    setProjects(projectsList);
+    // In mock mode, we just reset to the original mock data.
+    setProjects(mockProjects);
   }, []);
 
   React.useEffect(() => {
@@ -111,24 +107,22 @@ function Dashboard({
     }
     
     setIsBulkUpdating(true);
-    try {
-        const batch = writeBatch(db);
-        projectIds.forEach(id => {
-            const projectRef = doc(db, "projects", id);
-            batch.update(projectRef, { [bulkUpdateField]: bulkUpdateValue });
-        });
-        await batch.commit();
-
-        await refreshProjects();
-        toast({ title: "Success", description: `${projectIds.length} projects have been updated.` });
-        setRowSelection({});
-        setBulkUpdateValue('');
-
-    } catch (error) {
-        toast({ title: "Bulk Update Failed", description: "An error occurred.", variant: "destructive" });
-    } finally {
-        setIsBulkUpdating(false);
-    }
+    // MOCK IMPLEMENTATION
+    console.log(`Mock Bulk Update: Set ${bulkUpdateField} to ${bulkUpdateValue} for projects: ${projectIds.join(', ')}`);
+    
+    // In a real app, you'd update this in the database. Here we just simulate it.
+    const updatedProjects = projects.map(p => {
+        if (projectIds.includes(p.id)) {
+            return { ...p, [bulkUpdateField]: bulkUpdateValue };
+        }
+        return p;
+    });
+    setProjects(updatedProjects);
+    
+    toast({ title: "Success", description: `${projectIds.length} projects have been updated (mock).` });
+    setRowSelection({});
+    setBulkUpdateValue('');
+    setIsBulkUpdating(false);
   };
 
   const handleAdvancedSearch = (criteria: SearchCriteria) => {
@@ -156,7 +150,7 @@ function Dashboard({
                 return fieldValue?.toLowerCase().includes(criterion.value.toLowerCase()) ?? false;
             case 'dateEquals':
                  if (!fieldValue) return false;
-                 return new Date(fieldValue).toDateString() === new Date(criterion.value).toDateString();
+                 return new Date(fieldValue).toDateString() === new Date(new Date(criterion.value).getTime() + (new Date(criterion.value).getTimezoneOffset() * 60000)).toDateString();
             default:
                 return true;
         }
@@ -200,7 +194,7 @@ function Dashboard({
 
     if (search) {
          filtered = filtered.filter(p => 
-            (p[searchColumn] as string)?.toLowerCase().includes(search.toLowerCase())
+            (p[searchColumn] as string)?.toString().toLowerCase().includes(search.toLowerCase())
          );
     }
 
@@ -216,7 +210,8 @@ function Dashboard({
       filtered.sort((a, b) => {
         const valA = a[sort.key];
         const valB = b[sort.key];
-        if (valA === null) return 1; if (valB === null) return -1;
+        if (valA === null || valA === undefined) return 1; 
+        if (valB === null || valB === undefined) return -1;
         if (valA < valB) return sort.direction === 'asc' ? -1 : 1;
         if (valA > valB) return sort.direction === 'asc' ? 1 : -1;
         return 0;

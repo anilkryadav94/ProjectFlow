@@ -100,10 +100,10 @@ export const getColumns = (
             statusText = project.processorStatus;
             statusColorClass = statusColors[project.processorStatus];
         } else if (project.workflowStatus === 'With QA') {
-            statusText = `QA: ${project.qaStatus} (P: ${project.processorStatus})`;
+            statusText = `QA: ${project.qaStatus}`;
             statusColorClass = statusColors[project.qaStatus] || statusColors['With QA'];
         } else if (project.workflowStatus === 'Completed') {
-             statusText = `QA: ${project.qaStatus} (P: ${project.processorStatus})`;
+             statusText = `QA: ${project.qaStatus}`;
              statusColorClass = statusColors['Completed'];
         }
         
@@ -130,11 +130,11 @@ export const getColumns = (
           }
           onCheckedChange={(value) => {
             const newSelection = { ...rowSelection };
-            allProjectsOnPage.forEach((p) => {
+            allProjectsOnPage.forEach((project) => {
               if (value) {
-                newSelection[p.id] = true;
+                newSelection[project.id] = true;
               } else {
-                delete newSelection[p.id];
+                delete newSelection[project.id];
               }
             });
             setRowSelection(newSelection);

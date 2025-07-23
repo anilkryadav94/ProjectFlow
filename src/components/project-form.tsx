@@ -34,9 +34,6 @@ import type { Project, Role } from "@/lib/data"
 import { processors, qas, clientNames, processes, processorStatuses, qaStatuses, processorSubmissionStatuses, qaSubmissionStatuses } from "@/lib/data"
 import { useRouter } from "next/navigation"
 import { ProjectEntriesDialog } from "./project-entries-dialog"
-import { doc, updateDoc } from "firebase/firestore"
-import { db } from "@/lib/firebase"
-
 
 const projectEntrySchema = z.object({
     id: z.string(),
@@ -89,8 +86,8 @@ export function ProjectForm({ project, userRole, nextProjectId, filteredIds }: P
     resolver: zodResolver(formSchema),
     defaultValues: {
       ...project,
-      emailDate: project.emailDate ? format(new Date(project.emailDate), "yyyy-MM-dd") : "",
-      allocationDate: project.allocationDate ? format(new Date(project.allocationDate), "yyyy-MM-dd") : "",
+      emailDate: project.emailDate ? format(new Date(new Date(project.emailDate).getTime() + (new Date(project.emailDate).getTimezoneOffset() * 60000)), "yyyy-MM-dd") : "",
+      allocationDate: project.allocationDate ? format(new Date(new Date(project.allocationDate).getTime() + (new Date(project.allocationDate).getTimezoneOffset() * 60000)), "yyyy-MM-dd") : "",
       entries: project.entries ?? [],
     },
   })
@@ -99,8 +96,8 @@ export function ProjectForm({ project, userRole, nextProjectId, filteredIds }: P
   React.useEffect(() => {
     form.reset({
       ...project,
-      emailDate: project.emailDate ? format(new Date(project.emailDate), "yyyy-MM-dd") : "",
-      allocationDate: project.allocationDate ? format(new Date(project.allocationDate), "yyyy-MM-dd") : "",
+      emailDate: project.emailDate ? format(new Date(new Date(project.emailDate).getTime() + (new Date(project.emailDate).getTimezoneOffset() * 60000)), "yyyy-MM-dd") : "",
+      allocationDate: project.allocationDate ? format(new Date(new Date(project.allocationDate).getTime() + (new Date(project.allocationDate).getTimezoneOffset() * 60000)), "yyyy-MM-dd") : "",
       entries: project.entries ?? [],
     });
   }, [project, form]);
@@ -115,7 +112,6 @@ export function ProjectForm({ project, userRole, nextProjectId, filteredIds }: P
           ? `/task/${nextProjectId}?role=${userRole}${filteredIds ? `&filteredIds=${filteredIds}`: ''}` 
           : `/?role=${userRole}`;
           
-        const projectRef = doc(db, "projects", data.id);
         let projectToSave = { ...data };
 
         if (action === 'submit_for_qa') {
@@ -129,20 +125,20 @@ export function ProjectForm({ project, userRole, nextProjectId, filteredIds }: P
             projectToSave.processorStatus = 'Re-Work';
         }
         
-        const { id, ...saveData } = projectToSave;
-        await updateDoc(projectRef, saveData);
-
+        // MOCK SAVE
+        console.log("Mock saving project: ", projectToSave);
+        
         toast({
-          title: "Success",
+          title: "Success (Mock)",
           description: `Project has been ${action === 'save' ? 'saved' : 'submitted'}.`,
         });
         
         router.push(nextUrl);
 
       } catch (error) {
-        console.error("Failed to save project:", error);
+        console.error("Failed to save project (mock):", error);
         toast({
-          title: "Error",
+          title: "Error (Mock)",
           description: "Failed to save the project.",
           variant: "destructive",
         })

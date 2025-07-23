@@ -20,7 +20,6 @@ import { updateUser, addUser, addBulkUsers, getUsers } from "@/lib/auth";
 import { ChevronsUpDown, Loader2, PlusCircle, Upload } from "lucide-react";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "./ui/card";
 import { AddUserDialog } from "./add-user-dialog";
-import { cn } from "@/lib/utils";
 import { useRouter } from "next/navigation";
 
 export function UserManagementTable({ sessionUser }: { sessionUser: User }) {
@@ -75,22 +74,22 @@ export function UserManagementTable({ sessionUser }: { sessionUser: User }) {
                 password: user.password // Password will be undefined if not changed
             });
 
-            if (result.success) {
-                toast({
-                    title: "Success",
-                    description: `User ${user.name} has been updated.`,
-                });
-                
-                if (user.id === sessionUser.id) {
-                    router.refresh();
-                }
-
-                // Clear password field after successful update
-                handleInputChange(userId, 'password', '');
+            toast({
+                title: "Success (Mock)",
+                description: `User ${user.name} has been updated.`,
+            });
+            
+            // In real app, you might want to refresh session if the logged in user is updated
+            if (user.id === sessionUser.id) {
+                router.refresh();
             }
+
+            // Clear password field after successful update
+            handleInputChange(userId, 'password', '');
+            
         } catch (error) {
             toast({
-                title: "Error",
+                title: "Error (Mock)",
                 description: `Failed to update user. ${error instanceof Error ? error.message : ''}`,
                 variant: "destructive",
             });
@@ -109,14 +108,14 @@ export function UserManagementTable({ sessionUser }: { sessionUser: User }) {
             if(result.success && result.user) {
                 setUsers(prev => [result.user!, ...prev]);
                 toast({
-                    title: "User Added",
+                    title: "User Added (Mock)",
                     description: `User ${result.user.name} has been successfully added.`,
                 });
                 setIsAddUserDialogOpen(false);
             }
         } catch(error) {
             toast({
-                title: "Error",
+                title: "Error (Mock)",
                 description: `Failed to add user. ${error instanceof Error ? error.message : ''}`,
                 variant: "destructive",
             });
@@ -148,7 +147,7 @@ export function UserManagementTable({ sessionUser }: { sessionUser: User }) {
                     const freshUserList = await getUsers();
                     setUsers(freshUserList);
                     toast({
-                        title: "Bulk Upload Complete",
+                        title: "Bulk Upload Complete (Mock)",
                         description: `${addedCount} users added. ${errors.length} duplicates/errors.`,
                     });
                 } catch(e) {
@@ -226,7 +225,7 @@ export function UserManagementTable({ sessionUser }: { sessionUser: User }) {
                                                         type="email"
                                                         value={user.email}
                                                         onChange={(e) => handleInputChange(user.id, 'email', e.target.value)}
-                                                        disabled={true}
+                                                        disabled={isSubmitting[user.id]}
                                                     />
                                                 </TableCell>
                                                 <TableCell>

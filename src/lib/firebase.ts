@@ -1,4 +1,8 @@
-// Import the functions you need from the SDKs you need
+
+// This file is intentionally left with a mock setup.
+// In a real Firebase app, you would initialize Firebase here.
+// To re-enable Firebase, you would uncomment the code below and fill in your config.
+/*
 import { initializeApp, getApps, getApp } from "firebase/app";
 import { getAuth, connectAuthEmulator } from "firebase/auth";
 import { getFirestore, connectFirestoreEmulator } from "firebase/firestore";
@@ -26,3 +30,9 @@ if (process.env.NODE_ENV === 'development' && typeof window !== 'undefined' && !
 
 
 export { app, auth, db };
+*/
+
+// Mock exports for when Firebase is not used.
+export const app = {};
+export const auth = {};
+export const db = {};
