@@ -109,7 +109,7 @@ export const getColumns = (
           <Button size="icon" variant="ghost" onClick={() => handleEditProject(project)}>
               <Edit className="h-4 w-4"/>
           </Button>
-          {activeRole !== 'Case Manager' && (
+          {(activeRole === 'Manager' || activeRole === 'Admin') && (
             <Button size="icon" variant="ghost" onClick={() => handleAddRows(project)}>
                 <PlusCircle className="h-4 w-4"/>
             </Button>
@@ -159,13 +159,22 @@ export const getColumns = (
       ),
     };
     columns.unshift(selectionColumn);
-  } else {
-      // Add actions for non-admin roles
-      if (activeRole === 'Case Manager') {
-        columns = [actionColumn, ...baseColumns.filter(c => ['ref_number', 'client_name', 'process', 'workflowStatus'].includes(c.key))];
-      } else {
-        columns.unshift(actionColumn);
+    columns.push(actionColumn);
+  } else if (activeRole === 'Case Manager') {
+      const clientViewColumns = [
+          'id', 'ref_number', 'application_number', 'country', 'patent_number', 'sender', 'subject_line', 'client_query_description', 'client_comments', 'clientquery_status', 'client_error_description'
+      ];
+      // Special case for qa_date to show as 'Client Query Date'
+      const qaDateColumn = baseColumns.find(c => c.key === 'qa_date');
+      const clientColumns = baseColumns.filter(c => clientViewColumns.includes(c.key));
+      if(qaDateColumn) {
+        clientColumns.push({...qaDateColumn, header: 'Client Query Date'});
       }
+      columns = [actionColumn, ...clientColumns];
+  }
+   else {
+      // Add actions for other non-admin roles
+      columns.unshift(actionColumn);
   }
 
   return columns;

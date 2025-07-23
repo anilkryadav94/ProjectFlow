@@ -114,6 +114,11 @@ const qaFormSchema = fullFormSchema.extend({
     rework_reason: z.string().nullable(),
 });
 
+const caseManagerFormSchema = fullFormSchema.extend({
+    clientquery_status: z.enum(["Approved", "Clarification Required"], { errorMap: () => ({ message: "Client Status is required."}) }),
+    client_comments: z.string().min(1, "Client Comments are required."),
+});
+
 
 type EditProjectFormValues = z.infer<typeof fullFormSchema>;
 
@@ -143,10 +148,12 @@ export function EditProjectDialog({
   
   const isProcessorView = userRole === 'Processor' && project.workflowStatus === 'With Processor';
   const isQaView = userRole === 'QA' && project.workflowStatus === 'With QA';
+  const isCaseManagerView = userRole === 'Case Manager';
   
   const getValidationSchema = () => {
     if (isProcessorView) return processorFormSchema;
     if (isQaView) return qaFormSchema;
+    if (isCaseManagerView) return caseManagerFormSchema;
     return fullFormSchema;
   }
 
@@ -236,7 +243,6 @@ export function EditProjectDialog({
     })();
   }
   
-  const isCaseManagerView = userRole === 'Case Manager';
   const isManagerOrAdmin = userRole === 'Manager' || userRole === 'Admin';
   const canEditMainFields = isManagerOrAdmin;
 
@@ -278,11 +284,11 @@ export function EditProjectDialog({
                     <FormItem><FormLabel>Patent No.</FormLabel><Input value={project.patent_number ?? ''} readOnly /></FormItem>
                     <FormItem><FormLabel>Country</FormLabel><Input value={project.country ?? ''} readOnly /></FormItem>
                     <FormItem><FormLabel>Document Type</FormLabel><Input value={project.document_type ?? ''} readOnly /></FormItem>
-                    <FormItem className="col-span-2"><FormLabel>Action Taken</FormLabel><Textarea value={project.action_taken ?? ''} readOnly /></FormItem>
                     <FormItem><FormLabel>Email Renaming</FormLabel><Input value={project.email_renaming ?? ''} readOnly /></FormItem>
                     <FormItem><FormLabel>Sender</FormLabel><Input value={project.sender ?? ''} readOnly /></FormItem>
                     <FormItem><FormLabel>Email Date</FormLabel><Input value={project.received_date} readOnly /></FormItem>
                     <FormItem><FormLabel>Renewal Agent</FormLabel><Input value={project.renewal_agent ?? ''} readOnly /></FormItem>
+                    <FormItem className="col-span-2"><FormLabel>Action Taken</FormLabel><Textarea value={project.action_taken ?? ''} readOnly /></FormItem>
                     <FormItem className="col-span-2"><FormLabel>Client Query Description</FormLabel><Textarea value={project.client_query_description ?? ''} readOnly /></FormItem>
                 </div>
             </div>
@@ -304,23 +310,27 @@ export function EditProjectDialog({
      <>
         {/* Column 1 */}
         <div className="space-y-4">
-            <FormField control={form.control} name="ref_number" render={({ field }) => (<FormItem><FormLabel>Ref Number (Manual)</FormLabel><FormControl><Input {...field} value={field.value ?? ""} disabled={!canEditMainFields} /></FormControl><FormMessage /></FormItem>)} />
+            <FormField control={form.control} name="ref_number" render={({ field }) => (<FormItem><FormLabel>Ref Number (Manual)</FormLabel><FormControl><Input {...field} value={field.value ?? ""} disabled={!canEditMainFields && !isCaseManagerView} /></FormControl><FormMessage /></FormItem>)} />
             <FormField control={form.control} name="client_name" render={({ field }) => (<FormItem><FormLabel>Client Name</FormLabel><Select onValueChange={field.onChange} value={field.value} disabled={!canEditMainFields}><FormControl><SelectTrigger><SelectValue /></SelectTrigger></FormControl><SelectContent>{clientNames.map(c => <SelectItem key={c} value={c}>{c}</SelectItem>)}</SelectContent></Select><FormMessage /></FormItem>)} />
             <FormField control={form.control} name="process" render={({ field }) => (<FormItem><FormLabel>Process</FormLabel><Select onValueChange={field.onChange} value={field.value} disabled={!canEditMainFields}><FormControl><SelectTrigger><SelectValue /></SelectTrigger></FormControl><SelectContent>{processes.map(p => <SelectItem key={p} value={p}>{p}</SelectItem>)}</SelectContent></Select><FormMessage /></FormItem>)} />
-            <FormField control={form.control} name="subject_line" render={({ field }) => (<FormItem><FormLabel>Subject</FormLabel><FormControl><Textarea {...field} disabled={!canEditMainFields} /></FormControl><FormMessage /></FormItem>)} />
-            <FormField control={form.control} name="application_number" render={({ field }) => (<FormItem><FormLabel>Application No.</FormLabel><FormControl><Input {...field} value={field.value ?? ""} disabled={!canEditMainFields} /></FormControl><FormMessage /></FormItem>)} />
-            <FormField control={form.control} name="patent_number" render={({ field }) => (<FormItem><FormLabel>Patent No.</FormLabel><FormControl><Input {...field} value={field.value ?? ""} disabled={!canEditMainFields} /></FormControl><FormMessage /></FormItem>)} />
+            <FormField control={form.control} name="subject_line" render={({ field }) => (<FormItem><FormLabel>Subject</FormLabel><FormControl><Textarea {...field} disabled={!canEditMainFields && !isCaseManagerView} /></FormControl><FormMessage /></FormItem>)} />
+            <FormField control={form.control} name="application_number" render={({ field }) => (<FormItem><FormLabel>Application No.</FormLabel><FormControl><Input {...field} value={field.value ?? ""} disabled={!canEditMainFields && !isCaseManagerView} /></FormControl><FormMessage /></FormItem>)} />
+            <FormField control={form.control} name="patent_number" render={({ field }) => (<FormItem><FormLabel>Patent No.</FormLabel><FormControl><Input {...field} value={field.value ?? ""} disabled={!canEditMainFields && !isCaseManagerView} /></FormControl><FormMessage /></FormItem>)} />
+            <FormField control={form.control} name="country" render={({ field }) => (<FormItem><FormLabel>Country</FormLabel><FormControl><Input {...field} value={field.value ?? ""} disabled={!canEditMainFields && !isCaseManagerView} /></FormControl><FormMessage /></FormItem>)} />
+            <FormField control={form.control} name="sender" render={({ field }) => (<FormItem><FormLabel>Sender</FormLabel><FormControl><Input {...field} value={field.value ?? ""} disabled={!canEditMainFields && !isCaseManagerView} /></FormControl><FormMessage /></FormItem>)} />
             
-            {isCaseManagerView && (
+             {isCaseManagerView && (
                 <>
-                <FormField control={form.control} name="clientquery_status" render={({ field }) => (<FormItem><FormLabel>Client Status</FormLabel><Select onValueChange={v => field.onChange(v as ClientStatus)} value={field.value ?? ""} disabled={!isCaseManagerView}><FormControl><SelectTrigger><SelectValue placeholder="Select a status" /></SelectTrigger></FormControl><SelectContent>{clientStatuses.map(s => <SelectItem key={s} value={s}>{s}</SelectItem>)}</SelectContent></Select><FormMessage /></FormItem>)} />
+                <FormField control={form.control} name="client_query_description" render={({ field }) => (<FormItem><FormLabel>Client Query Description</FormLabel><FormControl><Textarea {...field} value={field.value ?? ""} disabled /></FormControl><FormMessage /></FormItem>)} />
+                 <FormField control={form.control} name="clientquery_status" render={({ field }) => (<FormItem><FormLabel>Client Status</FormLabel><Select onValueChange={v => field.onChange(v as ClientStatus)} value={field.value ?? ""} disabled={!isCaseManagerView}><FormControl><SelectTrigger><SelectValue placeholder="Select a status" /></SelectTrigger></FormControl><SelectContent>{clientStatuses.map(s => <SelectItem key={s} value={s}>{s}</SelectItem>)}</SelectContent></Select><FormMessage /></FormItem>)} />
                 <FormField control={form.control} name="client_comments" render={({ field }) => (<FormItem><FormLabel>Client Comments</FormLabel><FormControl><Textarea {...field} value={field.value ?? ""} disabled={!isCaseManagerView} className="h-24" /></FormControl><FormMessage /></FormItem>)} />
+                <FormField control={form.control} name="client_error_description" render={({ field }) => (<FormItem><FormLabel>Client Feedback / Error</FormLabel><FormControl><Textarea {...field} value={field.value ?? ""} disabled={!isCaseManagerView} className="h-24" /></FormControl><FormMessage /></FormItem>)} />
                 </>
             )}
         </div>
         {/* Column 2 */}
         <div className="space-y-4">
-              <FormField control={form.control} name="received_date" render={({ field }) => (<FormItem className="flex flex-col"><FormLabel>Email Date</FormLabel><Popover><PopoverTrigger asChild><FormControl><Button variant="outline" className={cn("font-normal w-full justify-start", !field.value && "text-muted-foreground")} disabled={!canEditMainFields}><CalendarIcon className="mr-2 h-4 w-4" />{field.value ? format(new Date(field.value.replaceAll('-', '/')), "PPP") : <span>Pick a date</span>}</Button></FormControl></PopoverTrigger><PopoverContent className="w-auto p-0"><Calendar mode="single" selected={field.value ? new Date(field.value.replaceAll('-', '/')) : undefined} onSelect={(date) => field.onChange(date ? format(date, 'yyyy-MM-dd') : '')} /></PopoverContent></Popover><FormMessage /></FormItem>)} />
+              <FormField control={form.control} name="received_date" render={({ field }) => (<FormItem className="flex flex-col"><FormLabel>Email Date</FormLabel><Popover><PopoverTrigger asChild><FormControl><Button variant="outline" className={cn("font-normal w-full justify-start", !field.value && "text-muted-foreground")} disabled={!canEditMainFields && !isCaseManagerView}><CalendarIcon className="mr-2 h-4 w-4" />{field.value ? format(new Date(field.value.replaceAll('-', '/')), "PPP") : <span>Pick a date</span>}</Button></FormControl></PopoverTrigger><PopoverContent className="w-auto p-0"><Calendar mode="single" selected={field.value ? new Date(field.value.replaceAll('-', '/')) : undefined} onSelect={(date) => field.onChange(date ? format(date, 'yyyy-MM-dd') : '')} /></PopoverContent></Popover><FormMessage /></FormItem>)} />
             <FormField control={form.control} name="allocation_date" render={({ field }) => (<FormItem className="flex flex-col"><FormLabel>Allocation Date</FormLabel><Popover><PopoverTrigger asChild><FormControl><Button variant="outline" className={cn("font-normal w-full justify-start", !field.value && "text-muted-foreground")} disabled={!canEditMainFields}><CalendarIcon className="mr-2 h-4 w-4" />{field.value ? format(new Date(field.value.replaceAll('-', '/')), "PPP") : <span>Pick a date</span>}</Button></FormControl></PopoverTrigger><PopoverContent className="w-auto p-0"><Calendar mode="single" selected={field.value ? new Date(field.value.replaceAll('-', '/')) : undefined} onSelect={(date) => field.onChange(date ? format(date, 'yyyy-MM-dd') : '')} /></PopoverContent></Popover><FormMessage /></FormItem>)} />
             <FormField control={form.control} name="processor" render={({ field }) => (<FormItem><FormLabel>Processor</FormLabel><Select onValueChange={field.onChange} value={field.value} disabled={!canEditMainFields}><FormControl><SelectTrigger><SelectValue /></SelectTrigger></FormControl><SelectContent>{processors.map(p => <SelectItem key={p} value={p}>{p}</SelectItem>)}</SelectContent></Select><FormMessage /></FormItem>)} />
             <FormField control={form.control} name="qa" render={({ field }) => (<FormItem><FormLabel>QA</FormLabel><Select onValueChange={field.onChange} value={field.value} disabled={!canEditMainFields}><FormControl><SelectTrigger><SelectValue /></SelectTrigger></FormControl><SelectContent>{qas.map(q => <SelectItem key={q} value={q}>{q}</SelectItem>)}</SelectContent></Select><FormMessage /></FormItem>)} />
@@ -350,7 +360,7 @@ export function EditProjectDialog({
                   <div className="flex justify-between items-center">
                     <div>
                         <DialogTitle>Edit Project: {form.watch('id')}</DialogTitle>
-                        <DialogDescription>Update details for {form.watch('subject_line')}</DialogDescription>
+                        <DialogDescription>Update details for {form.watch('ref_number')}</DialogDescription>
                     </div>
                   </div>
               </DialogHeader>
