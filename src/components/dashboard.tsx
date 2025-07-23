@@ -17,6 +17,7 @@ import { useSearchParams, useRouter } from 'next/navigation';
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from './ui/card';
 import { Input } from './ui/input';
 import { cn } from '@/lib/utils';
+import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from './ui/accordion';
 
 interface DashboardProps {
   user: User;
@@ -354,38 +355,48 @@ function Dashboard({
             ) : isManagerOrAdmin ? (
               <>
                 {showSearchForm && (
-                  <div className="space-y-4">
-                     <div className="animated-border shadow-xl">
-                        <Card>
-                          <CardHeader>
-                            <CardTitle>Work Allocation / Records Addition</CardTitle>
-                          </CardHeader>
-                          <CardContent>
-                              <div className="flex items-center gap-4">
-                                  <div 
-                                    className="flex items-center justify-center border-2 border-dashed rounded-md p-4 w-full cursor-pointer hover:bg-muted/50"
-                                    onClick={() => fileInputRef.current?.click()}
-                                  >
-                                      <div className="flex-grow flex items-center gap-2 text-muted-foreground">
-                                        <FileUp className="h-5 w-5" />
-                                        <span>{selectedFile ? selectedFile.name : 'Click to select a CSV file'}</span>
-                                      </div>
-                                  </div>
-                              </div>
-                          </CardContent>
-                           <CardFooter className="flex justify-end gap-2">
-                                <Button variant="outline" onClick={() => setSelectedFile(null)} disabled={!selectedFile || isUploading}>
-                                  <X className="mr-2 h-4 w-4" /> Cancel
-                                </Button>
-                                <Button onClick={handleProcessUpload} disabled={!selectedFile || isUploading}>
-                                    {isUploading ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Upload className="mr-2 h-4 w-4" />}
-                                    Upload
-                                </Button>
-                            </CardFooter>
-                        </Card>
-                      </div>
-                      <AdvancedSearchForm onSearch={handleAdvancedSearch} initialCriteria={searchCriteria} />
-                  </div>
+                   <Accordion type="single" collapsible className="w-full space-y-4">
+                        <AccordionItem value="work-allocation" className="border-none">
+                             <div className="animated-border shadow-xl">
+                                <AccordionTrigger className="p-4 bg-card rounded-md text-lg font-semibold hover:no-underline">Work Allocation / Records Addition</AccordionTrigger>
+                                <AccordionContent className="bg-card rounded-b-md">
+                                    <Card className="border-0 shadow-none">
+                                        <CardContent className="pt-4">
+                                            <div className="flex items-center gap-4">
+                                                <div 
+                                                    className="flex items-center justify-center border-2 border-dashed rounded-md p-4 w-full cursor-pointer hover:bg-muted/50"
+                                                    onClick={() => fileInputRef.current?.click()}
+                                                >
+                                                    <div className="flex-grow flex items-center gap-2 text-muted-foreground">
+                                                    <FileUp className="h-5 w-5" />
+                                                    <span>{selectedFile ? selectedFile.name : 'Click to select a CSV file'}</span>
+                                                    </div>
+                                                </div>
+                                            </div>
+                                        </CardContent>
+                                        <CardFooter className="flex justify-end gap-2">
+                                            <Button variant="outline" onClick={() => setSelectedFile(null)} disabled={!selectedFile || isUploading}>
+                                                <X className="mr-2 h-4 w-4" /> Cancel
+                                            </Button>
+                                            <Button onClick={handleProcessUpload} disabled={!selectedFile || isUploading}>
+                                                {isUploading ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Upload className="mr-2 h-4 w-4" />}
+                                                Upload
+                                            </Button>
+                                        </CardFooter>
+                                    </Card>
+                                </AccordionContent>
+                             </div>
+                        </AccordionItem>
+
+                        <AccordionItem value="advanced-search" className="border-none">
+                             <div className="animated-border shadow-xl">
+                                <AccordionTrigger className="p-4 bg-card rounded-md text-lg font-semibold hover:no-underline">Advanced Search</AccordionTrigger>
+                                <AccordionContent className="pt-0 bg-card rounded-b-md">
+                                     <AdvancedSearchForm onSearch={handleAdvancedSearch} initialCriteria={searchCriteria} />
+                                </AccordionContent>
+                             </div>
+                        </AccordionItem>
+                    </Accordion>
                 )}
                 
                 {!showSearchForm && (
@@ -455,6 +466,8 @@ function Dashboard({
 }
 
 export default Dashboard;
+
+    
 
     
 

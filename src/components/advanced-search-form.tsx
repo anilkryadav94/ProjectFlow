@@ -87,118 +87,115 @@ export function AdvancedSearchForm({ onSearch, initialCriteria }: AdvancedSearch
   }
 
   return (
-    <div className="animated-border shadow-xl">
-        <Card>
-            <CardHeader>
-                <CardTitle>Advanced Search</CardTitle>
-            </CardHeader>
-            <CardContent>
-                <form onSubmit={handleSubmit(onSubmit)}>
-                    <div className="space-y-4">
-                    {fields.map((item, index) => {
-                        const selectedField = watch(`criteria.${index}.field`);
-                        const fieldConfig = searchFields.find(f => f.value === selectedField);
-                        const isDate = fieldConfig?.type === 'date';
-                        const isSelect = fieldConfig?.type === 'select';
+    <Card className="border-0 shadow-none">
+        <CardContent className="pt-6">
+            <form onSubmit={handleSubmit(onSubmit)}>
+                <div className="space-y-4">
+                {fields.map((item, index) => {
+                    const selectedField = watch(`criteria.${index}.field`);
+                    const fieldConfig = searchFields.find(f => f.value === selectedField);
+                    const isDate = fieldConfig?.type === 'date';
+                    const isSelect = fieldConfig?.type === 'select';
 
-                        return (
-                        <div key={item.id} className="flex items-center gap-2">
-                            <Select
-                                value={watch(`criteria.${index}.field`)}
-                                onValueChange={(value) => setValue(`criteria.${index}.field`, value as SearchField)}
+                    return (
+                    <div key={item.id} className="flex items-center gap-2">
+                        <Select
+                            value={watch(`criteria.${index}.field`)}
+                            onValueChange={(value) => setValue(`criteria.${index}.field`, value as SearchField)}
+                        >
+                            <SelectTrigger className="w-1/4">
+                                <SelectValue placeholder="Select a field" />
+                            </SelectTrigger>
+                            <SelectContent>
+                                {searchFields.map(f => <SelectItem key={f.value} value={f.value}>{f.label}</SelectItem>)}
+                            </SelectContent>
+                        </Select>
+
+                        <Select
+                            value={watch(`criteria.${index}.operator`)}
+                            onValueChange={(value) => setValue(`criteria.${index}.operator`, value as Operator)}
+                            disabled={!selectedField}
+                        >
+                            <SelectTrigger className="w-1/4">
+                                <SelectValue placeholder="Select operator" />
+                            </SelectTrigger>
+                            <SelectContent>
+                                {(isDate ? dateOperators : textOperators).map(op => (
+                                    <SelectItem key={op.value} value={op.value}>{op.label}</SelectItem>
+                                ))}
+                            </SelectContent>
+                        </Select>
+
+                        {isDate ? (
+                            <Popover>
+                                <PopoverTrigger asChild>
+                                    <Button
+                                        variant={"outline"}
+                                        className={cn(
+                                            "w-1/2 justify-start text-left font-normal",
+                                            !watch(`criteria.${index}.value`) && "text-muted-foreground"
+                                        )}
+                                    >
+                                        <CalendarIcon className="mr-2 h-4 w-4" />
+                                        {watch(`criteria.${index}.value`) ? format(new Date(watch(`criteria.${index}.value`)), "PPP") : <span>Pick a date</span>}
+                                    </Button>
+                                </PopoverTrigger>
+                                <PopoverContent className="w-auto p-0">
+                                    <Calendar
+                                        mode="single"
+                                        selected={watch(`criteria.${index}.value`) ? new Date(watch(`criteria.${index}.value`)) : undefined}
+                                        onSelect={(date) => setValue(`criteria.${index}.value`, date ? format(date, 'yyyy-MM-dd') : '')}
+                                        initialFocus
+                                    />
+                                </PopoverContent>
+                            </Popover>
+                        ) : isSelect ? (
+                                <Select
+                                value={watch(`criteria.${index}.value`)}
+                                onValueChange={(value) => setValue(`criteria.${index}.value`, value)}
+                                disabled={!fieldConfig}
                             >
-                                <SelectTrigger className="w-1/4">
-                                    <SelectValue placeholder="Select a field" />
+                                <SelectTrigger className="w-1/2">
+                                    <SelectValue placeholder={`Select ${fieldConfig?.label}`} />
                                 </SelectTrigger>
                                 <SelectContent>
-                                    {searchFields.map(f => <SelectItem key={f.value} value={f.value}>{f.label}</SelectItem>)}
+                                    {fieldConfig?.options?.map(opt => <SelectItem key={opt} value={opt}>{opt}</SelectItem>)}
                                 </SelectContent>
                             </Select>
-
-                            <Select
-                                value={watch(`criteria.${index}.operator`)}
-                                onValueChange={(value) => setValue(`criteria.${index}.operator`, value as Operator)}
-                                disabled={!selectedField}
-                            >
-                                <SelectTrigger className="w-1/4">
-                                    <SelectValue placeholder="Select operator" />
-                                </SelectTrigger>
-                                <SelectContent>
-                                    {(isDate ? dateOperators : textOperators).map(op => (
-                                        <SelectItem key={op.value} value={op.value}>{op.label}</SelectItem>
-                                    ))}
-                                </SelectContent>
-                            </Select>
-
-                            {isDate ? (
-                                <Popover>
-                                    <PopoverTrigger asChild>
-                                        <Button
-                                            variant={"outline"}
-                                            className={cn(
-                                                "w-1/2 justify-start text-left font-normal",
-                                                !watch(`criteria.${index}.value`) && "text-muted-foreground"
-                                            )}
-                                        >
-                                            <CalendarIcon className="mr-2 h-4 w-4" />
-                                            {watch(`criteria.${index}.value`) ? format(new Date(watch(`criteria.${index}.value`)), "PPP") : <span>Pick a date</span>}
-                                        </Button>
-                                    </PopoverTrigger>
-                                    <PopoverContent className="w-auto p-0">
-                                        <Calendar
-                                            mode="single"
-                                            selected={watch(`criteria.${index}.value`) ? new Date(watch(`criteria.${index}.value`)) : undefined}
-                                            onSelect={(date) => setValue(`criteria.${index}.value`, date ? format(date, 'yyyy-MM-dd') : '')}
-                                            initialFocus
-                                        />
-                                    </PopoverContent>
-                                </Popover>
-                            ) : isSelect ? (
-                                 <Select
-                                    value={watch(`criteria.${index}.value`)}
-                                    onValueChange={(value) => setValue(`criteria.${index}.value`, value)}
-                                    disabled={!fieldConfig}
-                                >
-                                    <SelectTrigger className="w-1/2">
-                                        <SelectValue placeholder={`Select ${fieldConfig?.label}`} />
-                                    </SelectTrigger>
-                                    <SelectContent>
-                                        {fieldConfig?.options?.map(opt => <SelectItem key={opt} value={opt}>{opt}</SelectItem>)}
-                                    </SelectContent>
-                                </Select>
-                            ) : (
-                                <Input
-                                    className="w-1/2"
-                                    placeholder="Enter value"
-                                    {...register(`criteria.${index}.value`)}
-                                    disabled={watch(`criteria.${index}.operator`) === 'blank'}
-                                />
-                            )}
+                        ) : (
+                            <Input
+                                className="w-1/2"
+                                placeholder="Enter value"
+                                {...register(`criteria.${index}.value`)}
+                                disabled={watch(`criteria.${index}.operator`) === 'blank'}
+                            />
+                        )}
 
 
-                            <Button type="button" variant="ghost" size="icon" onClick={() => remove(index)} disabled={fields.length <= 1}>
-                                <Trash2 className="h-4 w-4" />
-                            </Button>
-                        </div>
-                        );
-                    })}
-                    </div>
-
-                    <div className="flex items-center gap-2 mt-4">
-                        <Button type="button" variant="outline" onClick={() => append({ field: '', operator: '', value: '' })}>
-                            <PlusCircle className="mr-2" /> Add Criteria
-                        </Button>
-                        <div className="flex-grow" />
-                        <Button type="button" variant="ghost" onClick={handleReset}>
-                            Reset Form
-                        </Button>
-                        <Button type="submit">
-                            <Search className="mr-2" /> Search
+                        <Button type="button" variant="ghost" size="icon" onClick={() => remove(index)} disabled={fields.length <= 1}>
+                            <Trash2 className="h-4 w-4" />
                         </Button>
                     </div>
-                </form>
-            </CardContent>
-        </Card>
-    </div>
+                    );
+                })}
+                </div>
+
+                <div className="flex items-center gap-2 mt-4">
+                    <Button type="button" variant="outline" onClick={() => append({ field: '', operator: '', value: '' })}>
+                        <PlusCircle className="mr-2" /> Add Criteria
+                    </Button>
+                    <div className="flex-grow" />
+                    <Button type="button" variant="ghost" onClick={handleReset}>
+                        Reset Form
+                    </Button>
+                    <Button type="submit">
+                        <Search className="mr-2" /> Search
+                    </Button>
+                </div>
+            </form>
+        </CardContent>
+    </Card>
   );
 }
+
+    
