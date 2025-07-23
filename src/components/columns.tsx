@@ -41,16 +41,16 @@ export const getColumns = (
 
   const baseColumns = [
     {
-      key: "refNumber" as const,
+      key: "ref_number" as const,
       header: "Ref Number",
       render: (project: Project) => (
          <div className="font-medium">
-            {project.refNumber}
+            {project.ref_number}
          </div>
       )
     },
     {
-      key: "clientName" as const,
+      key: "client_name" as const,
       header: "Client Name",
     },
     {
@@ -58,19 +58,19 @@ export const getColumns = (
       header: "Process",
     },
     {
-      key: "subject" as const,
+      key: "subject_line" as const,
       header: "Subject",
     },
     {
-      key: "applicationNumber" as const,
+      key: "application_number" as const,
       header: "Application No.",
     },
     {
-      key: "emailDate" as const,
+      key: "received_date" as const,
       header: "Email Date",
     },
     {
-      key: "allocationDate" as const,
+      key: "allocation_date" as const,
       header: "Allocation Date",
     },
     {
@@ -82,7 +82,7 @@ export const getColumns = (
       header: "QA",
     },
     {
-      key: "caseManager" as const,
+      key: "case_manager" as const,
       header: "Case Manager",
     },
     {
@@ -93,13 +93,13 @@ export const getColumns = (
         let statusColorClass = statusColors[project.workflowStatus];
 
         if (project.workflowStatus === 'With Processor') {
-            statusText = project.processorStatus;
-            statusColorClass = statusColors[project.processorStatus];
+            statusText = project.processing_status;
+            statusColorClass = statusColors[project.processing_status];
         } else if (project.workflowStatus === 'With QA') {
-            statusText = `QA: ${project.qaStatus}`;
-            statusColorClass = statusColors[project.qaStatus] || statusColors['With QA'];
+            statusText = `QA: ${project.qa_status}`;
+            statusColorClass = statusColors[project.qa_status] || statusColors['With QA'];
         } else if (project.workflowStatus === 'Completed') {
-             statusText = `QA: ${project.qaStatus}`;
+             statusText = `QA: ${project.qa_status}`;
              statusColorClass = statusColors['Completed'];
         }
         
@@ -177,4 +177,3 @@ export const getColumns = (
 
   return columns;
 };
-

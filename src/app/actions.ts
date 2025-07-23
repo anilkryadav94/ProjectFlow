@@ -36,8 +36,8 @@ export async function bulkUpdateProjects(data: z.infer<typeof bulkUpdateSchema>)
 
 const projectEntrySchema = z.object({
     id: z.string(),
-    applicationNumber: z.string().nullable(),
-    patentNumber: z.string().nullable(),
+    application_number: z.string().nullable(),
+    patent_number: z.string().nullable(),
     country: z.string().nullable(),
     status: z.string().nullable(),
     notes: z.string().nullable(),
@@ -45,28 +45,43 @@ const projectEntrySchema = z.object({
 
 const updateProjectSchema = z.object({
   id: z.string(),
-  refNumber: z.string(),
-  clientName: z.string(),
+  ref_number: z.string(),
+  client_name: z.string(),
   process: z.enum(["Patent", "TM", "IDS", "Project"]),
-  subject: z.string(),
-  applicationNumber: z.string().nullable(),
-  patentNumber: z.string().nullable(),
-  emailDate: z.string(),
-  allocationDate: z.string(),
+  subject_line: z.string(),
+  application_number: z.string().nullable(),
+  patent_number: z.string().nullable(),
+  received_date: z.string(),
+  allocation_date: z.string(),
   processor: z.string(),
   qa: z.string(),
-  caseManager: z.string(),
-  processorStatus: z.enum(["Pending", "On Hold", "Re-Work", "Processed", "NTP", "Client Query", "Already Processed"]),
-  qaStatus: z.enum(["Pending", "Complete", "NTP", "Client Query", "Already Processed"]),
-  reworkReason: z.string().nullable(),
-  clientComments: z.string().nullable(),
-  clientStatus: z.enum(["Approved", "Clarification Required"]).nullable(),
+  case_manager: z.string(),
+  processing_status: z.enum(["Pending", "On Hold", "Re-Work", "Processed", "NTP", "Client Query", "Already Processed"]),
+  qa_status: z.enum(["Pending", "Complete", "NTP", "Client Query", "Already Processed"]),
+  rework_reason: z.string().nullable(),
+  client_comments: z.string().nullable(),
+  clientquery_status: z.enum(["Approved", "Clarification Required"]).nullable(),
   entries: z.array(projectEntrySchema).optional(),
+   // Adding all new fields to be safe
+  sender: z.string().nullable(),
+  country: z.string().nullable(),
+  document_type: z.string().nullable(),
+  action_taken: z.string().nullable(),
+  renewal_agent: z.string().nullable(),
+  client_query_description: z.string().nullable(),
+  client_error_description: z.string().nullable(),
+  qa_remark: z.string().nullable(),
+  error: z.string().nullable(),
+  email_renaming: z.string().nullable(),
+  email_forwarded: z.string().nullable(),
+  reportout_date: z.string().nullable(),
+  manager_name: z.string().nullable(),
+  workflowStatus: z.string(), // Keep it simple for validation
 });
 
 
 export async function updateProject(data: Partial<Project>, submitAction?: 'submit_for_qa' | 'submit_qa' | 'send_rework' | 'save' | 'client_submit'): Promise<{success: boolean, project?: Project}> {
-    const validatedData = updateProjectSchema.parse(data);
+    const validatedData = updateProjectSchema.partial().parse(data);
     const projectIndex = projects.findIndex(p => p.id === validatedData.id);
     if (projectIndex === -1) {
         return { success: false };
@@ -77,36 +92,36 @@ export async function updateProject(data: Partial<Project>, submitAction?: 'subm
     // Handle status transitions based on action
     if (submitAction === 'submit_for_qa') {
       updatedProject.workflowStatus = 'With QA';
-      updatedProject.processingDate = new Date().toISOString().split('T')[0];
+      updatedProject.processing_date = new Date().toISOString().split('T')[0];
     } else if (submitAction === 'submit_qa') {
       updatedProject.workflowStatus = 'Completed';
-      updatedProject.qaDate = new Date().toISOString().split('T')[0];
+      updatedProject.qa_date = new Date().toISOString().split('T')[0];
     } else if (submitAction === 'send_rework') {
       updatedProject.workflowStatus = 'With Processor';
-      updatedProject.processorStatus = 'Re-Work';
+      updatedProject.processing_status = 'Re-Work';
     } else if (submitAction === 'client_submit') {
       updatedProject.workflowStatus = 'With QA';
-      updatedProject.qaStatus = 'Pending'; // Reset QA status so they know client responded
+      updatedProject.qa_status = 'Pending'; // Reset QA status so they know client responded
     }
 
 
-    projects[projectIndex] = updatedProject;
+    projects[projectIndex] = updatedProject as Project;
 
     revalidatePath('/');
     revalidatePath(`/task/${validatedData.id}`);
     
-    return { success: true, project: updatedProject };
+    return { success: true, project: updatedProject as Project };
 }
 
 const fieldsToCopy = z.enum([
-  'subject',
-  'clientName',
+  'subject_line',
+  'client_name',
   'process',
   'processor',
   'qa',
-  'caseManager',
-  'emailDate',
-  'allocationDate',
+  'case_manager',
+  'received_date',
+  'allocation_date',
 ]);
 
 type FieldToCopyId = z.infer<typeof fieldsToCopy>;
@@ -126,35 +141,50 @@ export async function addRows(
     return { success: false, error: "Count must be a positive number."}
   }
 
-  let lastRefNumber = parseInt(projects.map(p => p.refNumber.replace('REF', '')).sort((a,b) => parseInt(b) - parseInt(a))[0]);
+  let lastRefNumber = parseInt(projects.map(p => p.ref_number.replace('REF', '')).sort((a,b) => parseInt(b) - parseInt(a))[0]);
 
   for (let i = 0; i < count; i++) {
     lastRefNumber++;
     const newProject: Project = {
         // Default values
         id: `proj_${Date.now()}_${i}`,
-        refNumber: `REF${String(lastRefNumber).padStart(3, '0')}`,
-        applicationNumber: null,
-        patentNumber: null,
+        ref_number: `REF${String(lastRefNumber).padStart(3, '0')}`,
+        application_number: null,
+        patent_number: null,
         workflowStatus: 'With Processor',
-        processorStatus: 'Pending',
-        qaStatus: 'Pending',
-        processingDate: null,
-        qaDate: null,
-        reworkReason: null,
-        clientComments: null,
-        clientStatus: null,
+        processing_status: 'Pending',
+        qa_status: 'Pending',
+        processing_date: null,
+        qa_date: null,
+        rework_reason: null,
+        client_comments: null,
+        clientquery_status: null,
         entries: [],
         
         // Potentially copied values
-        subject: '',
-        clientName: '',
+        subject_line: '',
+        client_name: '',
         process: 'Patent',
         processor: '',
         qa: '',
-        caseManager: '',
-        emailDate: new Date().toISOString().split('T')[0],
-        allocationDate: new Date().toISOString().split('T')[0],
+        case_manager: '',
+        received_date: new Date().toISOString().split('T')[0],
+        allocation_date: new Date().toISOString().split('T')[0],
+
+        // Other new fields with default null
+        sender: null,
+        country: null,
+        document_type: null,
+        action_taken: null,
+        renewal_agent: null,
+        client_query_description: null,
+        client_error_description: null,
+        qa_remark: null,
+        error: null,
+        email_renaming: null,
+        email_forwarded: null,
+        reportout_date: null,
+        manager_name: null,
     };
 
     fieldsToCopy.forEach(field => {
@@ -169,4 +199,3 @@ export async function addRows(
   revalidatePath('/');
   return { success: true, addedCount: count };
 }
-

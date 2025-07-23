@@ -31,14 +31,14 @@ import { addRows } from "@/app/actions";
 import { Loader2 } from "lucide-react";
 
 const fieldsToCopy = [
-  { id: 'subject', label: 'Subject' },
-  { id: 'clientName', label: 'Client Name' },
+  { id: 'subject_line', label: 'Subject' },
+  { id: 'client_name', label: 'Client Name' },
   { id: 'process', label: 'Process' },
   { id: 'processor', label: 'Processor' },
   { id: 'qa', label: 'QA' },
-  { id: 'caseManager', label: 'Case Manager' },
-  { id: 'emailDate', label: 'Email Date' },
-  { id: 'allocationDate', label: 'Allocation Date' },
+  { id: 'case_manager', label: 'Case Manager' },
+  { id: 'received_date', label: 'Email Date' },
+  { id: 'allocation_date', label: 'Allocation Date' },
 ] as const;
 
 type FieldToCopyId = typeof fieldsToCopy[number]['id'];
@@ -115,7 +115,7 @@ export function AddRowsDialog({
             <DialogHeader>
               <DialogTitle>Add New Rows</DialogTitle>
               <DialogDescription>
-                Create multiple new rows by copying data from Ref: {sourceProject.refNumber}.
+                Create multiple new rows by copying data from Ref: {sourceProject.ref_number}.
               </DialogDescription>
             </DialogHeader>
 

@@ -180,15 +180,15 @@ export function Header({
                     </SelectTrigger>
                     <SelectContent>
                         <SelectItem value="any">Any Text/Number</SelectItem>
-                        <SelectItem value="refNumber">Ref Number</SelectItem>
-                        <SelectItem value="applicationNumber">Application No.</SelectItem>
-                        <SelectItem value="patentNumber">Patent No.</SelectItem>
-                        <SelectItem value="subject">Subject</SelectItem>
-                        <SelectItem value="processorStatus">Processor Status</SelectItem>
-                        <SelectItem value="qaStatus">QA Status</SelectItem>
+                        <SelectItem value="ref_number">Ref Number</SelectItem>
+                        <SelectItem value="application_number">Application No.</SelectItem>
+                        <SelectItem value="patent_number">Patent No.</SelectItem>
+                        <SelectItem value="subject_line">Subject</SelectItem>
+                        <SelectItem value="processing_status">Processor Status</SelectItem>
+                        <SelectItem value="qa_status">QA Status</SelectItem>
                         <SelectItem value="workflowStatus">Workflow Status</SelectItem>
-                        <SelectItem value="emailDate">Email Date</SelectItem>
-                        <SelectItem value="allocationDate">Allocation Date</SelectItem>
+                        <SelectItem value="received_date">Email Date</SelectItem>
+                        <SelectItem value="allocation_date">Allocation Date</SelectItem>
                     </SelectContent>
                     </Select>
                     <Input
@@ -238,12 +238,12 @@ export function Header({
                         </SelectTrigger>
                         <SelectContent>
                             <SelectItem value="any">Any Text/Number</SelectItem>
-                            <SelectItem value="refNumber">Ref Number</SelectItem>
-                            <SelectItem value="applicationNumber">Application No.</SelectItem>
-                            <SelectItem value="patentNumber">Patent No.</SelectItem>
-                            <SelectItem value="subject">Subject</SelectItem>
-                            <SelectItem value="processorStatus">Processor Status</SelectItem>
-                            <SelectItem value="qaStatus">QA Status</SelectItem>
+                            <SelectItem value="ref_number">Ref Number</SelectItem>
+                            <SelectItem value="application_number">Application No.</SelectItem>
+                            <SelectItem value="patent_number">Patent No.</SelectItem>
+                            <SelectItem value="subject_line">Subject</SelectItem>
+                            <SelectItem value="processing_status">Processor Status</SelectItem>
+                            <SelectItem value="qa_status">QA Status</SelectItem>
                             <SelectItem value="workflowStatus">Workflow Status</SelectItem>
                         </SelectContent>
                     </Select>

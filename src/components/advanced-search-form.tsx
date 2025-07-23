@@ -15,8 +15,8 @@ import { format } from 'date-fns';
 import type { Project } from '@/lib/data';
 import { cn } from '@/lib/utils';
 
-type TextField = keyof Pick<Project, 'refNumber' | 'applicationNumber' | 'patentNumber' | 'processor' | 'qa' | 'country' | 'clientName' | 'process' | 'status'>;
-type DateField = keyof Pick<Project, 'emailDate' | 'allocationDate' | 'processingDate' | 'qaDate'>;
+type TextField = keyof Pick<Project, 'ref_number' | 'application_number' | 'patent_number' | 'processor' | 'qa' | 'country' | 'client_name' | 'process' | 'processing_status'>;
+type DateField = keyof Pick<Project, 'received_date' | 'allocation_date' | 'processing_date' | 'qa_date'>;
 type SearchField = TextField | DateField;
 
 type TextOperator = 'blank' | 'equals' | 'in' | 'startsWith' | 'contains';
@@ -44,19 +44,19 @@ const dateOperators: { value: DateOperator, label: string }[] = [
 ];
 
 const searchFields: { value: SearchField, label: string, type: 'text' | 'date' | 'select', options?: string[] }[] = [
-    { value: 'refNumber', label: 'Ref Number', type: 'text' },
+    { value: 'ref_number', label: 'Ref Number', type: 'text' },
     { value: 'processor', label: 'Processor', type: 'select', options: processors },
     { value: 'qa', label: 'QA', type: 'select', options: qas },
-    { value: 'applicationNumber', label: 'Application No.', type: 'text' },
-    { value: 'patentNumber', label: 'Patent No.', type: 'text' },
+    { value: 'application_number', label: 'Application No.', type: 'text' },
+    { value: 'patent_number', label: 'Patent No.', type: 'text' },
     { value: 'country', label: 'Country', type: 'select', options: countries },
-    { value: 'clientName', label: 'Client Name', type: 'select', options: clientNames },
+    { value: 'client_name', label: 'Client Name', type: 'select', options: clientNames },
     { value: 'process', label: 'Process', type: 'select', options: processes },
-    { value: 'status', label: 'Status', type: 'select', options: projectStatuses },
-    { value: 'emailDate', label: 'Email Date', type: 'date' },
-    { value: 'allocationDate', label: 'Allocation Date', type: 'date' },
-    { value: 'processingDate', label: 'Processing Date', type: 'date' },
-    { value: 'qaDate', label: 'QA Date', type: 'date' },
+    { value: 'processing_status', label: 'Status', type: 'select', options: projectStatuses },
+    { value: 'received_date', label: 'Email Date', type: 'date' },
+    { value: 'allocation_date', label: 'Allocation Date', type: 'date' },
+    { value: 'processing_date', label: 'Processing Date', type: 'date' },
+    { value: 'qa_date', label: 'QA Date', type: 'date' },
 ];
 
 interface AdvancedSearchFormProps {

@@ -33,7 +33,7 @@ export function DashboardWrapper(props: DashboardProps) {
 }
 
 
-export type SearchableColumn = 'any' | 'refNumber' | 'applicationNumber' | 'patentNumber' | 'subject' | 'processorStatus' | 'qaStatus' | 'workflowStatus' | 'allocationDate' | 'emailDate';
+export type SearchableColumn = 'any' | 'ref_number' | 'application_number' | 'patent_number' | 'subject_line' | 'processing_status' | 'qa_status' | 'workflowStatus' | 'allocation_date' | 'received_date';
 
 const bulkUpdateFields = [
     { value: 'processor', label: 'Processor', options: processors },
@@ -53,14 +53,14 @@ const ProcessingStatusSummary = ({ projects }: { projects: Project[] }) => {
         }, {} as ProcessingSummaryData);
 
         projects.forEach(p => {
-            if (!data[p.clientName]) return;
+            if (!data[p.client_name]) return;
             
-            if (processorSubmissionStatuses.includes(p.processorStatus)) {
-                 if (p.processingDate === today) {
-                    data[p.clientName].processed++;
+            if (processorSubmissionStatuses.includes(p.processing_status)) {
+                 if (p.processing_date === today) {
+                    data[p.client_name].processed++;
                 }
-            } else if (processorActionableStatuses.includes(p.processorStatus)) {
-                data[p.clientName].pending++;
+            } else if (processorActionableStatuses.includes(p.processing_status)) {
+                data[p.client_name].pending++;
             }
         });
 
@@ -105,16 +105,16 @@ const QAStatusSummary = ({ projects }: { projects: Project[] }) => {
         }, {} as QASummaryData);
 
         projects.forEach(p => {
-            if (!data[p.clientName]) return;
+            if (!data[p.client_name]) return;
 
-            if (p.qaStatus === 'Complete') {
-                if (p.qaDate === today) {
-                    data[p.clientName].processed++;
+            if (p.qa_status === 'Complete') {
+                if (p.qa_date === today) {
+                    data[p.client_name].processed++;
                 }
-            } else if (p.qaStatus === 'Pending') {
-                data[p.clientName].pending++;
-            } else if (p.qaStatus === 'Client Query') {
-                data[p.clientName].clientQuery++;
+            } else if (p.qa_status === 'Pending') {
+                data[p.client_name].pending++;
+            } else if (p.qa_status === 'Client Query') {
+                data[p.client_name].clientQuery++;
             }
         });
 
@@ -173,7 +173,7 @@ function Dashboard({
   const [managerSearch, setManagerSearch] = React.useState('');
   const [managerSearchColumn, setManagerSearchColumn] = React.useState<SearchableColumn>('any');
 
-  const [sort, setSort] = React.useState<{ key: keyof Project; direction: 'asc' | 'desc' } | null>({ key: 'allocationDate', direction: 'desc' });
+  const [sort, setSort] = React.useState<{ key: keyof Project; direction: 'asc' | 'desc' } | null>({ key: 'allocation_date', direction: 'desc' });
   
   const [rowSelection, setRowSelection] = React.useState<Record<string, boolean>>({});
   const [bulkUpdateField, setBulkUpdateField] = React.useState<(typeof bulkUpdateFields)[number]['value']>('processor');
@@ -286,41 +286,54 @@ function Dashboard({
         complete: (results) => {
             const newProjects = results.data.map((row: any, index: number) => {
                 // Basic validation and type coercion
-                const clientName = clientNames.includes(row.clientName) ? row.clientName : clientNames[0];
+                const client_name = clientNames.includes(row.client_name) ? row.client_name : clientNames[0];
                 const process = processes.includes(row.process) ? row.process : processes[0];
                 const processor = processors.includes(row.processor) ? row.processor : "";
                 const qa = qas.includes(row.qa) ? row.qa : "";
                 const workflowStatus = workflowStatuses.includes(row.workflowStatus) ? row.workflowStatus : 'With Processor';
-                const processorStatus = allProcessorStatuses.includes(row.processorStatus) ? row.processorStatus : 'Pending';
-                const qaStatus = allQaStatuses.includes(row.qaStatus) ? row.qaStatus : 'Pending';
+                const processing_status = allProcessorStatuses.includes(row.processing_status) ? row.processing_status : 'Pending';
+                const qa_status = allQaStatuses.includes(row.qa_status) ? row.qa_status : 'Pending';
                 
-                let lastRefNumber = parseInt(projects.map(p => p.refNumber.replace('REF', '')).sort((a,b) => parseInt(b) - parseInt(a))[0] || '0');
+                let lastRefNumber = parseInt(projects.map(p => p.ref_number.replace('REF', '')).sort((a,b) => parseInt(b) - parseInt(a))[0] || '0');
                 lastRefNumber++;
 
                 return {
                     id: `proj_${Date.now()}_${index}`,
-                    refNumber: row.refNumber || `REF${String(lastRefNumber).padStart(3, '0')}`,
-                    clientName,
+                    ref_number: row.ref_number || `REF${String(lastRefNumber).padStart(3, '0')}`,
+                    client_name,
                     process,
-                    applicationNumber: row.applicationNumber || null,
-                    patentNumber: row.patentNumber || null,
-                    emailDate: row.emailDate || new Date().toISOString().split('T')[0],
-                    allocationDate: row.allocationDate || new Date().toISOString().split('T')[0],
+                    application_number: row.application_number || null,
+                    patent_number: row.patent_number || null,
+                    received_date: row.received_date || new Date().toISOString().split('T')[0],
+                    allocation_date: row.allocation_date || new Date().toISOString().split('T')[0],
                     processor,
                     qa,
-                    caseManager: row.caseManager || '',
+                    case_manager: row.case_manager || '',
                     workflowStatus,
-                    processorStatus,
-                    qaStatus,
-                    processingDate: null,
-                    qaDate: null,
-                    reworkReason: null,
-                    subject: row.subject || 'No Subject',
-                    clientComments: null,
-                    clientStatus: null,
+                    processing_status,
+                    qa_status,
+                    processing_date: null,
+                    qa_date: null,
+                    rework_reason: null,
+                    subject_line: row.subject_line || 'No Subject',
+                    client_comments: null,
+                    clientquery_status: null,
                     entries: [],
+                     sender: row.sender || null,
+                    country: row.country || null,
+                    document_type: row.document_type || null,
+                    action_taken: row.action_taken || null,
+                    renewal_agent: row.renewal_agent || null,
+                    client_query_description: row.client_query_description || null,
+                    client_error_description: row.client_error_description || null,
+                    qa_remark: row.qa_remark || null,
+                    error: row.error || null,
+                    email_renaming: row.email_renaming || null,
+                    email_forwarded: row.email_forwarded || null,
+                    reportout_date: row.reportout_date || null,
+                    manager_name: row.manager_name || null,
                 } as Project;
-            }).filter(p => p.refNumber);
+            }).filter(p => p.ref_number);
 
             if (newProjects.length > 0) {
                 setProjects(prev => [...newProjects, ...prev]);
@@ -329,7 +342,7 @@ function Dashboard({
                     description: `${newProjects.length} projects have been added.`,
                 });
             } else {
-                 toast({ title: "Upload Error", description: "CSV file is empty or does not contain required 'refNumber' column.", variant: "destructive" });
+                 toast({ title: "Upload Error", description: "CSV file is empty or does not contain required 'ref_number' column.", variant: "destructive" });
             }
             setIsUploading(false);
             setSelectedFile(null);
@@ -347,7 +360,7 @@ function Dashboard({
 
     let results = [...projects];
     
-    if (criteria.length > 0) {
+    if (criteria.length > 0 && criteria.some(c => c.value)) {
         results = results.filter(project => {
           return criteria.every(criterion => {
             if (!criterion.field || !criterion.operator) return true;
@@ -427,22 +440,20 @@ function Dashboard({
     let baseProjects: Project[];
 
     if (isManagerOrAdminView) {
-        // For manager/admin, filteredProjects holds the results. If null, show nothing.
         baseProjects = filteredProjects ?? [];
     } else {
         baseProjects = [...projects];
         if (activeRole === 'Processor') {
-          baseProjects = baseProjects.filter(p => p.processor === user.name && p.workflowStatus === 'With Processor' && processorActionableStatuses.includes(p.processorStatus));
+          baseProjects = baseProjects.filter(p => p.processor === user.name && p.workflowStatus === 'With Processor' && processorActionableStatuses.includes(p.processing_status));
         } else if (activeRole === 'QA') {
           baseProjects = baseProjects.filter(p => p.qa === user.name && p.workflowStatus === 'With QA');
         } else if (activeRole === 'Case Manager') {
-            baseProjects = baseProjects.filter(p => p.caseManager === user.name && p.qaStatus === 'Client Query');
+            baseProjects = baseProjects.filter(p => p.case_manager === user.name && p.qa_status === 'Client Query');
         }
     }
     
     let filtered = baseProjects;
     
-    // Quick search for non-manager roles (client-side filtering)
     if (search && !isManagerOrAdminView) {
         if (searchColumn === 'any') {
             const lowercasedSearch = search.toLowerCase();
@@ -459,7 +470,7 @@ function Dashboard({
     }
 
     if (clientNameFilter !== 'all' && !isManagerOrAdminView) {
-        filtered = filtered.filter(p => p.clientName === clientNameFilter);
+        filtered = filtered.filter(p => p.client_name === clientNameFilter);
     }
     
     if (processFilter !== 'all' && !isManagerOrAdminView) {
@@ -679,5 +690,3 @@ function Dashboard({
 }
 
 export default Dashboard;
-
-

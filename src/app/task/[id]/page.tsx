@@ -1,5 +1,7 @@
+
 import * as React from 'react';
 import { projects } from '@/lib/data';
+import type { Project } from '@/lib/data';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { notFound } from 'next/navigation';
@@ -64,15 +66,15 @@ export default async function TaskPage({ params }: { params: { id: string } }) {
                     <Card>
                         <CardHeader>
                             <div className="flex justify-between items-center">
-                                <CardTitle>{project.refNumber}</CardTitle>
+                                <CardTitle>{project.ref_number}</CardTitle>
                                 <Badge variant="outline">{project.workflowStatus}</Badge>
                             </div>
-                            <CardDescription>{project.subject}</CardDescription>
+                            <CardDescription>{project.subject_line}</CardDescription>
                         </CardHeader>
                         <CardContent className="grid gap-4 md:grid-cols-2">
                            <div className="space-y-1">
                                 <p className="text-sm font-medium text-muted-foreground">Client Name</p>
-                                <p className="text-base font-semibold">{project.clientName}</p>
+                                <p className="text-base font-semibold">{project.client_name}</p>
                            </div>
                            <div className="space-y-1">
                                 <p className="text-sm font-medium text-muted-foreground">Process</p>
@@ -88,11 +90,11 @@ export default async function TaskPage({ params }: { params: { id: string } }) {
                            </div>
                             <div className="space-y-1">
                                 <p className="text-sm font-medium text-muted-foreground">Allocation Date</p>
-                                <p className="text-base font-semibold">{project.allocationDate}</p>
+                                <p className="text-base font-semibold">{project.allocation_date}</p>
                            </div>
                            <div className="space-y-1">
                                 <p className="text-sm font-medium text-muted-foreground">Email Date</p>
-                                <p className="text-base font-semibold">{project.emailDate}</p>
+                                <p className="text-base font-semibold">{project.received_date}</p>
                            </div>
                         </CardContent>
                     </Card>
