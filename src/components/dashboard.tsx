@@ -448,6 +448,7 @@ function Dashboard({
     }
 
     if (isManagerOrAdminView && !filteredProjects && !search) {
+        // For manager/admin, don't show any projects until a search is performed
         return [];
     }
 
@@ -524,61 +525,59 @@ function Dashboard({
                 <UserManagementTable sessionUser={user} />
             ) : isManagerOrAdmin ? (
               <>
-                {!filteredProjects ? (
-                    <Accordion type="single" collapsible className="w-full space-y-4" defaultValue="advanced-search">
-                        <AccordionItem value="work-allocation" className="border-none">
-                                <div className="animated-border">
-                                <AccordionTrigger className="p-3 bg-card rounded-md text-base font-semibold hover:no-underline">Work Allocation / Records Addition</AccordionTrigger>
-                                <AccordionContent className="bg-card rounded-b-md">
-                                    <Card className="border-0 shadow-none">
-                                        <CardContent className="pt-4">
-                                            <div className="flex items-center gap-4">
-                                                <div 
-                                                    className="flex items-center justify-center border-2 border-dashed rounded-md p-4 w-full cursor-pointer hover:bg-muted/50"
-                                                    onClick={() => fileInputRef.current?.click()}
-                                                >
-                                                    <div className="flex-grow flex items-center gap-2 text-muted-foreground">
-                                                    <FileUp className="h-5 w-5" />
-                                                    <span>{selectedFile ? selectedFile.name : 'Click to select a CSV file'}</span>
-                                                    </div>
+                <Accordion type="single" collapsible className="w-full space-y-4" defaultValue="work-status">
+                    <AccordionItem value="work-allocation" className="border-none">
+                            <div className="animated-border">
+                            <AccordionTrigger className="p-3 bg-card rounded-md text-base font-semibold hover:no-underline">Work Allocation / Records Addition</AccordionTrigger>
+                            <AccordionContent className="bg-card rounded-b-md">
+                                <Card className="border-0 shadow-none">
+                                    <CardContent className="pt-4">
+                                        <div className="flex items-center gap-4">
+                                            <div 
+                                                className="flex items-center justify-center border-2 border-dashed rounded-md p-4 w-full cursor-pointer hover:bg-muted/50"
+                                                onClick={() => fileInputRef.current?.click()}
+                                            >
+                                                <div className="flex-grow flex items-center gap-2 text-muted-foreground">
+                                                <FileUp className="h-5 w-5" />
+                                                <span>{selectedFile ? selectedFile.name : 'Click to select a CSV file'}</span>
                                                 </div>
                                             </div>
-                                        </CardContent>
-                                        <CardFooter className="flex justify-end gap-2">
-                                            <Button variant="outline" onClick={() => setSelectedFile(null)} disabled={!selectedFile || isUploading}>
-                                                <X className="mr-2 h-4 w-4" /> Cancel
-                                            </Button>
-                                            <Button onClick={handleProcessUpload} disabled={!selectedFile || isUploading}>
-                                                {isUploading ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Upload className="mr-2 h-4 w-4" />}
-                                                Upload
-                                            </Button>
-                                        </CardFooter>
-                                    </Card>
-                                </AccordionContent>
-                                </div>
-                        </AccordionItem>
-
-                        <AccordionItem value="advanced-search" className="border-none">
-                                <div className="animated-border">
-                                <AccordionTrigger className="p-3 bg-card rounded-md text-base font-semibold hover:no-underline">Advanced Search</AccordionTrigger>
-                                <AccordionContent className="pt-0 bg-card rounded-b-md">
-                                        <AdvancedSearchForm onSearch={handleAdvancedSearch} initialCriteria={searchCriteria} />
-                                </AccordionContent>
-                                </div>
-                        </AccordionItem>
-                         <AccordionItem value="work-status" className="border-none">
-                            <div className="animated-border">
-                                <AccordionTrigger className="p-3 bg-card rounded-md text-base font-semibold hover:no-underline">Work Status</AccordionTrigger>
-                                <AccordionContent className="bg-card rounded-b-md p-4">
-                                     <div className="grid md:grid-cols-2 gap-4">
-                                        <ProcessingStatusSummary projects={projects} />
-                                        <QAStatusSummary projects={projects} />
-                                    </div>
-                                </AccordionContent>
+                                        </div>
+                                    </CardContent>
+                                    <CardFooter className="flex justify-end gap-2">
+                                        <Button variant="outline" onClick={() => setSelectedFile(null)} disabled={!selectedFile || isUploading}>
+                                            <X className="mr-2 h-4 w-4" /> Cancel
+                                        </Button>
+                                        <Button onClick={handleProcessUpload} disabled={!selectedFile || isUploading}>
+                                            {isUploading ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Upload className="mr-2 h-4 w-4" />}
+                                            Upload
+                                        </Button>
+                                    </CardFooter>
+                                </Card>
+                            </AccordionContent>
                             </div>
-                        </AccordionItem>
-                    </Accordion>
-                ) : null}
+                    </AccordionItem>
+
+                    <AccordionItem value="advanced-search" className="border-none">
+                            <div className="animated-border">
+                            <AccordionTrigger className="p-3 bg-card rounded-md text-base font-semibold hover:no-underline">Advanced Search</AccordionTrigger>
+                            <AccordionContent className="pt-0 bg-card rounded-b-md">
+                                    <AdvancedSearchForm onSearch={handleAdvancedSearch} initialCriteria={searchCriteria} />
+                            </AccordionContent>
+                            </div>
+                    </AccordionItem>
+                     <AccordionItem value="work-status" className="border-none">
+                        <div className="animated-border">
+                            <AccordionTrigger className="p-3 bg-card rounded-md text-base font-semibold hover:no-underline">Work Status</AccordionTrigger>
+                            <AccordionContent className="bg-card rounded-b-md p-4">
+                                 <div className="grid md:grid-cols-2 gap-4">
+                                    <ProcessingStatusSummary projects={projects} />
+                                    <QAStatusSummary projects={projects} />
+                                </div>
+                            </AccordionContent>
+                        </div>
+                    </AccordionItem>
+                </Accordion>
                 
                 {(filteredProjects || search) && (
                     <div className="space-y-4">
