@@ -20,6 +20,7 @@ import { Input } from './ui/input';
 import { cn } from '@/lib/utils';
 import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from './ui/accordion';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from './ui/table';
+import { updateProject } from '@/app/actions';
 
 interface DashboardProps {
   user: User;
@@ -180,6 +181,10 @@ function Dashboard({
 
   const [selectedFile, setSelectedFile] = React.useState<File | null>(null);
   const [isUploading, setIsUploading] = React.useState(false);
+  
+  const [editingRowId, setEditingRowId] = React.useState<string | null>(null);
+  const [editedData, setEditedData] = React.useState<Partial<Project> | null>(null);
+  const [isUpdating, setIsUpdating] = React.useState(false);
   
   const { toast } = useToast();
   
@@ -359,6 +364,43 @@ function Dashboard({
       setFilteredProjects(null);
   }
 
+  const startEditing = (projectId: string) => {
+    setEditingRowId(projectId);
+    const projectToEdit = projects.find(p => p.id === projectId);
+    if (projectToEdit) {
+      setEditedData({ id: projectToEdit.id, processor: projectToEdit.processor, qa: projectToEdit.qa });
+    }
+  };
+
+  const cancelEditing = () => {
+    setEditingRowId(null);
+    setEditedData(null);
+  };
+
+  const handleUpdateProject = async () => {
+    if (!editingRowId || !editedData) return;
+    setIsUpdating(true);
+    try {
+      const result = await updateProject({
+        id: editingRowId,
+        ...editedData,
+      });
+
+      if (result.success && result.project) {
+        setProjects(prevProjects => prevProjects.map(p => p.id === result.project!.id ? result.project! : p));
+        toast({ title: "Success", description: "Project updated." });
+      } else {
+        toast({ title: "Error", description: "Failed to update project.", variant: "destructive" });
+      }
+    } catch (error) {
+      toast({ title: "Error", description: "An error occurred.", variant: "destructive" });
+    } finally {
+      cancelEditing();
+      setIsUpdating(false);
+    }
+  };
+
+
   const dashboardProjects = React.useMemo(() => {
     const isManagerOrAdminView = activeRole === 'Manager' || activeRole === 'Admin';
     
@@ -420,15 +462,19 @@ function Dashboard({
   
   const isManagerOrAdmin = activeRole === 'Manager' || activeRole === 'Admin';
   
-  const filteredIds = dashboardProjects.map(p => p.id);
-
   const columns = getColumns(
       isManagerOrAdmin, 
       rowSelection, 
       setRowSelection, 
       dashboardProjects,
       activeRole,
-      filteredIds
+      editingRowId,
+      startEditing,
+      cancelEditing,
+      editedData,
+      setEditedData,
+      handleUpdateProject,
+      isUpdating
   );
   const selectedBulkUpdateField = bulkUpdateFields.find(f => f.value === bulkUpdateField);
 
@@ -590,15 +636,3 @@ function Dashboard({
 }
 
 export default Dashboard;
-
-    
-
-    
-
-    
-
-    
-
-
-
-

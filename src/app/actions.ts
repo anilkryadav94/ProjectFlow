@@ -1,7 +1,7 @@
 "use server";
 
 import { z } from "zod";
-import type { Project } from "@/lib/data";
+import type { Project, Role } from "@/lib/data";
 import { projects } from "@/lib/data";
 import { revalidatePath } from "next/cache";
 
@@ -30,4 +30,29 @@ export async function bulkUpdateProjects(data: z.infer<typeof bulkUpdateSchema>)
     revalidatePath('/');
 
     return { success: true, updatedProjects };
+}
+
+const updateProjectSchema = z.object({
+  id: z.string(),
+  processor: z.string().optional(),
+  qa: z.string().optional(),
+});
+
+
+export async function updateProject(data: Partial<Project>): Promise<{success: boolean, project?: Project}> {
+    const validatedData = updateProjectSchema.parse(data);
+    const projectIndex = projects.findIndex(p => p.id === validatedData.id);
+    if (projectIndex === -1) {
+        return { success: false };
+    }
+
+    const updatedProject = {
+        ...projects[projectIndex],
+        ...validatedData
+    };
+    projects[projectIndex] = updatedProject;
+
+    revalidatePath('/');
+    
+    return { success: true, project: updatedProject };
 }
