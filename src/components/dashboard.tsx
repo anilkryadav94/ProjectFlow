@@ -33,7 +33,7 @@ export function DashboardWrapper(props: DashboardProps) {
 }
 
 
-export type SearchableColumn = 'refNumber' | 'applicationNumber' | 'patentNumber' | 'subject' | 'processorStatus' | 'qaStatus' | 'workflowStatus' | 'allocationDate' | 'emailDate';
+export type SearchableColumn = 'any' | 'refNumber' | 'applicationNumber' | 'patentNumber' | 'subject' | 'processorStatus' | 'qaStatus' | 'workflowStatus' | 'allocationDate' | 'emailDate';
 
 const bulkUpdateFields = [
     { value: 'processor', label: 'Processor', options: processors },
@@ -166,7 +166,7 @@ function Dashboard({
   const [activeRole, setActiveRole] = React.useState<Role | null>(null);
   const [projects, setProjects] = React.useState<Project[]>(initialProjects);
   const [search, setSearch] = React.useState('');
-  const [searchColumn, setSearchColumn] = React.useState<SearchableColumn>('refNumber');
+  const [searchColumn, setSearchColumn] = React.useState<SearchableColumn>('any');
   const [sort, setSort] = React.useState<{ key: keyof Project; direction: 'asc' | 'desc' } | null>({ key: 'allocationDate', direction: 'desc' });
   
   const [rowSelection, setRowSelection] = React.useState<Record<string, boolean>>({});
@@ -408,9 +408,18 @@ function Dashboard({
     let filtered = baseProjects;
 
     if (search) {
-         filtered = filtered.filter(p => 
-            (p[searchColumn] as string)?.toString().toLowerCase().includes(search.toLowerCase())
-         );
+        if (searchColumn === 'any') {
+            const lowercasedSearch = search.toLowerCase();
+            filtered = filtered.filter(p => {
+                return Object.values(p).some(val => 
+                    String(val).toLowerCase().includes(lowercasedSearch)
+                );
+            });
+        } else {
+            filtered = filtered.filter(p => 
+                (p[searchColumn] as string)?.toString().toLowerCase().includes(search.toLowerCase())
+            );
+        }
     }
 
     if (clientNameFilter !== 'all') {
@@ -633,3 +642,5 @@ function Dashboard({
 }
 
 export default Dashboard;
+
+    

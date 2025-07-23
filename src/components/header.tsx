@@ -1,4 +1,5 @@
 
+
 "use client"
 
 import * as React from "react"
@@ -165,6 +166,7 @@ export function Header({
                         <SelectValue placeholder="Select column" />
                     </SelectTrigger>
                     <SelectContent>
+                        <SelectItem value="any">Any Text/Number</SelectItem>
                         <SelectItem value="refNumber">Ref Number</SelectItem>
                         <SelectItem value="applicationNumber">Application No.</SelectItem>
                         <SelectItem value="patentNumber">Patent No.</SelectItem>
@@ -276,3 +278,5 @@ export function Header({
     </header>
   )
 }
+
+    
