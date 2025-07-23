@@ -1,9 +1,10 @@
 
+
 "use client";
 
 import * as React from 'react';
 import Papa from "papaparse";
-import { type Project, type Role, type User, roleHierarchy, processors, qas, projectStatuses, clientNames, processes, processorActionableStatuses, projects as mockProjects, workflowStatuses, processorStatuses as allProcessorStatuses, qaStatuses as allQaStatuses } from '@/lib/data';
+import { type Project, type Role, type User, roleHierarchy, processors, qas, projectStatuses, clientNames, processes, processorActionableStatuses, projects as mockProjects, workflowStatuses, processorStatuses as allProcessorStatuses, qaStatuses as allQaStatuses, processorSubmissionStatuses, qaSubmissionStatuses } from '@/lib/data';
 import { DataTable } from '@/components/data-table';
 import { getColumns } from '@/components/columns';
 import { Header } from '@/components/header';
@@ -18,6 +19,7 @@ import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle }
 import { Input } from './ui/input';
 import { cn } from '@/lib/utils';
 import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from './ui/accordion';
+import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from './ui/table';
 
 interface DashboardProps {
   user: User;
@@ -35,6 +37,113 @@ const bulkUpdateFields = [
     { value: 'processor', label: 'Processor', options: processors },
     { value: 'qa', label: 'QA', options: qas },
 ] as const;
+
+type SummaryData = Record<string, { pending: number, processed: number }>;
+
+const ProcessingStatusSummary = ({ projects }: { projects: Project[] }) => {
+    const summary = React.useMemo(() => {
+        const today = new Date().toISOString().split('T')[0];
+        const data: SummaryData = clientNames.reduce((acc, name) => {
+            acc[name] = { pending: 0, processed: 0 };
+            return acc;
+        }, {} as SummaryData);
+
+        projects.forEach(p => {
+            if (!data[p.clientName]) return;
+            
+            if (processorSubmissionStatuses.includes(p.processorStatus)) {
+                 if (p.processingDate === today) {
+                    data[p.clientName].processed++;
+                }
+            } else if (processorActionableStatuses.includes(p.processorStatus)) {
+                data[p.clientName].pending++;
+            }
+        });
+
+        return data;
+    }, [projects]);
+
+    return (
+        <Card>
+            <CardHeader>
+                <CardTitle className="text-base">Processing Work Status</CardTitle>
+            </CardHeader>
+            <CardContent>
+                <Table>
+                    <TableHeader>
+                        <TableRow>
+                            <TableHead>Client Name</TableHead>
+                            <TableHead className="text-right">Pending (All Time)</TableHead>
+                            <TableHead className="text-right">Processed (Today)</TableHead>
+                        </TableRow>
+                    </TableHeader>
+                    <TableBody>
+                        {Object.entries(summary).map(([client, counts]) => (
+                            <TableRow key={client}>
+                                <TableCell className="font-medium">{client}</TableCell>
+                                <TableCell className="text-right">{counts.pending}</TableCell>
+                                <TableCell className="text-right">{counts.processed}</TableCell>
+                            </TableRow>
+                        ))}
+                    </TableBody>
+                </Table>
+            </CardContent>
+        </Card>
+    );
+};
+
+const QAStatusSummary = ({ projects }: { projects: Project[] }) => {
+    const summary = React.useMemo(() => {
+        const today = new Date().toISOString().split('T')[0];
+        const data: SummaryData = clientNames.reduce((acc, name) => {
+            acc[name] = { pending: 0, processed: 0 };
+            return acc;
+        }, {} as SummaryData);
+
+        projects.forEach(p => {
+             if (!data[p.clientName]) return;
+
+            if (qaSubmissionStatuses.includes(p.qaStatus)) {
+                if (p.qaDate === today) {
+                    data[p.clientName].processed++;
+                }
+            } else if (p.qaStatus === 'Pending') {
+                data[p.clientName].pending++;
+            }
+        });
+
+        return data;
+    }, [projects]);
+
+     return (
+        <Card>
+            <CardHeader>
+                <CardTitle className="text-base">QA Work Status</CardTitle>
+            </CardHeader>
+            <CardContent>
+                <Table>
+                    <TableHeader>
+                        <TableRow>
+                            <TableHead>Client Name</TableHead>
+                            <TableHead className="text-right">Pending (All Time)</TableHead>
+                            <TableHead className="text-right">Completed (Today)</TableHead>
+                        </TableRow>
+                    </TableHeader>
+                    <TableBody>
+                        {Object.entries(summary).map(([client, counts]) => (
+                            <TableRow key={client}>
+                                <TableCell className="font-medium">{client}</TableCell>
+                                <TableCell className="text-right">{counts.pending}</TableCell>
+                                <TableCell className="text-right">{counts.processed}</TableCell>
+                            </TableRow>
+                        ))}
+                    </TableBody>
+                </Table>
+            </CardContent>
+        </Card>
+    );
+};
+
 
 function Dashboard({ 
   user, 
@@ -400,7 +509,12 @@ function Dashboard({
                 )}
                 
                 {!showSearchForm && (
-                   <DataTable 
+                   <>
+                    <div className="grid md:grid-cols-2 gap-4">
+                        <ProcessingStatusSummary projects={projects} />
+                        <QAStatusSummary projects={projects} />
+                    </div>
+                    <DataTable 
                         data={dashboardProjects}
                         columns={columns}
                         sort={sort}
@@ -446,6 +560,7 @@ function Dashboard({
                             </div>
                         )}
                     </DataTable>
+                   </>
                 )}
               </>
             ) : (
