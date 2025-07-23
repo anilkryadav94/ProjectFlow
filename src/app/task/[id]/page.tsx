@@ -10,6 +10,15 @@ import { ProjectForm } from '@/components/project-form';
 import { Header } from '@/components/header';
 import { Loader2 } from 'lucide-react';
 
+// This function can be co-located with the client component in the same file
+// as long as the component itself is marked "use client".
+// Next.js is smart enough to handle this for static generation.
+export async function generateStaticParams() {
+    return mockProjects.map((project) => ({
+        id: project.id,
+    }));
+}
+
 async function getProjectsForUser(user: User, activeRole: Role): Promise<Project[]> {
     let userProjects: Project[];
 
@@ -75,7 +84,8 @@ export default function TaskPage() {
                     if (project) {
                         setProjectData({ project, userProjectList, activeRole });
                     } else {
-                        notFound();
+                        // Using a state to show not found message, instead of calling notFound() directly
+                        setProjectData(null); 
                     }
                 } else {
                     setSession(null);
@@ -101,8 +111,8 @@ export default function TaskPage() {
 
     if (!session || !projectData) {
         return (
-            <div className="flex h-screen w-full items-center justify-center">
-                <Loader2 className="h-8 w-8 animate-spin" />
+             <div className="flex h-screen w-full items-center justify-center">
+                <p>Project not found or you do not have access.</p>
             </div>
         );
     }
