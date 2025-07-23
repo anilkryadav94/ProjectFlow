@@ -6,7 +6,7 @@ import { useForm, useFieldArray } from 'react-hook-form';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { Card, CardContent } from '@/components/ui/card';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import { Calendar } from '@/components/ui/calendar';
 import { PlusCircle, Trash2, CalendarIcon, Search } from 'lucide-react';
@@ -77,8 +77,8 @@ export function AdvancedSearchForm({ onSearch, initialCriteria }: AdvancedSearch
   });
   
   const onSubmit = (data: { criteria: SearchCriteria }) => {
-    // Filter out any empty/incomplete criteria before searching
-    const validCriteria = data.criteria.filter(c => c.field && c.operator && (c.value || c.operator === 'blank'));
+    // Filter out only completely empty criteria rows, but allow "is blank"
+    const validCriteria = data.criteria.filter(c => c.field && c.operator);
     onSearch(validCriteria);
   };
 
@@ -96,12 +96,17 @@ export function AdvancedSearchForm({ onSearch, initialCriteria }: AdvancedSearch
                     const fieldConfig = searchFields.find(f => f.value === selectedField);
                     const isDate = fieldConfig?.type === 'date';
                     const isSelect = fieldConfig?.type === 'select';
+                    const operatorValue = watch(`criteria.${index}.operator`);
 
                     return (
                     <div key={item.id} className="flex items-center gap-2">
                         <Select
                             value={watch(`criteria.${index}.field`)}
-                            onValueChange={(value) => setValue(`criteria.${index}.field`, value as SearchField)}
+                            onValueChange={(value) => {
+                                setValue(`criteria.${index}.field`, value as SearchField);
+                                setValue(`criteria.${index}.operator`, '');
+                                setValue(`criteria.${index}.value`, '');
+                            }}
                         >
                             <SelectTrigger className="w-1/4">
                                 <SelectValue placeholder="Select a field" />
@@ -112,7 +117,7 @@ export function AdvancedSearchForm({ onSearch, initialCriteria }: AdvancedSearch
                         </Select>
 
                         <Select
-                            value={watch(`criteria.${index}.operator`)}
+                            value={operatorValue}
                             onValueChange={(value) => setValue(`criteria.${index}.operator`, value as Operator)}
                             disabled={!selectedField}
                         >
@@ -135,6 +140,7 @@ export function AdvancedSearchForm({ onSearch, initialCriteria }: AdvancedSearch
                                             "w-1/2 justify-start text-left font-normal",
                                             !watch(`criteria.${index}.value`) && "text-muted-foreground"
                                         )}
+                                        disabled={operatorValue === 'blank'}
                                     >
                                         <CalendarIcon className="mr-2 h-4 w-4" />
                                         {watch(`criteria.${index}.value`) ? format(new Date(watch(`criteria.${index}.value`)), "PPP") : <span>Pick a date</span>}
@@ -153,7 +159,7 @@ export function AdvancedSearchForm({ onSearch, initialCriteria }: AdvancedSearch
                                 <Select
                                 value={watch(`criteria.${index}.value`)}
                                 onValueChange={(value) => setValue(`criteria.${index}.value`, value)}
-                                disabled={!fieldConfig}
+                                disabled={!fieldConfig || operatorValue === 'blank'}
                             >
                                 <SelectTrigger className="w-1/2">
                                     <SelectValue placeholder={`Select ${fieldConfig?.label}`} />
@@ -167,7 +173,7 @@ export function AdvancedSearchForm({ onSearch, initialCriteria }: AdvancedSearch
                                 className="w-1/2"
                                 placeholder="Enter value"
                                 {...register(`criteria.${index}.value`)}
-                                disabled={watch(`criteria.${index}.operator`) === 'blank'}
+                                disabled={operatorValue === 'blank'}
                             />
                         )}
 
@@ -197,5 +203,3 @@ export function AdvancedSearchForm({ onSearch, initialCriteria }: AdvancedSearch
     </Card>
   );
 }
-
-    

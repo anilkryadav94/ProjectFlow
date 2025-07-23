@@ -215,7 +215,7 @@ function Dashboard({
   }, [user.roles, urlRole, router, activeRole, searchParams]);
   
   const handleDownload = () => {
-    const dataToExport = filteredProjects ?? dashboardProjects;
+    const dataToExport = dashboardProjects;
     if (dataToExport.length === 0) {
       toast({ title: "No data to export", variant: "destructive" });
       return;
@@ -336,50 +336,47 @@ function Dashboard({
   const handleAdvancedSearch = (criteria: SearchCriteria) => {
     setSearchCriteria(criteria);
 
-    if (criteria.length === 0) {
-        setFilteredProjects(null);
-        return;
-    }
-
     let results = [...projects];
     
-    results = results.filter(project => {
-      return criteria.every(criterion => {
-        if (!criterion.field || !criterion.operator || (criterion.operator !== 'blank' && !criterion.value)) return true;
-        const fieldValue = project[criterion.field as keyof Project] as string | null | undefined;
+    if (criteria.length > 0) {
+        results = results.filter(project => {
+          return criteria.every(criterion => {
+            if (!criterion.field || !criterion.operator) return true;
+            // Allow blank search
+            if (criterion.operator === 'blank') {
+                return !project[criterion.field as keyof Project];
+            }
+            if (!criterion.value) return true;
 
-        switch (criterion.operator) {
-            case 'blank':
-                return !fieldValue;
-            case 'equals':
-                return fieldValue?.toLowerCase() === criterion.value.toLowerCase();
-            case 'in':
-                const values = criterion.value.split(',').map(v => v.trim().toLowerCase());
-                return fieldValue ? values.includes(fieldValue.toLowerCase()) : false;
-            case 'startsWith':
-                return fieldValue?.toLowerCase().startsWith(criterion.value.toLowerCase()) ?? false;
-            case 'contains':
-                return fieldValue?.toLowerCase().includes(criterion.value.toLowerCase()) ?? false;
-            case 'dateEquals':
-                 if (!fieldValue) return false;
-                 // Adjust for timezone issues when comparing dates
-                 const projectDate = new Date(fieldValue.replaceAll('-', '/'));
-                 const filterDate = new Date(criterion.value.replaceAll('-', '/'));
-                 return projectDate.toDateString() === filterDate.toDateString();
-            default:
-                return true;
-        }
-      });
-    });
+            const fieldValue = project[criterion.field as keyof Project] as string | null | undefined;
+
+            switch (criterion.operator) {
+                case 'equals':
+                    return fieldValue?.toLowerCase() === criterion.value.toLowerCase();
+                case 'in':
+                    const values = criterion.value.split(',').map(v => v.trim().toLowerCase());
+                    return fieldValue ? values.includes(fieldValue.toLowerCase()) : false;
+                case 'startsWith':
+                    return fieldValue?.toLowerCase().startsWith(criterion.value.toLowerCase()) ?? false;
+                case 'contains':
+                    return fieldValue?.toLowerCase().includes(criterion.value.toLowerCase()) ?? false;
+                case 'dateEquals':
+                     if (!fieldValue) return false;
+                     // Adjust for timezone issues when comparing dates
+                     const projectDate = new Date(fieldValue.replaceAll('-', '/'));
+                     const filterDate = new Date(criterion.value.replaceAll('-', '/'));
+                     return projectDate.toDateString() === filterDate.toDateString();
+                default:
+                    return true;
+            }
+          });
+        });
+    }
     setFilteredProjects(results);
   };
   
   const handleResetAdvancedSearch = () => {
       setSearchCriteria(null);
-      setFilteredProjects(null);
-  }
-
-  const handleAmendSearch = () => {
       setFilteredProjects(null);
   }
   
@@ -400,7 +397,11 @@ function Dashboard({
     let baseProjects: Project[];
 
     if (isManagerOrAdminView) {
-        baseProjects = filteredProjects ?? projects;
+        if (filteredProjects === null) {
+            // For manager/admin, don't show any projects until a search is performed
+            return [];
+        }
+        baseProjects = filteredProjects;
     } else {
         baseProjects = [...projects];
         if (activeRole === 'Processor') {
@@ -411,8 +412,9 @@ function Dashboard({
     }
     
     let filtered = baseProjects;
-
-    if (search) {
+    
+    // Quick search only applies if there are no advanced search results
+    if (search && !isManagerOrAdminView) {
         if (searchColumn === 'any') {
             const lowercasedSearch = search.toLowerCase();
             filtered = filtered.filter(p => {
@@ -427,11 +429,11 @@ function Dashboard({
         }
     }
 
-    if (clientNameFilter !== 'all') {
+    if (clientNameFilter !== 'all' && !isManagerOrAdminView) {
         filtered = filtered.filter(p => p.clientName === clientNameFilter);
     }
     
-    if (processFilter !== 'all') {
+    if (processFilter !== 'all' && !isManagerOrAdminView) {
         filtered = filtered.filter(p => p.process === processFilter);
     }
     
@@ -445,11 +447,6 @@ function Dashboard({
         if (valA > valB) return sort.direction === 'asc' ? 1 : -1;
         return 0;
       });
-    }
-
-    if (isManagerOrAdminView && !filteredProjects && !search) {
-        // For manager/admin, don't show any projects until a search is performed
-        return [];
     }
 
     return filtered;
@@ -508,10 +505,10 @@ function Dashboard({
             searchColumn={searchColumn}
             setSearchColumn={setSearchColumn}
             handleDownload={handleDownload}
-            isDownloadDisabled={dashboardProjects.length === 0 && filteredProjects === null}
+            isDownloadDisabled={dashboardProjects.length === 0}
             isManagerOrAdmin={isManagerOrAdmin}
             hasSearchResults={filteredProjects !== null}
-            onAmendSearch={handleAmendSearch}
+            onAmendSearch={handleResetAdvancedSearch}
             onResetSearch={handleResetAdvancedSearch}
             clientNameFilter={clientNameFilter}
             setClientNameFilter={setClientNameFilter}
@@ -525,61 +522,61 @@ function Dashboard({
                 <UserManagementTable sessionUser={user} />
             ) : isManagerOrAdmin ? (
               <>
-                <Accordion type="single" collapsible className="w-full space-y-4" defaultValue="work-status">
-                    <AccordionItem value="work-allocation" className="border-none">
-                            <div className="animated-border">
-                            <AccordionTrigger className="p-3 bg-card rounded-md text-base font-semibold hover:no-underline">Work Allocation / Records Addition</AccordionTrigger>
-                            <AccordionContent className="bg-card rounded-b-md">
-                                <Card className="border-0 shadow-none">
-                                    <CardContent className="pt-4">
-                                        <div className="flex items-center gap-4">
-                                            <div 
-                                                className="flex items-center justify-center border-2 border-dashed rounded-md p-4 w-full cursor-pointer hover:bg-muted/50"
-                                                onClick={() => fileInputRef.current?.click()}
-                                            >
-                                                <div className="flex-grow flex items-center gap-2 text-muted-foreground">
-                                                <FileUp className="h-5 w-5" />
-                                                <span>{selectedFile ? selectedFile.name : 'Click to select a CSV file'}</span>
+                {filteredProjects === null ? (
+                    <Accordion type="single" collapsible className="w-full space-y-4" defaultValue="work-status">
+                        <AccordionItem value="work-allocation" className="border-none">
+                                <div className="animated-border">
+                                <AccordionTrigger className="p-3 bg-card rounded-md text-base font-semibold hover:no-underline">Work Allocation / Records Addition</AccordionTrigger>
+                                <AccordionContent className="bg-card rounded-b-md">
+                                    <Card className="border-0 shadow-none">
+                                        <CardContent className="pt-4">
+                                            <div className="flex items-center gap-4">
+                                                <div 
+                                                    className="flex items-center justify-center border-2 border-dashed rounded-md p-4 w-full cursor-pointer hover:bg-muted/50"
+                                                    onClick={() => fileInputRef.current?.click()}
+                                                >
+                                                    <div className="flex-grow flex items-center gap-2 text-muted-foreground">
+                                                    <FileUp className="h-5 w-5" />
+                                                    <span>{selectedFile ? selectedFile.name : 'Click to select a CSV file'}</span>
+                                                    </div>
                                                 </div>
                                             </div>
-                                        </div>
-                                    </CardContent>
-                                    <CardFooter className="flex justify-end gap-2">
-                                        <Button variant="outline" onClick={() => setSelectedFile(null)} disabled={!selectedFile || isUploading}>
-                                            <X className="mr-2 h-4 w-4" /> Cancel
-                                        </Button>
-                                        <Button onClick={handleProcessUpload} disabled={!selectedFile || isUploading}>
-                                            {isUploading ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Upload className="mr-2 h-4 w-4" />}
-                                            Upload
-                                        </Button>
-                                    </CardFooter>
-                                </Card>
-                            </AccordionContent>
-                            </div>
-                    </AccordionItem>
-
-                    <AccordionItem value="advanced-search" className="border-none">
-                            <div className="animated-border">
-                            <AccordionTrigger className="p-3 bg-card rounded-md text-base font-semibold hover:no-underline">Advanced Search</AccordionTrigger>
-                            <AccordionContent className="pt-0 bg-card rounded-b-md">
-                                    <AdvancedSearchForm onSearch={handleAdvancedSearch} initialCriteria={searchCriteria} />
-                            </AccordionContent>
-                            </div>
-                    </AccordionItem>
-                     <AccordionItem value="work-status" className="border-none">
-                        <div className="animated-border">
-                            <AccordionTrigger className="p-3 bg-card rounded-md text-base font-semibold hover:no-underline">Work Status</AccordionTrigger>
-                            <AccordionContent className="bg-card rounded-b-md p-4">
-                                 <div className="grid md:grid-cols-2 gap-4">
-                                    <ProcessingStatusSummary projects={projects} />
-                                    <QAStatusSummary projects={projects} />
+                                        </CardContent>
+                                        <CardFooter className="flex justify-end gap-2">
+                                            <Button variant="outline" onClick={() => setSelectedFile(null)} disabled={!selectedFile || isUploading}>
+                                                <X className="mr-2 h-4 w-4" /> Cancel
+                                            </Button>
+                                            <Button onClick={handleProcessUpload} disabled={!selectedFile || isUploading}>
+                                                {isUploading ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Upload className="mr-2 h-4 w-4" />}
+                                                Upload
+                                            </Button>
+                                        </CardFooter>
+                                    </Card>
+                                </AccordionContent>
                                 </div>
-                            </AccordionContent>
-                        </div>
-                    </AccordionItem>
-                </Accordion>
-                
-                {(filteredProjects || search) && (
+                        </AccordionItem>
+
+                        <AccordionItem value="advanced-search" className="border-none">
+                                <div className="animated-border">
+                                <AccordionTrigger className="p-3 bg-card rounded-md text-base font-semibold hover:no-underline">Advanced Search</AccordionTrigger>
+                                <AccordionContent className="pt-0 bg-card rounded-b-md">
+                                        <AdvancedSearchForm onSearch={handleAdvancedSearch} initialCriteria={searchCriteria} />
+                                </AccordionContent>
+                                </div>
+                        </AccordionItem>
+                         <AccordionItem value="work-status" className="border-none">
+                            <div className="animated-border">
+                                <AccordionTrigger className="p-3 bg-card rounded-md text-base font-semibold hover:no-underline">Work Status</AccordionTrigger>
+                                <AccordionContent className="bg-card rounded-b-md p-4">
+                                     <div className="grid md:grid-cols-2 gap-4">
+                                        <ProcessingStatusSummary projects={projects} />
+                                        <QAStatusSummary projects={projects} />
+                                    </div>
+                                </AccordionContent>
+                            </div>
+                        </AccordionItem>
+                    </Accordion>
+                ) : (
                     <div className="space-y-4">
                         <DataTable 
                             data={dashboardProjects}
@@ -648,5 +645,3 @@ function Dashboard({
 }
 
 export default Dashboard;
-
-    

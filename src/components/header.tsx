@@ -158,7 +158,7 @@ export function Header({
                 </div>
             )}
             
-            {setSearch && setSearchColumn && (
+            {setSearch && setSearchColumn && !isManagerOrAdmin && (
               <div className="flex items-center space-x-2">
                 <div className="flex items-center space-x-0">
                     <Select value={searchColumn} onValueChange={(v) => setSearchColumn(v as SearchableColumn)}>
@@ -187,7 +187,7 @@ export function Header({
                     />
                 </div>
                 
-                {!isManagerOrAdmin && setClientNameFilter && setProcessFilter && (
+                {setClientNameFilter && setProcessFilter && (
                   <>
                     <Select value={clientNameFilter} onValueChange={setClientNameFilter}>
                       <SelectTrigger className="w-[150px] text-foreground h-9">
@@ -278,5 +278,3 @@ export function Header({
     </header>
   )
 }
-
-    
