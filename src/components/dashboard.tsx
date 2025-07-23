@@ -20,8 +20,8 @@ import { Input } from './ui/input';
 import { cn } from '@/lib/utils';
 import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from './ui/accordion';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from './ui/table';
-import { updateProject } from '@/app/actions';
 import { EditProjectDialog } from './edit-project-dialog';
+import { AddRowsDialog } from './add-rows-dialog';
 
 interface DashboardProps {
   user: User;
@@ -185,6 +185,9 @@ function Dashboard({
   
   const [isEditDialogOpen, setIsEditDialogOpen] = React.useState(false);
   const [editingProject, setEditingProject] = React.useState<Project | null>(null);
+
+  const [isAddRowsDialogOpen, setIsAddRowsDialogOpen] = React.useState(false);
+  const [sourceProject, setSourceProject] = React.useState<Project | null>(null);
   
   const { toast } = useToast();
   
@@ -370,6 +373,11 @@ function Dashboard({
     setEditingProject(project);
     setIsEditDialogOpen(true);
   };
+  
+  const handleOpenAddRowsDialog = (project: Project) => {
+    setSourceProject(project);
+    setIsAddRowsDialogOpen(true);
+  }
 
 
   const dashboardProjects = React.useMemo(() => {
@@ -438,7 +446,8 @@ function Dashboard({
       rowSelection, 
       setRowSelection, 
       dashboardProjects,
-      handleOpenEditDialog
+      handleOpenEditDialog,
+      handleOpenAddRowsDialog
   );
   const selectedBulkUpdateField = bulkUpdateFields.find(f => f.value === bulkUpdateField);
 
@@ -459,6 +468,14 @@ function Dashboard({
                 onUpdateSuccess={refreshProjects}
                 userRole={activeRole}
             />
+        )}
+        {sourceProject && (
+          <AddRowsDialog
+            isOpen={isAddRowsDialogOpen}
+            onOpenChange={setIsAddRowsDialogOpen}
+            sourceProject={sourceProject}
+            onAddRowsSuccess={refreshProjects}
+          />
         )}
         <Header 
             user={user}

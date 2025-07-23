@@ -5,7 +5,7 @@ import type { Project, Role } from "@/lib/data";
 import { Badge } from "@/components/ui/badge";
 import { cn } from "@/lib/utils";
 import { Checkbox } from "./ui/checkbox";
-import { Edit } from "lucide-react";
+import { Edit, PlusCircle } from "lucide-react";
 import { Button } from "./ui/button";
 
 const statusColors: Record<string, string> = {
@@ -35,6 +35,7 @@ export const getColumns = (
   setRowSelection: (selection: Record<string, boolean>) => void,
   allProjectsOnPage: Project[],
   handleEditProject: (project: Project) => void,
+  handleAddRows: (project: Project) => void
 ) => {
 
   const baseColumns = [
@@ -42,7 +43,7 @@ export const getColumns = (
       key: "refNumber" as const,
       header: "Ref Number",
       render: (project: Project) => (
-         <div className="font-medium text-primary">
+         <div className="font-medium">
             {project.refNumber}
          </div>
       )
@@ -112,9 +113,14 @@ export const getColumns = (
       key: 'actions',
       header: 'Actions',
       render: (project: Project) => (
-        <Button size="icon" variant="ghost" onClick={() => handleEditProject(project)}>
-            <Edit className="h-4 w-4"/>
-        </Button>
+        <div className="flex items-center gap-1">
+          <Button size="icon" variant="ghost" onClick={() => handleEditProject(project)}>
+              <Edit className="h-4 w-4"/>
+          </Button>
+          <Button size="icon" variant="ghost" onClick={() => handleAddRows(project)}>
+              <PlusCircle className="h-4 w-4"/>
+          </Button>
+        </div>
       )
   }
   columns.unshift(actionColumn);

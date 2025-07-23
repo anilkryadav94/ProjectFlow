@@ -1,3 +1,4 @@
+
 "use server";
 
 import { z } from "zod";
@@ -71,4 +72,72 @@ export async function updateProject(data: Partial<Project>, submitAction?: 'subm
     revalidatePath(`/task/${validatedData.id}`);
     
     return { success: true, project: updatedProject };
+}
+
+const fieldsToCopy = z.enum([
+  'subject',
+  'clientName',
+  'process',
+  'processor',
+  'qa',
+  'emailDate',
+  'allocationDate',
+]);
+
+type FieldToCopyId = z.infer<typeof fieldsToCopy>;
+
+export async function addRows(
+  sourceProjectId: string,
+  fieldsToCopy: FieldToCopyId[],
+  count: number
+): Promise<{ success: boolean; addedCount?: number; error?: string }> {
+  
+  const sourceProject = projects.find(p => p.id === sourceProjectId);
+  if (!sourceProject) {
+    return { success: false, error: "Source project not found." };
+  }
+
+  if (count <= 0) {
+    return { success: false, error: "Count must be a positive number."}
+  }
+
+  let lastRefNumber = parseInt(projects.map(p => p.refNumber.replace('REF', '')).sort((a,b) => parseInt(b) - parseInt(a))[0]);
+
+  for (let i = 0; i < count; i++) {
+    lastRefNumber++;
+    const newProject: Project = {
+        // Default values
+        id: `proj_${Date.now()}_${i}`,
+        refNumber: `REF${String(lastRefNumber).padStart(3, '0')}`,
+        applicationNumber: null,
+        patentNumber: null,
+        workflowStatus: 'With Processor',
+        processorStatus: 'Pending',
+        qaStatus: 'Pending',
+        processingDate: null,
+        qaDate: null,
+        reworkReason: null,
+        entries: [],
+        
+        // Potentially copied values
+        subject: '',
+        clientName: '',
+        process: 'Patent',
+        processor: '',
+        qa: '',
+        emailDate: new Date().toISOString().split('T')[0],
+        allocationDate: new Date().toISOString().split('T')[0],
+    };
+
+    fieldsToCopy.forEach(field => {
+      if (sourceProject.hasOwnProperty(field)) {
+        (newProject as any)[field] = sourceProject[field as keyof Project];
+      }
+    });
+
+    projects.unshift(newProject);
+  }
+
+  revalidatePath('/');
+  return { success: true, addedCount: count };
 }
