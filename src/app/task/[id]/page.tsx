@@ -10,6 +10,11 @@ import { ProjectForm } from '@/components/project-form';
 import { Header } from '@/components/header';
 import { Loader2 } from 'lucide-react';
 
+export async function generateStaticParams() {
+    return mockProjects.map((project) => ({
+        id: project.id,
+    }));
+}
 
 async function getAllProjects(): Promise<Project[]> {
     return mockProjects;
@@ -57,6 +62,7 @@ export default function TaskPage() {
       const sessionData = await getSession();
       if (!sessionData) {
         console.error("Mock session not found");
+        router.push('/login');
         setLoading(false);
         return;
       }
@@ -89,11 +95,22 @@ export default function TaskPage() {
       setUserProjectList(projectList);
 
       const currentProject = await getProject(id);
-      setProject(currentProject);
+      if (currentProject) {
+        setProject(currentProject);
+      } else {
+        // Handle case where project is not found, maybe redirect
+        router.push('/');
+      }
       setLoading(false);
     };
 
-    const unsubscribe = onAuthChanged(checkAuthAndLoadData);
+    const unsubscribe = onAuthChanged((user) => {
+        if (user) {
+            checkAuthAndLoadData(user);
+        } else {
+            router.push('/login');
+        }
+    });
     return () => unsubscribe();
   }, [id, router, searchParams, filteredIds]);
 
@@ -108,8 +125,27 @@ export default function TaskPage() {
   const currentProjectIndex = userProjectList.findIndex(p => p.id === id);
   const isManagerOrAdmin = activeRole === 'Manager' || activeRole === 'Admin';
 
-  if (currentProjectIndex === -1 && !isManagerOrAdmin) {
-    return <div>Project not found in your current "{activeRole}" queue.</div>;
+  if (currentProjectIndex === -1 && !isManagerOr-Admin) {
+    // If project is not in the user's filtered list and they are not a manager,
+    // they shouldn't see it. However, managers can see any project by direct link.
+    // We already loaded the project, so just show a message.
+     if (!loading) {
+        return (
+            <div className="flex flex-col h-screen bg-background w-full">
+                <Header 
+                    user={session.user}
+                    activeRole={activeRole}
+                    isManagerOrAdmin={isManagerOrAdmin}
+                    clientNames={clientNames}
+                    processes={processes}
+                />
+                <main className="flex-1 h-full overflow-y-auto p-4 md:p-6 flex items-center justify-center">
+                    <p>Project not found in your current "{activeRole}" queue.</p>
+                </main>
+            </div>
+        );
+     }
+     return null; // Still loading, show nothing
   }
   
   const nextProjectId = currentProjectIndex !== -1 && currentProjectIndex < userProjectList.length - 1 ? userProjectList[currentProjectIndex + 1].id : null;
