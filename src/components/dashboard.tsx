@@ -183,20 +183,17 @@ function Dashboard({
   }, []);
 
   React.useEffect(() => {
-    let newActiveRole: Role;
-    if (urlRole && user.roles.includes(urlRole)) {
-        newActiveRole = urlRole;
-    } else {
-        newActiveRole = roleHierarchy.find(role => user.roles.includes(role)) || user.roles[0];
-    }
-    
-    if(newActiveRole !== activeRole) {
+    const highestRole = roleHierarchy.find(role => user.roles.includes(role)) || user.roles[0];
+    const newActiveRole = urlRole && user.roles.includes(urlRole) ? urlRole : highestRole;
+
+    if (newActiveRole !== activeRole) {
         setActiveRole(newActiveRole);
-        if (newActiveRole && (!urlRole || urlRole !== newActiveRole)) {
-            router.replace(`/?role=${newActiveRole}`, { scroll: false });
+        const currentUrlRole = searchParams.get('role');
+        if (currentUrlRole !== newActiveRole) {
+             router.replace(`/?role=${newActiveRole}`, { scroll: false });
         }
     }
-  }, [user.roles, urlRole, router, activeRole]);
+}, [user.roles, urlRole, router, activeRole, searchParams]);
   
   const handleDownload = () => {
     const dataToExport = filteredProjects ?? dashboardProjects;
@@ -362,8 +359,10 @@ function Dashboard({
     let baseProjects: Project[];
 
     if (isManagerOrAdminView) {
-        baseProjects = filteredProjects ?? [];
+        // For managers, if a search is active, use filtered, otherwise use all projects.
+        baseProjects = filteredProjects ?? projects;
     } else {
+        // For other roles, start with all projects and filter by their specific queues.
         baseProjects = [...projects];
         if (activeRole === 'Processor') {
           baseProjects = baseProjects.filter(p => p.processor === user.name && p.workflowStatus === 'With Processor' && processorActionableStatuses.includes(p.processorStatus));
@@ -372,6 +371,7 @@ function Dashboard({
         }
     }
     
+    // Quick search and filters are applied to the base project list for the current view.
     let filtered = baseProjects;
 
     if (search) {
@@ -400,6 +400,11 @@ function Dashboard({
       });
     }
 
+    // For manager view, if no advanced search is done, we don't want to show the table yet.
+    if (isManagerOrAdminView && !filteredProjects) {
+        return [];
+    }
+
     return filtered;
   }, [activeRole, user.name, projects, search, searchColumn, sort, filteredProjects, clientNameFilter, processFilter]);
   
@@ -409,7 +414,7 @@ function Dashboard({
   
   const isManagerOrAdmin = activeRole === 'Manager' || activeRole === 'Admin';
   
-  const filteredIds = isManagerOrAdmin ? filteredProjects?.map(p => p.id) : dashboardProjects.map(p => p.id);
+  const filteredIds = dashboardProjects.map(p => p.id);
 
   const columns = getColumns(
       isManagerOrAdmin, 
@@ -439,7 +444,7 @@ function Dashboard({
             searchColumn={searchColumn}
             setSearchColumn={setSearchColumn}
             handleDownload={handleDownload}
-            isDownloadDisabled={dashboardProjects.length === 0}
+            isDownloadDisabled={dashboardProjects.length === 0 && filteredProjects === null}
             isManagerOrAdmin={isManagerOrAdmin}
             hasSearchResults={filteredProjects !== null}
             onAmendSearch={handleAmendSearch}
@@ -456,7 +461,7 @@ function Dashboard({
                 <UserManagementTable sessionUser={user} />
             ) : isManagerOrAdmin ? (
               <>
-                <Accordion type="single" collapsible className="w-full space-y-4">
+                <Accordion type="single" collapsible className="w-full space-y-4" defaultValue="work-status">
                     <AccordionItem value="work-allocation" className="border-none">
                             <div className="animated-border">
                             <AccordionTrigger className="p-3 bg-card rounded-md text-base font-semibold hover:no-underline">Work Allocation / Records Addition</AccordionTrigger>
@@ -497,14 +502,21 @@ function Dashboard({
                             </AccordionContent>
                             </div>
                     </AccordionItem>
+                     <AccordionItem value="work-status" className="border-none">
+                        <div className="animated-border">
+                            <AccordionTrigger className="p-3 bg-card rounded-md text-base font-semibold hover:no-underline">Work Status</AccordionTrigger>
+                            <AccordionContent className="bg-card rounded-b-md p-4">
+                                 <div className="grid md:grid-cols-2 gap-4">
+                                    <ProcessingStatusSummary projects={projects} />
+                                    <QAStatusSummary projects={projects} />
+                                </div>
+                            </AccordionContent>
+                        </div>
+                    </AccordionItem>
                 </Accordion>
                 
                 {filteredProjects && (
                     <div className="space-y-4">
-                        <div className="grid md:grid-cols-2 gap-4">
-                            <ProcessingStatusSummary projects={projects} />
-                            <QAStatusSummary projects={projects} />
-                        </div>
                         <DataTable 
                             data={dashboardProjects}
                             columns={columns}
@@ -580,5 +592,6 @@ export default Dashboard;
     
 
     
+
 
 
