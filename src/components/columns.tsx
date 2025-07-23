@@ -40,54 +40,40 @@ export const getColumns = (
 ) => {
 
   const baseColumns = [
-    {
-      key: "ref_number" as const,
-      header: "Ref Number",
-      render: (project: Project) => (
-         <div className="font-medium">
-            {project.ref_number}
-         </div>
-      )
-    },
-    {
-      key: "client_name" as const,
-      header: "Client Name",
-    },
-    {
-      key: "process" as const,
-      header: "Process",
-    },
-    {
-      key: "subject_line" as const,
-      header: "Subject",
-    },
-    {
-      key: "application_number" as const,
-      header: "Application No.",
-    },
-    {
-      key: "received_date" as const,
-      header: "Email Date",
-    },
-    {
-      key: "allocation_date" as const,
-      header: "Allocation Date",
-    },
-    {
-      key: "processor" as const,
-      header: "Processor",
-    },
-    {
-      key: "qa" as const,
-      header: "QA",
-    },
-    {
-      key: "case_manager" as const,
-      header: "Case Manager",
-    },
+    { key: "ref_number", header: "Ref Number", render: (p: Project) => <div className="font-medium">{p.ref_number}</div> },
+    { key: "client_name", header: "Client Name" },
+    { key: "process", header: "Process" },
+    { key: "processor", header: "Processor" },
+    { key: "sender", header: "Sender" },
+    { key: "subject_line", header: "Subject Line" },
+    { key: "received_date", header: "Received Date" },
+    { key: "case_manager", header: "Case Manager" },
+    { key: "allocation_date", header: "Allocation Date" },
+    { key: "processing_date", header: "Processing Date" },
+    { key: "processing_status", header: "Processing Status" },
+    { key: "application_number", header: "Application No" },
+    { key: "patent_number", header: "Patent No" },
+    { key: "country", header: "Country" },
+    { key: "document_type", header: "Document Type" },
+    { key: "action_taken", header: "Action Taken" },
+    { key: "renewal_agent", header: "Renewal Agent" },
+    { key: "client_query_description", header: "Client Query Description" },
+    { key: "client_comments", header: "Client Comments" },
+    { key: "client_error_description", header: "Client Error Description" },
+    { key: "qa", header: "QA" },
+    { key: "qa_date", header: "QA Date" },
+    { key: "qa_status", header: "QA Status" },
+    { key: "qa_remark", header: "QA Remark" },
+    { key: "error", header: "Error" },
+    { key: "rework_reason", header: "Rework Reason" },
+    { key: "email_renaming", header: "Email Renaming" },
+    { key: "email_forwarded", header: "Email Forwarded" },
+    { key: "reportout_date", header: "Report-Out Date" },
+    { key: "manager_name", header: "Manager Name" },
+    { key: "clientquery_status", header: "Client Query Status" },
     {
       key: "workflowStatus" as const,
-      header: "Status",
+      header: "Workflow Status",
       render: (project: Project) => {
         let statusText: string = project.workflowStatus;
         let statusColorClass = statusColors[project.workflowStatus];
@@ -130,8 +116,13 @@ export const getColumns = (
         </div>
       )
   }
-  columns.unshift(actionColumn);
+  
+  // Add actions column only for non-manager roles
+  if (!isManagerOrAdmin) {
+    columns.unshift(actionColumn);
+  }
 
+  // Add selection column only for manager/admin roles
   if (isManagerOrAdmin) {
     const selectionColumn = {
       key: "select",
