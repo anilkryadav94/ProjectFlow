@@ -2,7 +2,7 @@
 "use client";
 
 import * as React from 'react';
-import { useRouter, useSearchParams, notFound } from 'next/navigation';
+import { useRouter, useSearchParams } from 'next/navigation';
 import { getSession, onAuthChanged } from '@/lib/auth';
 import type { Project, Role, User } from '@/lib/data';
 import { projects as mockProjects, processorActionableStatuses, roleHierarchy, clientNames, processes } from '@/lib/data';
@@ -99,8 +99,6 @@ export function TaskPageClient({ params }: { params: { id: string }}) {
     }
 
     if (!session || !projectData) {
-        // This will be caught by the error boundary or show a message.
-        // notFound() can be used in server components, but here we'll just show a message.
         return (
              <div className="flex flex-col h-screen bg-background w-full">
                 <Header 
