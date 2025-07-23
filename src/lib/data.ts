@@ -1,7 +1,5 @@
 
 
-
-
 export type Role = 'Admin' | 'Manager' | 'Processor' | 'QA' | 'Case Manager';
 export const roles: Role[] = ['Admin', 'Manager', 'Processor', 'QA', 'Case Manager'];
 
@@ -664,6 +662,7 @@ let initialProjects: Omit<Project, 'id'>[] = [
     error: null,
     email_renaming: null,
     email_forwarded: null,
+
     reportout_date: null,
     manager_name: 'Manager User',
   },
@@ -990,3 +989,5 @@ export let projects: Project[] = initialProjects.map((p, index) => ({
   ...p,
   id: `PF${String(index + 1).padStart(6, '0')}`,
 }));
+
+    

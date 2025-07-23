@@ -105,6 +105,14 @@ const processorFormSchema = fullFormSchema.extend({
   rework_reason: z.string().nullable(), // Not always required
 });
 
+const qaFormSchema = fullFormSchema.extend({
+    qa_status: z.enum(qaSubmissionStatuses, { errorMap: () => ({ message: "QA Status is required."}) }),
+    qa_remark: z.string().min(1, "QA Remark is required."),
+    error: z.enum(["Yes", "No"], { errorMap: () => ({ message: "Error field is required."})}),
+    client_comments: z.string().nullable(),
+    rework_reason: z.string().nullable(),
+});
+
 
 type EditProjectFormValues = z.infer<typeof fullFormSchema>;
 
@@ -133,9 +141,16 @@ export function EditProjectDialog({
   const { toast } = useToast();
   
   const isProcessorView = userRole === 'Processor' && project.workflowStatus === 'With Processor';
+  const isQaView = userRole === 'QA' && project.workflowStatus === 'With QA';
+  
+  const getValidationSchema = () => {
+    if (isProcessorView) return processorFormSchema;
+    if (isQaView) return qaFormSchema;
+    return fullFormSchema;
+  }
 
   const form = useForm<EditProjectFormValues>({
-    resolver: zodResolver(isProcessorView ? processorFormSchema : fullFormSchema),
+    resolver: zodResolver(getValidationSchema()),
     defaultValues: project,
   });
 
@@ -220,7 +235,6 @@ export function EditProjectDialog({
     })();
   }
   
-  const isQaView = userRole === 'QA' && project.workflowStatus === 'With QA';
   const isCaseManagerView = userRole === 'Case Manager';
   const isManagerOrAdmin = userRole === 'Manager' || userRole === 'Admin';
   const canEditMainFields = isManagerOrAdmin;
@@ -248,6 +262,33 @@ export function EditProjectDialog({
       </div>
     </>
   );
+
+  const renderQaForm = () => (
+    <>
+        {/* Column 1: Read-only processor info */}
+        <div className="space-y-4 p-4 border rounded-md bg-muted/30">
+            <h3 className="font-semibold text-lg mb-2">Processor Details</h3>
+            <FormItem>
+                <FormLabel>Processor</FormLabel>
+                <Input value={project.processor} readOnly />
+            </FormItem>
+             <FormItem>
+                <FormLabel>Processing Status</FormLabel>
+                <Input value={project.processing_status} readOnly />
+            </FormItem>
+        </div>
+        {/* Column 2: QA editable fields */}
+        <div className="space-y-4 p-4 border rounded-md">
+            <h3 className="font-semibold text-lg mb-2">QA Assessment</h3>
+            <FormField control={form.control} name="qa_status" render={({ field }) => (<FormItem><FormLabel>QA Status</FormLabel><Select onValueChange={field.onChange} value={field.value}><FormControl><SelectTrigger><SelectValue placeholder="Select QA status..."/></SelectTrigger></FormControl><SelectContent>{qaSubmissionStatuses.map(s => <SelectItem key={s} value={s}>{s}</SelectItem>)}</SelectContent></Select><FormMessage /></FormItem>)} />
+            <FormField control={form.control} name="error" render={({ field }) => (<FormItem><FormLabel>Error Found?</FormLabel><Select onValueChange={field.onChange} value={field.value ?? ""}><FormControl><SelectTrigger><SelectValue placeholder="Select..." /></SelectTrigger></FormControl><SelectContent><SelectItem value="Yes">Yes</SelectItem><SelectItem value="No">No</SelectItem></SelectContent></Select><FormMessage /></FormItem>)} />
+            <FormField control={form.control} name="qa_remark" render={({ field }) => (<FormItem><FormLabel>QA Remark</FormLabel><FormControl><Textarea {...field} value={field.value ?? ""} /></FormControl><FormMessage /></FormItem>)} />
+            <FormField control={form.control} name="client_comments" render={({ field }) => (<FormItem><FormLabel>Client Comments (Optional)</FormLabel><FormControl><Textarea {...field} value={field.value ?? ""} /></FormControl><FormMessage /></FormItem>)} />
+            <FormField control={form.control} name="rework_reason" render={({ field }) => (<FormItem><FormLabel>Reason for Rework (if sending back)</FormLabel><FormControl><Textarea {...field} value={field.value ?? ""} /></FormControl><FormMessage /></FormItem>)} />
+        </div>
+    </>
+  );
+
 
   const renderFullForm = () => (
      <>
@@ -283,6 +324,12 @@ export function EditProjectDialog({
      </>
   );
 
+  const renderContent = () => {
+    if (isProcessorView) return renderProcessorForm();
+    if (isQaView) return renderQaForm();
+    return renderFullForm();
+  }
+
   return (
     <>
       <Dialog open={isOpen} onOpenChange={onOpenChange}>
@@ -299,7 +346,7 @@ export function EditProjectDialog({
               </DialogHeader>
 
               <div className="flex-grow overflow-y-auto py-4 pr-2 grid grid-cols-1 md:grid-cols-2 gap-4">
-                 {isProcessorView ? renderProcessorForm() : renderFullForm()}
+                 {renderContent()}
               </div>
 
               <DialogFooter className="pt-4 border-t mt-auto">
@@ -366,3 +413,5 @@ export function EditProjectDialog({
     </>
   );
 }
+
+    
