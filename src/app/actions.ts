@@ -4,7 +4,7 @@
 
 import { z } from "zod";
 import type { Project, Role, ClientStatus } from "@/lib/data";
-import { projects, generateAlphanumericId } from "@/lib/data";
+import { projects } from "@/lib/data";
 import { revalidatePath } from "next/cache";
 
 const bulkUpdateSchema = z.object({
@@ -143,10 +143,17 @@ export async function addRows(
     return { success: false, error: "Count must be a positive number."}
   }
 
+  const numericIds = projects.map(p => parseInt(p.id.replace('PF', ''), 10)).filter(n => !isNaN(n));
+  let lastIdNumber = numericIds.length > 0 ? Math.max(...numericIds) : 0;
+
+
   for (let i = 0; i < count; i++) {
+    lastIdNumber++;
+    const newId = `PF${String(lastIdNumber).padStart(6, '0')}`;
+
     const newProject: Project = {
         // Default values
-        id: generateAlphanumericId(),
+        id: newId,
         ref_number: '', // Manual entry
         application_number: null,
         patent_number: null,

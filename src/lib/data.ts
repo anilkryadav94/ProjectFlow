@@ -1,6 +1,7 @@
 
 
 
+
 export type Role = 'Admin' | 'Manager' | 'Processor' | 'QA' | 'Case Manager';
 export const roles: Role[] = ['Admin', 'Manager', 'Processor', 'QA', 'Case Manager'];
 
@@ -102,21 +103,6 @@ export let users: Omit<User, 'id'>[] = [
     { email: 'cm.alice@example.com', password: 'password', name: 'CM Alice', roles: ['Case Manager'] },
     { email: 'cm.bob@example.com', password: 'password', name: 'CM Bob', roles: ['Case Manager'] },
 ];
-
-export function generateAlphanumericId() {
-    const letters = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ';
-    const numbers = '0123456789';
-    let result = '';
-    for (let i = 0; i < 3; i++) {
-        result += letters.charAt(Math.floor(Math.random() * letters.length));
-    }
-    for (let i = 0; i < 3; i++) {
-        result += numbers.charAt(Math.floor(Math.random() * numbers.length));
-    }
-    // Shuffle the result
-    return result.split('').sort(() => 0.5 - Math.random()).join('');
-}
-
 
 let initialProjects: Omit<Project, 'id'>[] = [
   {
@@ -1000,7 +986,7 @@ let initialProjects: Omit<Project, 'id'>[] = [
 ];
 
 
-export let projects: Project[] = initialProjects.map((p) => ({
+export let projects: Project[] = initialProjects.map((p, index) => ({
   ...p,
-  id: generateAlphanumericId(),
+  id: `PF${String(index + 1).padStart(6, '0')}`,
 }));
