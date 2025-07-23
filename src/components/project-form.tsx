@@ -28,6 +28,7 @@ import { Calendar } from "@/components/ui/calendar"
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover"
 import { CalendarIcon, Loader2, Save, Rows } from "lucide-react"
 import { format } from "date-fns"
+import { saveProject } from "@/app/actions"
 import { useToast } from "@/hooks/use-toast"
 import { cn } from "@/lib/utils"
 import type { Project, Role } from "@/lib/data"
@@ -112,34 +113,20 @@ export function ProjectForm({ project, userRole, nextProjectId, filteredIds }: P
           ? `/task/${nextProjectId}?role=${userRole}${filteredIds ? `&filteredIds=${filteredIds}`: ''}` 
           : `/?role=${userRole}`;
           
-        let projectToSave = { ...data };
-
-        if (action === 'submit_for_qa') {
-            projectToSave.workflowStatus = 'With QA';
-            projectToSave.processingDate = new Date().toISOString().split('T')[0];
-        } else if (action === 'submit_qa') {
-            projectToSave.workflowStatus = 'Completed';
-            projectToSave.qaDate = new Date().toISOString().split('T')[0];
-        } else if (action === 'send_rework') {
-            projectToSave.workflowStatus = 'With Processor';
-            projectToSave.processorStatus = 'Re-Work';
-        }
-        
-        // MOCK SAVE
-        console.log("Mock saving project: ", projectToSave);
+        await saveProject(data, action);
         
         toast({
-          title: "Success (Mock)",
+          title: "Success",
           description: `Project has been ${action === 'save' ? 'saved' : 'submitted'}.`,
         });
         
         router.push(nextUrl);
+        router.refresh();
 
       } catch (error) {
-        console.error("Failed to save project (mock):", error);
         toast({
-          title: "Error (Mock)",
-          description: "Failed to save the project.",
+          title: "Error",
+          description: `Failed to save the project. ${error instanceof Error ? error.message : ''}`,
           variant: "destructive",
         })
       } finally {

@@ -1,4 +1,5 @@
 
+
 export type Role = 'Admin' | 'Manager' | 'Processor' | 'QA';
 export const roles: Role[] = ['Admin', 'Manager', 'Processor', 'QA'];
 
@@ -64,7 +65,7 @@ export const processes: ProcessType[] = ['Patent', 'TM', 'IDS', 'Project'];
 export const projectStatuses: any[] = ["Pending", "Completed", "On Hold"];
 export const countries = ['USA', 'India', 'Canada', 'UK', 'Germany'];
 
-export const users: Omit<User, 'id'>[] = [
+export let users: Omit<User, 'id'>[] = [
     { email: 'admin@example.com', password: 'password', name: 'Admin User', roles: ['Admin', 'Manager'] },
     { email: 'manager@example.com', password: 'password', name: 'Manager User', roles: ['Manager', 'QA'] },
     { email: 'alice@example.com', password: 'password', name: 'Alice', roles: ['Processor'] },
@@ -77,7 +78,7 @@ export const users: Omit<User, 'id'>[] = [
     { email: 'rahul@example.com', password: 'password', name: 'Rahul', roles: ['Admin', 'Manager', 'QA', 'Processor'] },
 ];
 
-export const projects: Project[] = [
+export let projects: Project[] = [
   {
     id: '1',
     refNumber: 'REF001',
