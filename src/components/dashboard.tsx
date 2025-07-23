@@ -167,7 +167,6 @@ function Dashboard({
   const [isBulkUpdating, setIsBulkUpdating] = React.useState(false);
 
   const [searchCriteria, setSearchCriteria] = React.useState<SearchCriteria | null>(null);
-  const [showSearchForm, setShowSearchForm] = React.useState(true);
   const [filteredProjects, setFilteredProjects] = React.useState<Project[] | null>(null);
 
   const [clientNameFilter, setClientNameFilter] = React.useState('all');
@@ -317,7 +316,6 @@ function Dashboard({
 
   const handleAdvancedSearch = (criteria: SearchCriteria) => {
     setSearchCriteria(criteria);
-    setShowSearchForm(false);
 
     let results = [...projects];
     
@@ -352,12 +350,10 @@ function Dashboard({
   const handleResetAdvancedSearch = () => {
       setSearchCriteria(null);
       setFilteredProjects(null);
-      setShowSearchForm(true);
   }
 
   const handleAmendSearch = () => {
       setFilteredProjects(null);
-      setShowSearchForm(true);
   }
 
   const dashboardProjects = React.useMemo(() => {
@@ -366,11 +362,7 @@ function Dashboard({
     let baseProjects: Project[];
 
     if (isManagerOrAdminView) {
-        if (!filteredProjects && showSearchForm) {
-            return [];
-        }
-        baseProjects = showSearchForm ? [] : (filteredProjects ?? projects);
-
+        baseProjects = filteredProjects ?? projects;
     } else {
         baseProjects = [...projects];
         if (activeRole === 'Processor') {
@@ -409,7 +401,7 @@ function Dashboard({
     }
 
     return filtered;
-  }, [activeRole, user.name, projects, search, searchColumn, sort, filteredProjects, clientNameFilter, processFilter, showSearchForm]);
+  }, [activeRole, user.name, projects, search, searchColumn, sort, filteredProjects, clientNameFilter, processFilter]);
   
   if (!activeRole) {
     return <div className="flex h-screen w-full items-center justify-center"><Loader2 className="h-8 w-8 animate-spin" /></div>;
@@ -464,7 +456,7 @@ function Dashboard({
                 <UserManagementTable sessionUser={user} />
             ) : isManagerOrAdmin ? (
               <>
-                <Accordion type="single" collapsible className="w-full space-y-4" defaultValue={showSearchForm ? "advanced-search" : undefined}>
+                <Accordion type="single" collapsible className="w-full space-y-4" defaultValue="advanced-search">
                     <AccordionItem value="work-allocation" className="border-none">
                             <div className="animated-border">
                             <AccordionTrigger className="p-3 bg-card rounded-md text-base font-semibold hover:no-underline">Work Allocation / Records Addition</AccordionTrigger>
@@ -507,60 +499,58 @@ function Dashboard({
                     </AccordionItem>
                 </Accordion>
                 
-                {!showSearchForm && (
-                   <div className="space-y-4">
-                    <div className="grid md:grid-cols-2 gap-4">
-                        <ProcessingStatusSummary projects={projects} />
-                        <QAStatusSummary projects={projects} />
-                    </div>
-                    <DataTable 
-                        data={dashboardProjects}
-                        columns={columns}
-                        sort={sort}
-                        setSort={setSort}
-                        rowSelection={rowSelection}
-                        setRowSelection={setRowSelection}
-                        isManagerOrAdmin={isManagerOrAdmin}
-                        totalCount={dashboardProjects.length}
-                    >
-                         {Object.keys(rowSelection).length > 0 && (
-                            <div className="flex items-center gap-4 p-4 border-t bg-muted/50">
-                                <span className="text-sm font-semibold">{Object.keys(rowSelection).length} selected</span>
-                                <div className="flex items-center gap-2">
-                                    <Select value={bulkUpdateField} onValueChange={(v) => {
-                                        setBulkUpdateField(v as typeof bulkUpdateField);
-                                        setBulkUpdateValue('');
-                                    }}>
-                                        <SelectTrigger className="w-[180px] h-9">
-                                            <SelectValue placeholder="Select field" />
-                                        </SelectTrigger>
-                                        <SelectContent>
-                                            {bulkUpdateFields.map(f => (
-                                                <SelectItem key={f.value} value={f.value}>{f.label}</SelectItem>
-                                            ))}
-                                        </SelectContent>
-                                    </Select>
-                                    
-                                    <Select value={bulkUpdateValue} onValueChange={setBulkUpdateValue}>
-                                        <SelectTrigger className="w-[180px] h-9">
-                                            <SelectValue placeholder="Select new value" />
-                                        </SelectTrigger>
-                                        <SelectContent>
-                                            {selectedBulkUpdateField?.options.map(opt => (
-                                                 <SelectItem key={opt} value={opt}>{opt}</SelectItem>
-                                            ))}
-                                        </SelectContent>
-                                    </Select>
-                                </div>
-                                <Button size="sm" onClick={handleBulkUpdate} disabled={isBulkUpdating}>
-                                     {isBulkUpdating && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
-                                    Apply Update
-                                </Button>
+                <div className="space-y-4">
+                <div className="grid md:grid-cols-2 gap-4">
+                    <ProcessingStatusSummary projects={projects} />
+                    <QAStatusSummary projects={projects} />
+                </div>
+                <DataTable 
+                    data={dashboardProjects}
+                    columns={columns}
+                    sort={sort}
+                    setSort={setSort}
+                    rowSelection={rowSelection}
+                    setRowSelection={setRowSelection}
+                    isManagerOrAdmin={isManagerOrAdmin}
+                    totalCount={dashboardProjects.length}
+                >
+                      {Object.keys(rowSelection).length > 0 && (
+                        <div className="flex items-center gap-4 p-4 border-t bg-muted/50">
+                            <span className="text-sm font-semibold">{Object.keys(rowSelection).length} selected</span>
+                            <div className="flex items-center gap-2">
+                                <Select value={bulkUpdateField} onValueChange={(v) => {
+                                    setBulkUpdateField(v as typeof bulkUpdateField);
+                                    setBulkUpdateValue('');
+                                }}>
+                                    <SelectTrigger className="w-[180px] h-9">
+                                        <SelectValue placeholder="Select field" />
+                                    </SelectTrigger>
+                                    <SelectContent>
+                                        {bulkUpdateFields.map(f => (
+                                            <SelectItem key={f.value} value={f.value}>{f.label}</SelectItem>
+                                        ))}
+                                    </SelectContent>
+                                </Select>
+                                
+                                <Select value={bulkUpdateValue} onValueChange={setBulkUpdateValue}>
+                                    <SelectTrigger className="w-[180px] h-9">
+                                        <SelectValue placeholder="Select new value" />
+                                    </SelectTrigger>
+                                    <SelectContent>
+                                        {selectedBulkUpdateField?.options.map(opt => (
+                                              <SelectItem key={opt} value={opt}>{opt}</SelectItem>
+                                        ))}
+                                    </SelectContent>
+                                </Select>
                             </div>
-                        )}
-                    </DataTable>
-                   </div>
-                )}
+                            <Button size="sm" onClick={handleBulkUpdate} disabled={isBulkUpdating}>
+                                  {isBulkUpdating && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
+                                Apply Update
+                            </Button>
+                        </div>
+                    )}
+                </DataTable>
+                </div>
               </>
             ) : (
                 <DataTable 
@@ -588,3 +578,4 @@ export default Dashboard;
     
 
     
+
