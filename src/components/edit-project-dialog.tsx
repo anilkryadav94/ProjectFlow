@@ -257,7 +257,7 @@ export function EditProjectDialog({
         <FormField control={form.control} name="case_manager" render={({ field }) => (<FormItem><FormLabel>Case Manager</FormLabel><Select onValueChange={field.onChange} defaultValue={field.value}><FormControl><SelectTrigger><SelectValue /></SelectTrigger></FormControl><SelectContent>{caseManagers.map(c => <SelectItem key={c} value={c}>{c}</SelectItem>)}</SelectContent></Select><FormMessage /></FormItem>)} />
         <FormField control={form.control} name="country" render={({ field }) => (<FormItem><FormLabel>Country</FormLabel><FormControl><Input {...field} value={field.value ?? ""} /></FormControl><FormMessage /></FormItem>)} />
         <FormField control={form.control} name="document_type" render={({ field }) => (<FormItem><FormLabel>Document Type</FormLabel><FormControl><Input {...field} value={field.value ?? ""} /></FormControl><FormMessage /></FormItem>)} />
-        <FormField control={form.control} name="action_taken" render={({ field }) => (<FormItem><FormLabel>Action Taken</FormLabel><FormControl><Input {...field} value={field.value ?? ""} /></FormControl><FormMessage /></FormItem>)} />
+        <FormField control={form.control} name="action_taken" render={({ field }) => (<FormItem><FormLabel>Action Taken</FormLabel><FormControl><Textarea {...field} value={field.value ?? ""} /></FormControl><FormMessage /></FormItem>)} />
         <FormField control={form.control} name="renewal_agent" render={({ field }) => (<FormItem><FormLabel>Renewal Agent</FormLabel><FormControl><Input {...field} value={field.value ?? ""} /></FormControl><FormMessage /></FormItem>)} />
         <FormField control={form.control} name="client_query_description" render={({ field }) => (<FormItem><FormLabel>Client Query Description</FormLabel><FormControl><Textarea {...field} value={field.value ?? ""} /></FormControl><FormMessage /></FormItem>)} />
       </div>
@@ -271,15 +271,15 @@ export function EditProjectDialog({
             <div className="space-y-4 p-4 border rounded-md bg-muted/30">
                 <h3 className="font-semibold text-lg mb-2">Processor Details</h3>
                 <div className="grid grid-cols-2 gap-4">
+                    <FormItem><FormLabel>Ref Number</FormLabel><Input value={project.ref_number ?? ''} readOnly /></FormItem>
                     <FormItem><FormLabel>Processor</FormLabel><Input value={project.processor} readOnly /></FormItem>
                     <FormItem><FormLabel>Processing Status</FormLabel><Input value={project.processing_status} readOnly /></FormItem>
                     <FormItem><FormLabel>Application No.</FormLabel><Input value={project.application_number ?? ''} readOnly /></FormItem>
                     <FormItem><FormLabel>Patent No.</FormLabel><Input value={project.patent_number ?? ''} readOnly /></FormItem>
                     <FormItem><FormLabel>Country</FormLabel><Input value={project.country ?? ''} readOnly /></FormItem>
                     <FormItem><FormLabel>Document Type</FormLabel><Input value={project.document_type ?? ''} readOnly /></FormItem>
-                    <FormItem><FormLabel>Action Taken</FormLabel><Input value={project.action_taken ?? ''} readOnly /></FormItem>
+                    <FormItem className="col-span-2"><FormLabel>Action Taken</FormLabel><Textarea value={project.action_taken ?? ''} readOnly /></FormItem>
                     <FormItem><FormLabel>Email Renaming</FormLabel><Input value={project.email_renaming ?? ''} readOnly /></FormItem>
-                    <FormItem className="col-span-2"><FormLabel>Subject</FormLabel><Textarea value={project.subject_line} readOnly /></FormItem>
                     <FormItem><FormLabel>Sender</FormLabel><Input value={project.sender ?? ''} readOnly /></FormItem>
                     <FormItem><FormLabel>Email Date</FormLabel><Input value={project.received_date} readOnly /></FormItem>
                     <FormItem><FormLabel>Renewal Agent</FormLabel><Input value={project.renewal_agent ?? ''} readOnly /></FormItem>
@@ -423,5 +423,3 @@ export function EditProjectDialog({
     </>
   );
 }
-
-    
