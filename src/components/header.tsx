@@ -130,6 +130,8 @@ export function Header({
         return 'Manager Dashboard';
       case 'Admin':
         return 'Admin Dashboard';
+      case 'Case Manager':
+        return 'Client Dashboard';
       default:
         return 'Dashboard';
     }
@@ -173,7 +175,7 @@ export function Header({
                 </div>
             )}
             
-            {setSearch && setSearchColumn && !isManagerOrAdmin && (
+            {setSearch && setSearchColumn && !isManagerOrAdmin && activeRole !== 'Case Manager' && (
               <div className="flex items-center space-x-2">
                 <div className="flex items-center space-x-0">
                     <Select value={searchColumn} onValueChange={(v) => setSearchColumn(v as SearchableColumn)}>

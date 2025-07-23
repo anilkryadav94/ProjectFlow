@@ -55,6 +55,7 @@ const updateProjectSchema = z.object({
   allocationDate: z.string(),
   processor: z.string(),
   qa: z.string(),
+  caseManager: z.string(),
   processorStatus: z.enum(["Pending", "On Hold", "Re-Work", "Processed", "NTP", "Client Query", "Already Processed"]),
   qaStatus: z.enum(["Pending", "Complete", "NTP", "Client Query", "Already Processed"]),
   reworkReason: z.string().nullable(),
@@ -98,6 +99,7 @@ const fieldsToCopy = z.enum([
   'process',
   'processor',
   'qa',
+  'caseManager',
   'emailDate',
   'allocationDate',
 ]);
@@ -143,6 +145,7 @@ export async function addRows(
         process: 'Patent',
         processor: '',
         qa: '',
+        caseManager: '',
         emailDate: new Date().toISOString().split('T')[0],
         allocationDate: new Date().toISOString().split('T')[0],
     };

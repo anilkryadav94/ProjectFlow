@@ -1,9 +1,9 @@
 
 
-export type Role = 'Admin' | 'Manager' | 'Processor' | 'QA';
-export const roles: Role[] = ['Admin', 'Manager', 'Processor', 'QA'];
+export type Role = 'Admin' | 'Manager' | 'Processor' | 'QA' | 'Case Manager';
+export const roles: Role[] = ['Admin', 'Manager', 'Processor', 'QA', 'Case Manager'];
 
-export const roleHierarchy: Role[] = ['Admin', 'Manager', 'QA', 'Processor'];
+export const roleHierarchy: Role[] = ['Admin', 'Manager', 'QA', 'Case Manager', 'Processor'];
 
 export type User = {
     id: string;
@@ -48,6 +48,7 @@ export type Project = {
   allocationDate: string;
   processor: string;
   qa: string;
+  caseManager: string;
   workflowStatus: WorkflowStatus;
   processorStatus: ProcessorStatus;
   qaStatus: QAStatus;
@@ -64,6 +65,8 @@ export const clientNames = ['Client A', 'Client B', 'Client C'];
 export const processes: ProcessType[] = ['Patent', 'TM', 'IDS', 'Project'];
 export const projectStatuses: any[] = ["Pending", "Completed", "On Hold"];
 export const countries = ['USA', 'India', 'Canada', 'UK', 'Germany'];
+export const caseManagers = ['CM Alice', 'CM Bob'];
+
 
 export let users: Omit<User, 'id'>[] = [
     { email: 'admin@example.com', password: 'password', name: 'Admin User', roles: ['Admin', 'Manager'] },
@@ -76,6 +79,8 @@ export let users: Omit<User, 'id'>[] = [
     { email: 'anil@example.com', password: 'password', name: 'Anil', roles: ['QA'] },
     { email: 'ankit@example.com', password: 'password', name: 'Ankit', roles: ['QA'] },
     { email: 'rahul@example.com', password: 'password', name: 'Rahul', roles: ['Admin', 'Manager', 'QA', 'Processor'] },
+    { email: 'cm.alice@example.com', password: 'password', name: 'CM Alice', roles: ['Case Manager'] },
+    { email: 'cm.bob@example.com', password: 'password', name: 'CM Bob', roles: ['Case Manager'] },
 ];
 
 export let projects: Project[] = [
@@ -90,6 +95,7 @@ export let projects: Project[] = [
     allocationDate: '2023-10-02',
     processor: 'Rahul',
     qa: 'Rahul',
+    caseManager: 'CM Alice',
     workflowStatus: 'Completed',
     processorStatus: 'Processed',
     qaStatus: 'Complete',
@@ -112,6 +118,7 @@ export let projects: Project[] = [
     allocationDate: '2023-10-04',
     processor: 'Rahul',
     qa: 'Rahul',
+    caseManager: 'CM Bob',
     workflowStatus: 'With QA',
     processorStatus: 'Processed',
     qaStatus: 'Pending',
@@ -131,6 +138,7 @@ export let projects: Project[] = [
     allocationDate: '2023-10-11',
     processor: 'Rahul',
     qa: 'Rahul',
+    caseManager: 'CM Alice',
     workflowStatus: 'With Processor',
     processorStatus: 'Pending',
     qaStatus: 'Pending',
@@ -151,6 +159,7 @@ export let projects: Project[] = [
     allocationDate: '2023-10-16',
     processor: 'Rahul',
     qa: 'Rahul',
+    caseManager: 'CM Bob',
     workflowStatus: 'With Processor',
     processorStatus: 'Pending',
     qaStatus: 'Pending',
@@ -158,6 +167,26 @@ export let projects: Project[] = [
     qaDate: null,
     reworkReason: null,
     subject: 'Urgent: Client Request',
+  },
+  {
+    id: '5',
+    refNumber: 'REF005',
+    clientName: 'Client B',
+    process: 'Patent',
+    applicationNumber: null,
+    patentNumber: null,
+    emailDate: '2023-10-18',
+    allocationDate: '2023-10-19',
+    processor: 'Rahul',
+    qa: 'Rahul',
+    caseManager: 'CM Alice',
+    workflowStatus: 'With QA',
+    processorStatus: 'Processed',
+    qaStatus: 'Client Query',
+    processingDate: '2023-10-22',
+    qaDate: null,
+    reworkReason: 'Need clarification on figure 3.',
+    subject: 'Response to office action',
   },
   {
     id: '6',
@@ -170,6 +199,7 @@ export let projects: Project[] = [
     allocationDate: '2023-10-21',
     processor: 'Rahul',
     qa: 'Rahul',
+    caseManager: 'CM Bob',
     workflowStatus: 'With Processor',
     processorStatus: 'On Hold',
     qaStatus: 'Pending',
@@ -189,6 +219,7 @@ export let projects: Project[] = [
     allocationDate: '2023-11-02',
     processor: 'Rahul',
     qa: 'Rahul',
+    caseManager: 'CM Alice',
     workflowStatus: 'With Processor',
     processorStatus: 'Re-Work',
     qaStatus: 'Pending',
@@ -208,6 +239,7 @@ export let projects: Project[] = [
     allocationDate: '2023-11-06',
     processor: 'Alice',
     qa: 'David',
+    caseManager: 'CM Bob',
     workflowStatus: 'With Processor',
     processorStatus: 'Pending',
     qaStatus: 'Pending',
@@ -227,6 +259,7 @@ export let projects: Project[] = [
     allocationDate: '2023-11-09',
     processor: 'Bob',
     qa: 'Eve',
+    caseManager: 'CM Alice',
     workflowStatus: 'With Processor',
     processorStatus: 'Pending',
     qaStatus: 'Pending',
@@ -246,6 +279,7 @@ export let projects: Project[] = [
     allocationDate: '2023-11-11',
     processor: 'Charlie',
     qa: 'Bob',
+    caseManager: 'CM Bob',
     workflowStatus: 'With QA',
     processorStatus: 'Processed',
     qaStatus: 'Pending',
@@ -265,6 +299,7 @@ export let projects: Project[] = [
     allocationDate: '2023-11-13',
     processor: 'Alice',
     qa: 'David',
+    caseManager: 'CM Alice',
     workflowStatus: 'With Processor',
     processorStatus: 'On Hold',
     qaStatus: 'Pending',
@@ -284,6 +319,7 @@ export let projects: Project[] = [
     allocationDate: '2023-11-16',
     processor: 'Alice',
     qa: 'David',
+    caseManager: 'CM Bob',
     workflowStatus: 'With Processor',
     processorStatus: 'Pending',
     qaStatus: 'Pending',
@@ -303,6 +339,7 @@ export let projects: Project[] = [
     allocationDate: '2023-11-19',
     processor: 'Alice',
     qa: 'Eve',
+    caseManager: 'CM Alice',
     workflowStatus: 'With QA',
     processorStatus: 'Processed',
     qaStatus: 'Pending',
@@ -322,6 +359,7 @@ export let projects: Project[] = [
     allocationDate: '2023-11-22',
     processor: 'Bob',
     qa: 'David',
+    caseManager: 'CM Bob',
     workflowStatus: 'With Processor',
     processorStatus: 'Pending',
     qaStatus: 'Pending',
@@ -341,6 +379,7 @@ export let projects: Project[] = [
     allocationDate: '2023-11-26',
     processor: 'Bob',
     qa: 'Eve',
+    caseManager: 'CM Alice',
     workflowStatus: 'Completed',
     processorStatus: 'Processed',
     qaStatus: 'Complete',
@@ -360,6 +399,7 @@ export let projects: Project[] = [
     allocationDate: '2023-11-29',
     processor: 'Alice',
     qa: 'Bob',
+    caseManager: 'CM Bob',
     workflowStatus: 'With QA',
     processorStatus: 'Processed',
     qaStatus: 'Pending',
@@ -379,12 +419,13 @@ export let projects: Project[] = [
     allocationDate: '2023-11-30',
     processor: 'Charlie',
     qa: 'Bob',
+    caseManager: 'CM Alice',
     workflowStatus: 'With QA',
     processorStatus: 'Processed',
-    qaStatus: 'Pending',
+    qaStatus: 'Client Query',
     processingDate: '2023-12-01',
     qaDate: null,
-    reworkReason: null,
+    reworkReason: 'Please confirm the reference list with the client.',
     subject: 'QA Pending for Bob - Project 2',
   }
 ];

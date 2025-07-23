@@ -308,6 +308,7 @@ function Dashboard({
                     allocationDate: row.allocationDate || new Date().toISOString().split('T')[0],
                     processor,
                     qa,
+                    caseManager: row.caseManager || '',
                     workflowStatus,
                     processorStatus,
                     qaStatus,
@@ -435,6 +436,8 @@ function Dashboard({
           baseProjects = baseProjects.filter(p => p.processor === user.name && p.workflowStatus === 'With Processor' && processorActionableStatuses.includes(p.processorStatus));
         } else if (activeRole === 'QA') {
           baseProjects = baseProjects.filter(p => p.qa === user.name && p.workflowStatus === 'With QA');
+        } else if (activeRole === 'Case Manager') {
+            baseProjects = baseProjects.filter(p => p.caseManager === user.name && p.qaStatus === 'Client Query');
         }
     }
     

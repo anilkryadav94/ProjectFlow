@@ -81,6 +81,10 @@ export const getColumns = (
       header: "QA",
     },
     {
+      key: "caseManager" as const,
+      header: "Case Manager",
+    },
+    {
       key: "workflowStatus" as const,
       header: "Status",
       render: (project: Project) => {
