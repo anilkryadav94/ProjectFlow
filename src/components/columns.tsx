@@ -5,17 +5,8 @@ import type { Project, Role } from "@/lib/data";
 import { Badge } from "@/components/ui/badge";
 import { cn } from "@/lib/utils";
 import { Checkbox } from "./ui/checkbox";
-import { Save, XCircle, Edit } from "lucide-react";
+import { Edit } from "lucide-react";
 import { Button } from "./ui/button";
-import {
-  DropdownMenu,
-  DropdownMenuContent,
-  DropdownMenuItem,
-  DropdownMenuTrigger,
-} from "./ui/dropdown-menu";
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "./ui/select";
-import { processors, qas } from "@/lib/data";
-
 
 const statusColors: Record<string, string> = {
   // Workflow Statuses
@@ -43,14 +34,7 @@ export const getColumns = (
   rowSelection: Record<string, boolean>,
   setRowSelection: (selection: Record<string, boolean>) => void,
   allProjectsOnPage: Project[],
-  activeRole: Role,
-  editingRowId: string | null,
-  startEditing: (id: string) => void,
-  cancelEditing: () => void,
-  editedData: Partial<Project> | null,
-  setEditedData: (data: Partial<Project> | null) => void,
-  handleUpdateProject: () => void,
-  isUpdating: boolean
+  handleEditProject: (project: Project) => void,
 ) => {
 
   const baseColumns = [
@@ -90,50 +74,10 @@ export const getColumns = (
     {
       key: "processor" as const,
       header: "Processor",
-      render: (project: Project) => {
-          if (editingRowId === project.id) {
-              return (
-                   <Select
-                        value={editedData?.processor ?? project.processor}
-                        onValueChange={(value) => setEditedData({ ...editedData, processor: value })}
-                    >
-                        <SelectTrigger className="w-full h-8">
-                            <SelectValue placeholder="Select Processor" />
-                        </SelectTrigger>
-                        <SelectContent>
-                            {processors.map(p => (
-                                <SelectItem key={p} value={p}>{p}</SelectItem>
-                            ))}
-                        </SelectContent>
-                    </Select>
-              )
-          }
-          return project.processor
-      }
     },
     {
       key: "qa" as const,
       header: "QA",
-       render: (project: Project) => {
-          if (editingRowId === project.id) {
-              return (
-                   <Select
-                        value={editedData?.qa ?? project.qa}
-                        onValueChange={(value) => setEditedData({ ...editedData, qa: value })}
-                    >
-                        <SelectTrigger className="w-full h-8">
-                            <SelectValue placeholder="Select QA" />
-                        </SelectTrigger>
-                        <SelectContent>
-                            {qas.map(p => (
-                                <SelectItem key={p} value={p}>{p}</SelectItem>
-                            ))}
-                        </SelectContent>
-                    </Select>
-              )
-          }
-          return project.qa
-      }
     },
     {
       key: "workflowStatus" as const,
@@ -167,25 +111,11 @@ export const getColumns = (
   const actionColumn = {
       key: 'actions',
       header: 'Actions',
-      render: (project: Project) => {
-          if (editingRowId === project.id) {
-              return (
-                  <div className="flex items-center gap-2">
-                      <Button size="icon" variant="ghost" onClick={handleUpdateProject} disabled={isUpdating}>
-                          <Save className="h-4 w-4 text-green-600"/>
-                      </Button>
-                      <Button size="icon" variant="ghost" onClick={cancelEditing} disabled={isUpdating}>
-                          <XCircle className="h-4 w-4 text-red-600"/>
-                      </Button>
-                  </div>
-              )
-          }
-          return (
-              <Button size="icon" variant="ghost" onClick={() => startEditing(project.id)}>
-                  <Edit className="h-4 w-4"/>
-              </Button>
-          )
-      }
+      render: (project: Project) => (
+        <Button size="icon" variant="ghost" onClick={() => handleEditProject(project)}>
+            <Edit className="h-4 w-4"/>
+        </Button>
+      )
   }
   columns.unshift(actionColumn);
 

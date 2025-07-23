@@ -21,6 +21,7 @@ import { cn } from '@/lib/utils';
 import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from './ui/accordion';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from './ui/table';
 import { updateProject } from '@/app/actions';
+import { EditProjectDialog } from './edit-project-dialog';
 
 interface DashboardProps {
   user: User;
@@ -182,16 +183,17 @@ function Dashboard({
   const [selectedFile, setSelectedFile] = React.useState<File | null>(null);
   const [isUploading, setIsUploading] = React.useState(false);
   
-  const [editingRowId, setEditingRowId] = React.useState<string | null>(null);
-  const [editedData, setEditedData] = React.useState<Partial<Project> | null>(null);
-  const [isUpdating, setIsUpdating] = React.useState(false);
+  const [isEditDialogOpen, setIsEditDialogOpen] = React.useState(false);
+  const [editingProject, setEditingProject] = React.useState<Project | null>(null);
   
   const { toast } = useToast();
   
   const refreshProjects = React.useCallback(async () => {
     // In mock mode, we just reset to the original mock data.
+    // In a real app, this would re-fetch from the database.
     setProjects(mockProjects);
-  }, []);
+    router.refresh(); // Important to get fresh server state
+  }, [router]);
 
   React.useEffect(() => {
     const highestRole = roleHierarchy.find(role => user.roles.includes(role)) || user.roles[0];
@@ -204,7 +206,7 @@ function Dashboard({
              router.replace(`/?role=${newActiveRole}`, { scroll: false });
         }
     }
-}, [user.roles, urlRole, router, activeRole, searchParams]);
+  }, [user.roles, urlRole, router, activeRole, searchParams]);
   
   const handleDownload = () => {
     const dataToExport = filteredProjects ?? dashboardProjects;
@@ -363,41 +365,10 @@ function Dashboard({
   const handleAmendSearch = () => {
       setFilteredProjects(null);
   }
-
-  const startEditing = (projectId: string) => {
-    setEditingRowId(projectId);
-    const projectToEdit = projects.find(p => p.id === projectId);
-    if (projectToEdit) {
-      setEditedData({ id: projectToEdit.id, processor: projectToEdit.processor, qa: projectToEdit.qa });
-    }
-  };
-
-  const cancelEditing = () => {
-    setEditingRowId(null);
-    setEditedData(null);
-  };
-
-  const handleUpdateProject = async () => {
-    if (!editingRowId || !editedData) return;
-    setIsUpdating(true);
-    try {
-      const result = await updateProject({
-        id: editingRowId,
-        ...editedData,
-      });
-
-      if (result.success && result.project) {
-        setProjects(prevProjects => prevProjects.map(p => p.id === result.project!.id ? result.project! : p));
-        toast({ title: "Success", description: "Project updated." });
-      } else {
-        toast({ title: "Error", description: "Failed to update project.", variant: "destructive" });
-      }
-    } catch (error) {
-      toast({ title: "Error", description: "An error occurred.", variant: "destructive" });
-    } finally {
-      cancelEditing();
-      setIsUpdating(false);
-    }
+  
+  const handleOpenEditDialog = (project: Project) => {
+    setEditingProject(project);
+    setIsEditDialogOpen(true);
   };
 
 
@@ -467,14 +438,7 @@ function Dashboard({
       rowSelection, 
       setRowSelection, 
       dashboardProjects,
-      activeRole,
-      editingRowId,
-      startEditing,
-      cancelEditing,
-      editedData,
-      setEditedData,
-      handleUpdateProject,
-      isUpdating
+      handleOpenEditDialog
   );
   const selectedBulkUpdateField = bulkUpdateFields.find(f => f.value === bulkUpdateField);
 
@@ -487,6 +451,15 @@ function Dashboard({
             className="hidden"
             accept=".csv"
         />
+        {editingProject && (
+             <EditProjectDialog
+                isOpen={isEditDialogOpen}
+                onOpenChange={setIsEditDialogOpen}
+                project={editingProject}
+                onUpdateSuccess={refreshProjects}
+                userRole={activeRole}
+            />
+        )}
         <Header 
             user={user}
             activeRole={activeRole}
