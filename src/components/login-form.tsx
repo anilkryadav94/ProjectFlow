@@ -2,7 +2,7 @@
 "use client";
 
 import * as React from "react";
-import { login, onAuthChanged } from "@/lib/auth";
+import { login } from "@/lib/auth";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
@@ -17,15 +17,6 @@ export function LoginForm() {
 
   const emailRef = React.useRef<HTMLInputElement>(null);
   const passwordRef = React.useRef<HTMLInputElement>(null);
-
-  React.useEffect(() => {
-    const unsubscribe = onAuthChanged((user) => {
-      if (user) {
-        router.push('/');
-      }
-    });
-    return () => unsubscribe();
-  }, [router]);
 
   const handleLogin = async (event: React.FormEvent) => {
     event.preventDefault();
@@ -43,7 +34,9 @@ export function LoginForm() {
 
     try {
       await login(email, password);
-      // Redirect is handled by the useEffect
+      // On successful login, redirect to the dashboard.
+      router.push('/');
+      router.refresh(); // Refresh to ensure new session is picked up
     } catch (err: any) {
       setError(err.message || 'Failed to login.');
       setLoading(false);
@@ -64,11 +57,11 @@ export function LoginForm() {
         <form onSubmit={handleLogin} className="space-y-4">
           <div className="space-y-2">
             <Label htmlFor="email">Email</Label>
-            <Input id="email" name="email" type="email" placeholder="m@example.com" required ref={emailRef} />
+            <Input id="email" name="email" type="email" placeholder="m@example.com" required ref={emailRef} defaultValue="admin@example.com" />
           </div>
           <div className="space-y-2">
             <Label htmlFor="password">Password</Label>
-            <Input id="password" name="password" type="password" required ref={passwordRef} />
+            <Input id="password" name="password" type="password" required ref={passwordRef} defaultValue="password"/>
           </div>
           {error && (
             <p className="text-sm text-destructive">{error}</p>
