@@ -3,7 +3,7 @@
 "use server";
 
 import { z } from "zod";
-import type { Project, Role } from "@/lib/data";
+import type { Project, Role, ClientStatus } from "@/lib/data";
 import { projects } from "@/lib/data";
 import { revalidatePath } from "next/cache";
 
@@ -59,11 +59,13 @@ const updateProjectSchema = z.object({
   processorStatus: z.enum(["Pending", "On Hold", "Re-Work", "Processed", "NTP", "Client Query", "Already Processed"]),
   qaStatus: z.enum(["Pending", "Complete", "NTP", "Client Query", "Already Processed"]),
   reworkReason: z.string().nullable(),
+  clientComments: z.string().nullable(),
+  clientStatus: z.enum(["Approved", "Clarification Required"]).nullable(),
   entries: z.array(projectEntrySchema).optional(),
 });
 
 
-export async function updateProject(data: Partial<Project>, submitAction?: 'submit_for_qa' | 'submit_qa' | 'send_rework' | 'save'): Promise<{success: boolean, project?: Project}> {
+export async function updateProject(data: Partial<Project>, submitAction?: 'submit_for_qa' | 'submit_qa' | 'send_rework' | 'save' | 'client_submit'): Promise<{success: boolean, project?: Project}> {
     const validatedData = updateProjectSchema.parse(data);
     const projectIndex = projects.findIndex(p => p.id === validatedData.id);
     if (projectIndex === -1) {
@@ -82,6 +84,9 @@ export async function updateProject(data: Partial<Project>, submitAction?: 'subm
     } else if (submitAction === 'send_rework') {
       updatedProject.workflowStatus = 'With Processor';
       updatedProject.processorStatus = 'Re-Work';
+    } else if (submitAction === 'client_submit') {
+      updatedProject.workflowStatus = 'With QA';
+      updatedProject.qaStatus = 'Pending'; // Reset QA status so they know client responded
     }
 
 
@@ -137,6 +142,8 @@ export async function addRows(
         processingDate: null,
         qaDate: null,
         reworkReason: null,
+        clientComments: null,
+        clientStatus: null,
         entries: [],
         
         // Potentially copied values
@@ -162,3 +169,4 @@ export async function addRows(
   revalidatePath('/');
   return { success: true, addedCount: count };
 }
+

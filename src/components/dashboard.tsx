@@ -316,6 +316,8 @@ function Dashboard({
                     qaDate: null,
                     reworkReason: null,
                     subject: row.subject || 'No Subject',
+                    clientComments: null,
+                    clientStatus: null,
                     entries: [],
                 } as Project;
             }).filter(p => p.refNumber);
@@ -386,20 +388,17 @@ function Dashboard({
     const lowercasedSearch = managerSearch.toLowerCase();
     let results = [...projects];
 
-    if (!lowercasedSearch) {
-        setFilteredProjects(results);
-        return;
+    if (lowercasedSearch) {
+        results = results.filter(p => {
+            if (managerSearchColumn === 'any') {
+                return Object.values(p).some(val => 
+                    String(val).toLowerCase().includes(lowercasedSearch)
+                );
+            } else {
+                return (p[managerSearchColumn] as string)?.toString().toLowerCase().includes(lowercasedSearch);
+            }
+        });
     }
-
-    results = results.filter(p => {
-        if (managerSearchColumn === 'any') {
-            return Object.values(p).some(val => 
-                String(val).toLowerCase().includes(lowercasedSearch)
-            );
-        } else {
-            return (p[managerSearchColumn] as string)?.toString().toLowerCase().includes(lowercasedSearch);
-        }
-    });
     
     setFilteredProjects(results);
   };
@@ -489,7 +488,8 @@ function Dashboard({
   const isManagerOrAdmin = activeRole === 'Manager' || activeRole === 'Admin';
   
   const columns = getColumns(
-      isManagerOrAdmin, 
+      isManagerOrAdmin,
+      activeRole,
       rowSelection, 
       setRowSelection, 
       dashboardProjects,
@@ -679,3 +679,4 @@ function Dashboard({
 }
 
 export default Dashboard;
+

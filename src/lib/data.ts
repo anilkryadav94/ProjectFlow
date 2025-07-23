@@ -26,6 +26,9 @@ export type QAStatus = 'Pending' | 'Complete' | 'NTP' | 'Client Query' | 'Alread
 export const qaStatuses: QAStatus[] = ['Pending', 'Complete', 'NTP', 'Client Query', 'Already Processed'];
 export const qaSubmissionStatuses: QAStatus[] = ['Complete', 'NTP', 'Client Query', 'Already Processed'];
 
+export type ClientStatus = 'Approved' | 'Clarification Required';
+export const clientStatuses: ClientStatus[] = ['Approved', 'Clarification Required'];
+
 export type ProcessType = 'Patent' | 'TM' | 'IDS' | 'Project';
 
 export type ProjectEntry = {
@@ -56,6 +59,8 @@ export type Project = {
   qaDate: string | null;
   reworkReason: string | null;
   subject: string;
+  clientComments: string | null;
+  clientStatus: ClientStatus | null;
   entries?: ProjectEntry[];
 };
 
@@ -103,6 +108,8 @@ export let projects: Project[] = [
     qaDate: '2023-10-07',
     reworkReason: null,
     subject: 'Invention Disclosure - AI in Healthcare',
+    clientComments: null,
+    clientStatus: null,
     entries: [
         { id: 'entry1', applicationNumber: 'US16/123,456', patentNumber: '10,123,456', country: 'USA', status: 'Filed', notes: 'Initial notes' }
     ]
@@ -126,6 +133,8 @@ export let projects: Project[] = [
     qaDate: null,
     reworkReason: null,
     subject: 'New Patent Application Filing',
+    clientComments: null,
+    clientStatus: null,
   },
   {
     id: '3',
@@ -146,6 +155,8 @@ export let projects: Project[] = [
     qaDate: null,
     reworkReason: null,
     subject: 'Follow-up on Application XYZ',
+    clientComments: null,
+    clientStatus: null,
     entries: []
   },
   {
@@ -167,6 +178,8 @@ export let projects: Project[] = [
     qaDate: null,
     reworkReason: null,
     subject: 'Urgent: Client Request',
+    clientComments: null,
+    clientStatus: null,
   },
   {
     id: '5',
@@ -187,6 +200,8 @@ export let projects: Project[] = [
     qaDate: null,
     reworkReason: 'Need clarification on figure 3.',
     subject: 'Response to office action',
+    clientComments: null,
+    clientStatus: null,
   },
   {
     id: '6',
@@ -207,6 +222,8 @@ export let projects: Project[] = [
     qaDate: null,
     reworkReason: null,
     subject: 'Query from Patent Office',
+    clientComments: null,
+    clientStatus: null,
   },
   {
     id: '7',
@@ -227,6 +244,8 @@ export let projects: Project[] = [
     qaDate: null,
     reworkReason: 'Incorrect document version attached.',
     subject: 'New Submission for Review - REWORK',
+    clientComments: null,
+    clientStatus: null,
   },
   {
     id: '8',
@@ -247,6 +266,8 @@ export let projects: Project[] = [
     qaDate: null,
     reworkReason: null,
     subject: 'IDS verification for Client B',
+    clientComments: null,
+    clientStatus: null,
   },
   {
     id: '9',
@@ -267,6 +288,8 @@ export let projects: Project[] = [
     qaDate: null,
     reworkReason: null,
     subject: 'Special project setup for Client C',
+    clientComments: null,
+    clientStatus: null,
   },
   {
     id: '10',
@@ -287,6 +310,8 @@ export let projects: Project[] = [
     qaDate: null,
     reworkReason: null,
     subject: 'QA check for patent REF010',
+    clientComments: null,
+    clientStatus: null,
   },
   {
     id: '11',
@@ -307,6 +332,8 @@ export let projects: Project[] = [
     qaDate: null,
     reworkReason: null,
     subject: 'Trademark research - waiting for client feedback',
+    clientComments: null,
+    clientStatus: null,
   },
   {
     id: '12',
@@ -327,6 +354,8 @@ export let projects: Project[] = [
     qaDate: null,
     reworkReason: null,
     subject: 'Alice\'s first task',
+    clientComments: null,
+    clientStatus: null,
   },
   {
     id: '13',
@@ -347,6 +376,8 @@ export let projects: Project[] = [
     qaDate: null,
     reworkReason: null,
     subject: 'Alice\'s second task, now with QA',
+    clientComments: null,
+    clientStatus: null,
   },
   {
     id: '14',
@@ -367,6 +398,8 @@ export let projects: Project[] = [
     qaDate: null,
     reworkReason: null,
     subject: 'Bob\'s first task for Client B',
+    clientComments: null,
+    clientStatus: null,
   },
   {
     id: '15',
@@ -387,6 +420,8 @@ export let projects: Project[] = [
     qaDate: '2023-11-28',
     reworkReason: null,
     subject: 'Bob\'s second task, completed',
+    clientComments: null,
+    clientStatus: null,
   },
   {
     id: '16',
@@ -407,6 +442,8 @@ export let projects: Project[] = [
     qaDate: null,
     reworkReason: null,
     subject: 'QA Pending for Bob - Project 1',
+    clientComments: null,
+    clientStatus: null,
   },
   {
     id: '17',
@@ -427,5 +464,9 @@ export let projects: Project[] = [
     qaDate: null,
     reworkReason: 'Please confirm the reference list with the client.',
     subject: 'QA Pending for Bob - Project 2',
+    clientComments: null,
+    clientStatus: null,
   }
 ];
+
+

@@ -32,7 +32,7 @@ import {
 import { Textarea } from "@/components/ui/textarea";
 import { Input } from "@/components/ui/input";
 import { Loader2, CalendarIcon } from "lucide-react";
-import { type Project, type Role, processors, qas, processorSubmissionStatuses, qaSubmissionStatuses, processorStatuses, qaStatuses, clientNames, processes, caseManagers } from "@/lib/data";
+import { type Project, type Role, processors, qas, processorSubmissionStatuses, qaSubmissionStatuses, processorStatuses, qaStatuses, clientNames, processes, caseManagers, clientStatuses, type ClientStatus } from "@/lib/data";
 import { useToast } from "@/hooks/use-toast";
 import { updateProject } from "@/app/actions";
 import { Popover, PopoverTrigger, PopoverContent } from "./ui/popover";
@@ -65,6 +65,8 @@ const formSchema = z.object({
   processorStatus: z.enum(["Pending", "On Hold", "Re-Work", "Processed", "NTP", "Client Query", "Already Processed"]),
   qaStatus: z.enum(["Pending", "Complete", "NTP", "Client Query", "Already Processed"]),
   reworkReason: z.string().nullable(),
+  clientComments: z.string().nullable(),
+  clientStatus: z.enum(["Approved", "Clarification Required"]).nullable(),
   entries: z.array(projectEntrySchema).optional(),
 });
 
@@ -90,7 +92,7 @@ export function EditProjectDialog({
   onNavigate,
 }: EditProjectDialogProps) {
   const [isSubmitting, setIsSubmitting] = React.useState(false);
-  const [submitAction, setSubmitAction] = React.useState<'save' | 'submit_for_qa' | 'submit_qa' | 'send_rework' | null>(null);
+  const [submitAction, setSubmitAction] = React.useState<'save' | 'submit_for_qa' | 'submit_qa' | 'send_rework' | 'client_submit' | null>(null);
   
   const { toast } = useToast();
 
@@ -110,7 +112,7 @@ export function EditProjectDialog({
     }
   }, [project, form]);
   
-  const handleFormSubmit = async (action: 'save' | 'submit_for_qa' | 'submit_qa' | 'send_rework') => {
+  const handleFormSubmit = async (action: 'save' | 'submit_for_qa' | 'submit_qa' | 'send_rework' | 'client_submit') => {
     setSubmitAction(action);
     
     if (action === 'send_rework' && !form.getValues('reworkReason')) {
@@ -181,8 +183,10 @@ export function EditProjectDialog({
   
   const isProcessorView = userRole === 'Processor' && project.workflowStatus === 'With Processor';
   const isQaView = userRole === 'QA' && project.workflowStatus === 'With QA';
+  const isCaseManagerView = userRole === 'Case Manager';
   const isManagerOrAdmin = userRole === 'Manager' || userRole === 'Admin';
   const canEditMainFields = isManagerOrAdmin;
+  const canEditStatusFields = isProcessorView || isQaView || isManagerOrAdmin;
 
   return (
     <>
@@ -208,6 +212,13 @@ export function EditProjectDialog({
                     <FormField control={form.control} name="subject" render={({ field }) => (<FormItem><FormLabel>Subject</FormLabel><FormControl><Textarea {...field} disabled={!canEditMainFields} /></FormControl><FormMessage /></FormItem>)} />
                     <FormField control={form.control} name="applicationNumber" render={({ field }) => (<FormItem><FormLabel>Application No.</FormLabel><FormControl><Input {...field} value={field.value ?? ""} disabled={!canEditMainFields} /></FormControl><FormMessage /></FormItem>)} />
                     <FormField control={form.control} name="patentNumber" render={({ field }) => (<FormItem><FormLabel>Patent No.</FormLabel><FormControl><Input {...field} value={field.value ?? ""} disabled={!canEditMainFields} /></FormControl><FormMessage /></FormItem>)} />
+                    
+                    {isCaseManagerView && (
+                       <>
+                        <FormField control={form.control} name="clientStatus" render={({ field }) => (<FormItem><FormLabel>Client Status</FormLabel><Select onValueChange={v => field.onChange(v as ClientStatus)} value={field.value ?? ""} disabled={!isCaseManagerView}><FormControl><SelectTrigger><SelectValue placeholder="Select a status" /></SelectTrigger></FormControl><SelectContent>{clientStatuses.map(s => <SelectItem key={s} value={s}>{s}</SelectItem>)}</SelectContent></Select><FormMessage /></FormItem>)} />
+                        <FormField control={form.control} name="clientComments" render={({ field }) => (<FormItem><FormLabel>Client Comments</FormLabel><FormControl><Textarea {...field} value={field.value ?? ""} disabled={!isCaseManagerView} className="h-24" /></FormControl><FormMessage /></FormItem>)} />
+                       </>
+                    )}
                 </div>
                 {/* Column 2 */}
                 <div className="space-y-4">
@@ -217,9 +228,9 @@ export function EditProjectDialog({
                     <FormField control={form.control} name="qa" render={({ field }) => (<FormItem><FormLabel>QA</FormLabel><Select onValueChange={field.onChange} value={field.value} disabled={!canEditMainFields}><FormControl><SelectTrigger><SelectValue /></SelectTrigger></FormControl><SelectContent>{qas.map(q => <SelectItem key={q} value={q}>{q}</SelectItem>)}</SelectContent></Select><FormMessage /></FormItem>)} />
                     <FormField control={form.control} name="caseManager" render={({ field }) => (<FormItem><FormLabel>Case Manager</FormLabel><Select onValueChange={field.onChange} value={field.value} disabled={!canEditMainFields}><FormControl><SelectTrigger><SelectValue /></SelectTrigger></FormControl><SelectContent>{caseManagers.map(c => <SelectItem key={c} value={c}>{c}</SelectItem>)}</SelectContent></Select><FormMessage /></FormItem>)} />
 
-                    {(isProcessorView || isManagerOrAdmin || project.workflowStatus !== 'With Processor') && <FormField control={form.control} name="processorStatus" render={({ field }) => (<FormItem><FormLabel>Processor Status</FormLabel><Select onValueChange={field.onChange} value={field.value} disabled={!isProcessorView && !isManagerOrAdmin}><FormControl><SelectTrigger><SelectValue /></SelectTrigger></FormControl><SelectContent>{(isProcessorView || isManagerOrAdmin ? processorSubmissionStatuses : processorStatuses).map(s => <SelectItem key={s} value={s}>{s}</SelectItem>)}</SelectContent></Select><FormMessage /></FormItem>)} />}
-                    {(isQaView || isManagerOrAdmin || project.workflowStatus !== 'With QA') && <FormField control={form.control} name="qaStatus" render={({ field }) => (<FormItem><FormLabel>QA Status</FormLabel><Select onValueChange={field.onChange} value={field.value} disabled={!isQaView && !isManagerOrAdmin}><FormControl><SelectTrigger><SelectValue /></SelectTrigger></FormControl><SelectContent>{(isQaView || isManagerOrAdmin ? qaSubmissionStatuses : qaStatuses).map(s => <SelectItem key={s} value={s}>{s}</SelectItem>)}</SelectContent></Select><FormMessage /></FormItem>)} />}
-                    {project.reworkReason && !isQaView && (<FormItem><FormLabel>Rework Reason</FormLabel><Textarea value={project.reworkReason} readOnly className="h-24 bg-destructive/10 border-destructive" /></FormItem>)}
+                    {(isProcessorView || isManagerOrAdmin || (project.workflowStatus !== 'With Processor' && !isCaseManagerView) ) && <FormField control={form.control} name="processorStatus" render={({ field }) => (<FormItem><FormLabel>Processor Status</FormLabel><Select onValueChange={field.onChange} value={field.value} disabled={!isProcessorView && !isManagerOrAdmin}><FormControl><SelectTrigger><SelectValue /></SelectTrigger></FormControl><SelectContent>{(isProcessorView || isManagerOrAdmin ? processorSubmissionStatuses : processorStatuses).map(s => <SelectItem key={s} value={s}>{s}</SelectItem>)}</SelectContent></Select><FormMessage /></FormItem>)} />}
+                    {(isQaView || isManagerOrAdmin || (project.workflowStatus !== 'With QA' && !isCaseManagerView)) && <FormField control={form.control} name="qaStatus" render={({ field }) => (<FormItem><FormLabel>QA Status</FormLabel><Select onValueChange={field.onChange} value={field.value} disabled={!isQaView && !isManagerOrAdmin}><FormControl><SelectTrigger><SelectValue /></SelectTrigger></FormControl><SelectContent>{(isQaView || isManagerOrAdmin ? qaSubmissionStatuses : qaStatuses).map(s => <SelectItem key={s} value={s}>{s}</SelectItem>)}</SelectContent></Select><FormMessage /></FormItem>)} />}
+                    {project.reworkReason && !isQaView && !isCaseManagerView && (<FormItem><FormLabel>Rework Reason</FormLabel><Textarea value={project.reworkReason} readOnly className="h-24 bg-destructive/10 border-destructive" /></FormItem>)}
                     {isQaView && (<FormField control={form.control} name="reworkReason" render={({ field }) => (<FormItem className="md:col-span-2"><FormLabel>Rework Reason (if sending back)</FormLabel><FormControl><Textarea {...field} value={field.value ?? ""} disabled={!isQaView} /></FormControl><FormMessage /></FormItem>)} />)}
                  </div>
               </div>
@@ -269,6 +280,16 @@ export function EditProjectDialog({
                           </Button>
                       </>
                   )}
+                  {isCaseManagerView && (
+                       <Button
+                          type="button"
+                          onClick={() => handleFormSubmit('client_submit')}
+                          disabled={isSubmitting}
+                      >
+                          {isSubmitting && submitAction === 'client_submit' && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
+                          Submit & Next
+                      </Button>
+                  )}
                 </div>
               </DialogFooter>
             </form>
@@ -278,3 +299,4 @@ export function EditProjectDialog({
     </>
   );
 }
+

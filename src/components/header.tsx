@@ -1,4 +1,5 @@
 
+
 "use client"
 
 import * as React from "react"
@@ -170,7 +171,7 @@ export function Header({
                 </div>
             )}
             
-            {setSearch && setSearchColumn && !isManagerOrAdmin && activeRole !== 'Case Manager' && (
+            {setSearch && setSearchColumn && !isManagerOrAdmin && (
               <div className="flex items-center space-x-2">
                 <div className="flex items-center space-x-0">
                     <Select value={searchColumn} onValueChange={(v) => setSearchColumn(v as SearchableColumn)}>
@@ -199,7 +200,7 @@ export function Header({
                     />
                 </div>
                 
-                {setClientNameFilter && setProcessFilter && (
+                {setClientNameFilter && setProcessFilter && activeRole !== 'Case Manager' && (
                   <>
                     <Select value={clientNameFilter} onValueChange={setClientNameFilter}>
                       <SelectTrigger className="w-[150px] text-foreground h-9">
@@ -320,3 +321,4 @@ export function Header({
     </header>
   )
 }
+

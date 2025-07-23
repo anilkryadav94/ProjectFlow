@@ -31,6 +31,7 @@ const statusColors: Record<string, string> = {
 
 export const getColumns = (
   isManagerOrAdmin: boolean,
+  activeRole: Role,
   rowSelection: Record<string, boolean>,
   setRowSelection: (selection: Record<string, boolean>) => void,
   allProjectsOnPage: Project[],
@@ -121,9 +122,11 @@ export const getColumns = (
           <Button size="icon" variant="ghost" onClick={() => handleEditProject(project)}>
               <Edit className="h-4 w-4"/>
           </Button>
-          <Button size="icon" variant="ghost" onClick={() => handleAddRows(project)}>
-              <PlusCircle className="h-4 w-4"/>
-          </Button>
+          {activeRole !== 'Case Manager' && (
+            <Button size="icon" variant="ghost" onClick={() => handleAddRows(project)}>
+                <PlusCircle className="h-4 w-4"/>
+            </Button>
+          )}
         </div>
       )
   }
@@ -174,3 +177,4 @@ export const getColumns = (
 
   return columns;
 };
+
