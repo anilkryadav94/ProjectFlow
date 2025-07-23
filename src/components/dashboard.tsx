@@ -455,7 +455,8 @@ function Dashboard({
     let filtered = baseProjects;
     
     if (search && !isManagerOrAdminView) {
-        if (searchColumn === 'any') {
+        const effectiveSearchColumn = activeRole === 'Case Manager' ? 'any' : searchColumn;
+        if (effectiveSearchColumn === 'any') {
             const lowercasedSearch = search.toLowerCase();
             filtered = filtered.filter(p => {
                 return Object.values(p).some(val => 
@@ -464,7 +465,7 @@ function Dashboard({
             });
         } else {
             filtered = filtered.filter(p => 
-                (p[searchColumn] as string)?.toString().toLowerCase().includes(search.toLowerCase())
+                (p[effectiveSearchColumn] as string)?.toString().toLowerCase().includes(search.toLowerCase())
             );
         }
     }

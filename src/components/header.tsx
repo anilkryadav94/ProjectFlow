@@ -173,31 +173,46 @@ export function Header({
             
             {setSearch && setSearchColumn && !isManagerOrAdmin && (
               <div className="flex items-center space-x-2">
-                <div className="flex items-center space-x-0">
-                    <Select value={searchColumn} onValueChange={(v) => setSearchColumn(v as SearchableColumn)}>
-                    <SelectTrigger className="w-[180px] rounded-r-none focus:ring-0 text-foreground h-9">
-                        <SelectValue placeholder="Select column" />
-                    </SelectTrigger>
-                    <SelectContent>
-                        <SelectItem value="any">Any Text/Number</SelectItem>
-                        <SelectItem value="ref_number">Ref Number</SelectItem>
-                        <SelectItem value="application_number">Application No.</SelectItem>
-                        <SelectItem value="patent_number">Patent No.</SelectItem>
-                        <SelectItem value="subject_line">Subject</SelectItem>
-                        <SelectItem value="processing_status">Processor Status</SelectItem>
-                        <SelectItem value="qa_status">QA Status</SelectItem>
-                        <SelectItem value="workflowStatus">Workflow Status</SelectItem>
-                        <SelectItem value="received_date">Email Date</SelectItem>
-                        <SelectItem value="allocation_date">Allocation Date</SelectItem>
-                    </SelectContent>
-                    </Select>
-                    <Input
-                        type="text"
-                        placeholder="Quick search..."
-                        value={search}
-                        onChange={(e) => setSearch(e.target.value)}
-                        className="rounded-l-none focus-visible:ring-0 h-9 w-48 text-foreground"
-                    />
+                <div className="flex items-center space-x-0 relative">
+                    {activeRole !== 'Case Manager' ? (
+                      <>
+                        <Select value={searchColumn} onValueChange={(v) => setSearchColumn(v as SearchableColumn)}>
+                          <SelectTrigger className="w-[180px] rounded-r-none focus:ring-0 text-foreground h-9">
+                              <SelectValue placeholder="Select column" />
+                          </SelectTrigger>
+                          <SelectContent>
+                              <SelectItem value="any">Any Text/Number</SelectItem>
+                              <SelectItem value="ref_number">Ref Number</SelectItem>
+                              <SelectItem value="application_number">Application No.</SelectItem>
+                              <SelectItem value="patent_number">Patent No.</SelectItem>
+                              <SelectItem value="subject_line">Subject</SelectItem>
+                              <SelectItem value="processing_status">Processor Status</SelectItem>
+                              <SelectItem value="qa_status">QA Status</SelectItem>
+                              <SelectItem value="workflowStatus">Workflow Status</SelectItem>
+                              <SelectItem value="received_date">Email Date</SelectItem>
+                              <SelectItem value="allocation_date">Allocation Date</SelectItem>
+                          </SelectContent>
+                        </Select>
+                        <Input
+                            type="text"
+                            placeholder="Quick search..."
+                            value={search}
+                            onChange={(e) => setSearch(e.target.value)}
+                            className="rounded-l-none focus-visible:ring-0 h-9 w-48 text-foreground"
+                        />
+                      </>
+                    ) : (
+                      <>
+                        <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground/80" />
+                        <Input
+                            type="text"
+                            placeholder="Quick search..."
+                            value={search}
+                            onChange={(e) => setSearch(e.target.value)}
+                            className="focus-visible:ring-0 h-9 w-64 text-foreground pl-9"
+                        />
+                      </>
+                    )}
                 </div>
                 
                 {setClientNameFilter && setProcessFilter && activeRole !== 'Case Manager' && (
