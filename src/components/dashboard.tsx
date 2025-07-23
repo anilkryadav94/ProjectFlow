@@ -357,8 +357,8 @@ function Dashboard({
                 {showSearchForm && (
                    <Accordion type="single" collapsible className="w-full space-y-4">
                         <AccordionItem value="work-allocation" className="border-none">
-                             <div className="animated-border shadow-xl">
-                                <AccordionTrigger className="p-4 bg-card rounded-md text-lg font-semibold hover:no-underline">Work Allocation / Records Addition</AccordionTrigger>
+                             <div className="animated-border">
+                                <AccordionTrigger className="p-3 bg-card rounded-md text-base font-semibold hover:no-underline">Work Allocation / Records Addition</AccordionTrigger>
                                 <AccordionContent className="bg-card rounded-b-md">
                                     <Card className="border-0 shadow-none">
                                         <CardContent className="pt-4">
@@ -389,8 +389,8 @@ function Dashboard({
                         </AccordionItem>
 
                         <AccordionItem value="advanced-search" className="border-none">
-                             <div className="animated-border shadow-xl">
-                                <AccordionTrigger className="p-4 bg-card rounded-md text-lg font-semibold hover:no-underline">Advanced Search</AccordionTrigger>
+                             <div className="animated-border">
+                                <AccordionTrigger className="p-3 bg-card rounded-md text-base font-semibold hover:no-underline">Advanced Search</AccordionTrigger>
                                 <AccordionContent className="pt-0 bg-card rounded-b-md">
                                      <AdvancedSearchForm onSearch={handleAdvancedSearch} initialCriteria={searchCriteria} />
                                 </AccordionContent>
@@ -466,6 +466,8 @@ function Dashboard({
 }
 
 export default Dashboard;
+
+    
 
     
 
