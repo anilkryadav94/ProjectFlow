@@ -57,11 +57,11 @@ export function LoginForm() {
         <form onSubmit={handleLogin} className="space-y-4">
           <div className="space-y-2">
             <Label htmlFor="email">Email</Label>
-            <Input id="email" name="email" type="email" placeholder="m@example.com" required ref={emailRef} defaultValue="admin@example.com" />
+            <Input id="email" name="email" type="email" placeholder="m@example.com" required ref={emailRef} />
           </div>
           <div className="space-y-2">
             <Label htmlFor="password">Password</Label>
-            <Input id="password" name="password" type="password" required ref={passwordRef} defaultValue="password"/>
+            <Input id="password" name="password" type="password" required ref={passwordRef} />
           </div>
           {error && (
             <p className="text-sm text-destructive">{error}</p>
