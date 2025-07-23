@@ -118,11 +118,6 @@ export const getColumns = (
       )
   }
   
-  if (!isManagerOrAdmin) {
-    columns = [actionColumn, ...baseColumns.filter(c => ['ref_number', 'client_name', 'process', 'workflowStatus'].includes(c.key))];
-  }
-
-  // Add selection column only for manager/admin roles
   if (isManagerOrAdmin) {
     const selectionColumn = {
       key: "select",
@@ -164,6 +159,13 @@ export const getColumns = (
       ),
     };
     columns.unshift(selectionColumn);
+  } else {
+      // Add actions for non-admin roles
+      if (activeRole === 'Case Manager') {
+        columns = [actionColumn, ...baseColumns.filter(c => ['ref_number', 'client_name', 'process', 'workflowStatus'].includes(c.key))];
+      } else {
+        columns.unshift(actionColumn);
+      }
   }
 
   return columns;
