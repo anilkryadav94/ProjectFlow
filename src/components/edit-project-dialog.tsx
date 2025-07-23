@@ -39,6 +39,7 @@ import { Popover, PopoverTrigger, PopoverContent } from "./ui/popover";
 import { Calendar } from "./ui/calendar";
 import { format } from "date-fns";
 import { cn } from "@/lib/utils";
+import { ScrollArea } from "./ui/scroll-area";
 
 const projectEntrySchema = z.object({
     id: z.string(),
@@ -266,17 +267,26 @@ export function EditProjectDialog({
   const renderQaForm = () => (
     <>
         {/* Column 1: Read-only processor info */}
-        <div className="space-y-4 p-4 border rounded-md bg-muted/30">
-            <h3 className="font-semibold text-lg mb-2">Processor Details</h3>
-            <FormItem>
-                <FormLabel>Processor</FormLabel>
-                <Input value={project.processor} readOnly />
-            </FormItem>
-             <FormItem>
-                <FormLabel>Processing Status</FormLabel>
-                <Input value={project.processing_status} readOnly />
-            </FormItem>
-        </div>
+        <ScrollArea className="h-full">
+            <div className="space-y-4 p-4 border rounded-md bg-muted/30">
+                <h3 className="font-semibold text-lg mb-2">Processor Details</h3>
+                <div className="grid grid-cols-2 gap-4">
+                    <FormItem><FormLabel>Processor</FormLabel><Input value={project.processor} readOnly /></FormItem>
+                    <FormItem><FormLabel>Processing Status</FormLabel><Input value={project.processing_status} readOnly /></FormItem>
+                    <FormItem><FormLabel>Application No.</FormLabel><Input value={project.application_number ?? ''} readOnly /></FormItem>
+                    <FormItem><FormLabel>Patent No.</FormLabel><Input value={project.patent_number ?? ''} readOnly /></FormItem>
+                    <FormItem><FormLabel>Country</FormLabel><Input value={project.country ?? ''} readOnly /></FormItem>
+                    <FormItem><FormLabel>Document Type</FormLabel><Input value={project.document_type ?? ''} readOnly /></FormItem>
+                    <FormItem><FormLabel>Action Taken</FormLabel><Input value={project.action_taken ?? ''} readOnly /></FormItem>
+                    <FormItem><FormLabel>Email Renaming</FormLabel><Input value={project.email_renaming ?? ''} readOnly /></FormItem>
+                    <FormItem className="col-span-2"><FormLabel>Subject</FormLabel><Textarea value={project.subject_line} readOnly /></FormItem>
+                    <FormItem><FormLabel>Sender</FormLabel><Input value={project.sender ?? ''} readOnly /></FormItem>
+                    <FormItem><FormLabel>Email Date</FormLabel><Input value={project.received_date} readOnly /></FormItem>
+                    <FormItem><FormLabel>Renewal Agent</FormLabel><Input value={project.renewal_agent ?? ''} readOnly /></FormItem>
+                    <FormItem className="col-span-2"><FormLabel>Client Query Description</FormLabel><Textarea value={project.client_query_description ?? ''} readOnly /></FormItem>
+                </div>
+            </div>
+        </ScrollArea>
         {/* Column 2: QA editable fields */}
         <div className="space-y-4 p-4 border rounded-md">
             <h3 className="font-semibold text-lg mb-2">QA Assessment</h3>
