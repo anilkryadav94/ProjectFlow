@@ -3,7 +3,7 @@
 
 import * as React from 'react';
 import Papa from "papaparse";
-import { type Project, type Role, type User, roleHierarchy, processors, qas, projectStatuses, clientNames, processes, processorActionableStatuses, projects as mockProjects } from '@/lib/data';
+import { type Project, type Role, type User, roleHierarchy, processors, qas, projectStatuses, clientNames, processes, processorActionableStatuses, projects as mockProjects, workflowStatuses, processorStatuses as allProcessorStatuses, qaStatuses as allQaStatuses } from '@/lib/data';
 import { DataTable } from '@/components/data-table';
 import { getColumns } from '@/components/columns';
 import { Header } from '@/components/header';
@@ -11,7 +11,7 @@ import { UserManagementTable } from './user-management-table';
 import { Button } from './ui/button';
 import { useToast } from '@/hooks/use-toast';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from './ui/select';
-import { Loader2 } from 'lucide-react';
+import { Loader2, Upload } from 'lucide-react';
 import { AdvancedSearchForm, type SearchCriteria } from './advanced-search-form';
 import { useSearchParams, useRouter } from 'next/navigation';
 
@@ -39,6 +39,7 @@ function Dashboard({
   const searchParams = useSearchParams();
   const router = useRouter();
   const urlRole = searchParams.get('role') as Role;
+  const fileInputRef = React.useRef<HTMLInputElement>(null);
 
   const [activeRole, setActiveRole] = React.useState<Role | null>(null);
   const [projects, setProjects] = React.useState<Project[]>(initialProjects);
@@ -124,6 +125,66 @@ function Dashboard({
     setBulkUpdateValue('');
     setIsBulkUpdating(false);
   };
+
+  const handleFileUpload = (event: React.ChangeEvent<HTMLInputElement>) => {
+    const file = event.target.files?.[0];
+    if (!file) return;
+
+    Papa.parse(file, {
+        header: true,
+        skipEmptyLines: true,
+        complete: (results) => {
+            const newProjects = results.data.map((row: any) => {
+                // Basic validation and type coercion
+                const clientName = clientNames.includes(row.clientName) ? row.clientName : clientNames[0];
+                const process = processes.includes(row.process) ? row.process : processes[0];
+                const processor = processors.includes(row.processor) ? row.processor : processors[0];
+                const qa = qas.includes(row.qa) ? row.qa : qas[0];
+                const workflowStatus = workflowStatuses.includes(row.workflowStatus) ? row.workflowStatus : 'With Processor';
+                const processorStatus = allProcessorStatuses.includes(row.processorStatus) ? row.processorStatus : 'Pending';
+                const qaStatus = allQaStatuses.includes(row.qaStatus) ? row.qaStatus : 'Pending';
+
+                return {
+                    id: `proj_${Date.now()}_${Math.random()}`,
+                    refNumber: row.refNumber || `REF${Date.now()}`,
+                    clientName,
+                    process,
+                    applicationNumber: row.applicationNumber || null,
+                    patentNumber: row.patentNumber || null,
+                    emailDate: row.emailDate || new Date().toISOString().split('T')[0],
+                    allocationDate: row.allocationDate || new Date().toISOString().split('T')[0],
+                    processor,
+                    qa,
+                    workflowStatus,
+                    processorStatus,
+                    qaStatus,
+                    processingDate: null,
+                    qaDate: null,
+                    reworkReason: null,
+                    subject: row.subject || 'No Subject',
+                    entries: [],
+                } as Project;
+            }).filter(p => p.refNumber);
+
+            if (newProjects.length > 0) {
+                setProjects(prev => [...prev, ...newProjects]);
+                toast({
+                    title: "Bulk Add Complete",
+                    description: `${newProjects.length} projects have been added.`,
+                });
+            } else {
+                 toast({ title: "Upload Error", description: "CSV file is empty or does not contain required 'refNumber' column.", variant: "destructive" });
+            }
+        },
+        error: (error: any) => {
+            toast({ title: "Parsing Error", description: error.message, variant: "destructive" });
+        }
+    });
+
+    // Reset file input
+    event.target.value = '';
+  }
+
 
   const handleAdvancedSearch = (criteria: SearchCriteria) => {
     setSearchCriteria(criteria);
@@ -241,6 +302,13 @@ function Dashboard({
 
   return (
     <div className="flex flex-col h-screen bg-background w-full">
+         <input
+            type="file"
+            ref={fileInputRef}
+            onChange={handleFileUpload}
+            className="hidden"
+            accept=".csv"
+        />
         <Header 
             user={user}
             activeRole={activeRole}
@@ -261,7 +329,14 @@ function Dashboard({
             setProcessFilter={setProcessFilter}
             clientNames={clientNames}
             processes={processes}
-        />
+        >
+             {isManagerOrAdmin && (
+                 <Button variant="outline" size="sm" onClick={() => fileInputRef.current?.click()} className="text-foreground">
+                    <Upload className="mr-2" />
+                    Bulk Add Projects
+                </Button>
+            )}
+        </Header>
         <div className="flex flex-col flex-grow overflow-hidden p-4 gap-4">
             {activeRole === 'Admin' ? (
                 <UserManagementTable sessionUser={user} />
@@ -336,3 +411,5 @@ function Dashboard({
 }
 
 export default Dashboard;
+
+    

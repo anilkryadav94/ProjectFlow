@@ -145,7 +145,6 @@ export function Header({
         <div className="flex-grow" />
 
         <div className="flex items-center gap-2 flex-shrink-0">
-            {children}
             
             {isManagerOrAdmin && hasSearchResults && onAmendSearch && onResetSearch && (
                 <div className="flex items-center gap-2">
@@ -228,6 +227,8 @@ export function Header({
                 </div>
             )}
 
+            {children}
+
             {handleDownload && (
                 <Button variant="ghost" size="icon" onClick={handleDownload} disabled={isDownloadDisabled} className="h-8 w-8 hover:bg-primary/80">
                   <FileSpreadsheet className="h-5 w-5" />
@@ -275,3 +276,5 @@ export function Header({
     </header>
   )
 }
+
+    
