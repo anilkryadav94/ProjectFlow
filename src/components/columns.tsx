@@ -40,6 +40,7 @@ export const getColumns = (
 ) => {
 
   const baseColumns = [
+    { key: "id", header: "ID" },
     { key: "ref_number", header: "Ref Number", render: (p: Project) => <div className="font-medium">{p.ref_number}</div> },
     { key: "client_name", header: "Client Name" },
     { key: "process", header: "Process" },
@@ -117,9 +118,8 @@ export const getColumns = (
       )
   }
   
-  // Add actions column only for non-manager roles
   if (!isManagerOrAdmin) {
-    columns.unshift(actionColumn);
+    columns = [actionColumn, ...baseColumns.filter(c => ['ref_number', 'client_name', 'process', 'workflowStatus'].includes(c.key))];
   }
 
   // Add selection column only for manager/admin roles
