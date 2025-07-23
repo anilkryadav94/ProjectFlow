@@ -42,6 +42,7 @@ function Dashboard({
   const searchParams = useSearchParams();
   const router = useRouter();
   const fileInputRef = React.useRef<HTMLInputElement>(null);
+  const urlRole = searchParams.get('role') as Role | null;
 
   const [activeRole, setActiveRole] = React.useState<Role | null>(null);
   const [projects, setProjects] = React.useState<Project[]>(initialProjects);
@@ -454,5 +455,7 @@ function Dashboard({
 }
 
 export default Dashboard;
+
+    
 
     
