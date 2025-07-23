@@ -99,6 +99,8 @@ export function TaskPageClient({ params }: { params: { id: string }}) {
     }
 
     if (!session || !projectData) {
+        // This will be caught by the error boundary or show a message.
+        // notFound() can be used in server components, but here we'll just show a message.
         return (
              <div className="flex flex-col h-screen bg-background w-full">
                 <Header 
@@ -120,6 +122,7 @@ export function TaskPageClient({ params }: { params: { id: string }}) {
     const currentProjectIndex = userProjectList.findIndex(p => p.id === project.id);
     const isManagerOrAdmin = activeRole === 'Manager' || activeRole === 'Admin';
     
+    // This check is now more robust.
     if (currentProjectIndex === -1 && !isManagerOrAdmin) {
        return (
           <div className="flex flex-col h-screen bg-background w-full">
