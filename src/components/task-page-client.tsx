@@ -5,25 +5,14 @@ import * as React from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { getSession, onAuthChanged } from '@/lib/auth';
 import type { Project, Role, User } from '@/lib/data';
-import { projects as mockProjects, processorActionableStatuses, roleHierarchy, clientNames, processes } from '@/lib/data';
-import { ProjectForm } from '@/components/project-form';
+import { projects as mockProjects, roleHierarchy, clientNames, processes } from '@/lib/data';
 import { Header } from '@/components/header';
 import { Loader2 } from 'lucide-react';
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from './ui/card';
+import { Badge } from './ui/badge';
 
-async function getProjectsForUser(user: User, activeRole: Role): Promise<Project[]> {
-    let userProjects: Project[];
-
-    if (activeRole === 'Processor') {
-        userProjects = mockProjects.filter(p => p.processor === user.name && p.workflowStatus === 'With Processor' && processorActionableStatuses.includes(p.processorStatus));
-    } else if (activeRole === 'QA') {
-        userProjects = mockProjects.filter(p => p.qa === user.name && p.workflowStatus === 'With QA');
-    } else {
-        userProjects = mockProjects;
-    }
-    
-    userProjects.sort((a, b) => new Date(b.allocationDate).getTime() - new Date(a.allocationDate).getTime());
-    
-    return JSON.parse(JSON.stringify(userProjects));
+function getProjectById(id: string): Project | undefined {
+    return mockProjects.find(p => p.id === id);
 }
 
 export function TaskPageClient({ params }: { params: { id: string }}) {
@@ -31,17 +20,12 @@ export function TaskPageClient({ params }: { params: { id: string }}) {
     const searchParams = useSearchParams();
 
     const [session, setSession] = React.useState<{ user: User } | null>(null);
-    const [projectData, setProjectData] = React.useState<{
-        project: Project;
-        userProjectList: Project[];
-        activeRole: Role;
-    } | null>(null);
+    const [project, setProject] = React.useState<Project | null | undefined>(undefined);
     const [loading, setLoading] = React.useState(true);
-    const [error, setError] = React.useState<string | null>(null);
+    const [activeRole, setActiveRole] = React.useState<Role | null>(null);
 
     const id = params.id;
     const urlRole = searchParams.get('role') as Role | null;
-    const filteredIdsParam = searchParams.get('filteredIds');
 
     React.useEffect(() => {
         const unsubscribe = onAuthChanged(async (user) => {
@@ -49,54 +33,36 @@ export function TaskPageClient({ params }: { params: { id: string }}) {
                 const sessionData = await getSession();
                 if (sessionData) {
                     setSession(sessionData);
-
-                    const getHighestRole = (roles: Role[]): Role => {
-                        for (const role of roleHierarchy) {
-                            if (roles.includes(role)) return role;
-                        }
-                        return roles[0] || 'Processor';
-                    };
-
-                    const activeRole = urlRole && sessionData.user.roles.includes(urlRole)
-                        ? urlRole
-                        : getHighestRole(sessionData.user.roles);
+                    const highestRole = roleHierarchy.find(role => sessionData.user.roles.includes(role)) || sessionData.user.roles[0];
+                    const currentRole = urlRole && sessionData.user.roles.includes(urlRole) ? urlRole : highestRole;
+                    setActiveRole(currentRole);
                     
-                    const allProjectsForRole = await getProjectsForUser(sessionData.user, activeRole);
-
-                    let userProjectList: Project[];
-                    if (filteredIdsParam) {
-                        const filteredIdSet = new Set(filteredIdsParam.split(','));
-                        userProjectList = allProjectsForRole.filter(p => filteredIdSet.has(p.id));
-                    } else {
-                        userProjectList = allProjectsForRole;
-                    }
-
-                    const project = mockProjects.find(p => p.id === id);
-                    const projectInQueue = userProjectList.find(p => p.id === id);
-                    const isManagerOrAdmin = activeRole === 'Manager' || activeRole === 'Admin';
-                    
-                    if (project && (projectInQueue || isManagerOrAdmin)) {
-                        setProjectData({ project, userProjectList, activeRole });
-                    } else if (project) {
-                        setError(`Project not found in your current "${activeRole}" queue.`);
-                    } else {
-                        setError("Project not found or you do not have access.");
-                    }
+                    const foundProject = getProjectById(id);
+                    setProject(foundProject);
                 } else {
-                    setSession(null);
                     router.push('/login');
                 }
             } else {
-                setSession(null);
                 router.push('/login');
             }
             setLoading(false);
         });
 
         return () => unsubscribe();
-    }, [id, urlRole, filteredIdsParam, router]);
+    }, [id, urlRole, router]);
 
-    if (loading) {
+    if (loading || project === undefined) {
+        return (
+            <div className="flex h-screen w-full items-center justify-center">
+                <Loader2 className="h-8 w-8 animate-spin" />
+            </div>
+        );
+    }
+
+    const roleForHeader = activeRole || session?.user?.roles[0] || 'Processor';
+    const isManagerOrAdmin = roleForHeader === 'Manager' || roleForHeader === 'Admin';
+    
+    if (!session) {
         return (
             <div className="flex h-screen w-full items-center justify-center">
                 <Loader2 className="h-8 w-8 animate-spin" />
@@ -104,51 +70,70 @@ export function TaskPageClient({ params }: { params: { id: string }}) {
         );
     }
     
-    const activeRole = projectData?.activeRole || urlRole || session?.user?.roles[0] || 'Processor';
-    const isManagerOrAdmin = activeRole === 'Manager' || activeRole === 'Admin';
-    
-    if (!session || !projectData || error) {
+    if (!project) {
         return (
              <div className="flex flex-col h-screen bg-background w-full">
                 <Header 
-                    user={session?.user || {id: '', email: '', name: 'Guest', roles: []}}
-                    activeRole={activeRole}
+                    user={session.user}
+                    activeRole={roleForHeader}
                     isManagerOrAdmin={isManagerOrAdmin}
                     clientNames={clientNames}
                     processes={processes}
                 />
                 <main className="flex-1 h-full overflow-y-auto p-4 md:p-6 flex items-center justify-center">
-                    <p>{error || "Project not found or you do not have access."}</p>
+                    <p>Project not found or you do not have access.</p>
                 </main>
             </div>
         );
     }
-    
-    const { project, userProjectList } = projectData;
-
-    const currentProjectIndex = userProjectList.findIndex(p => p.id === project.id);
-  
-    const nextProjectId = currentProjectIndex !== -1 && currentProjectIndex < userProjectList.length - 1 ? userProjectList[currentProjectIndex + 1].id : null;
-    const prevProjectId = currentProjectIndex > 0 ? userProjectList[currentProjectIndex - 1].id : null;
 
     return (
         <div className="flex flex-col h-screen bg-background w-full">
             <Header 
                 user={session.user}
-                activeRole={activeRole}
+                activeRole={roleForHeader}
                 isManagerOrAdmin={isManagerOrAdmin}
                 clientNames={clientNames}
                 processes={processes}
-                taskPagination={{
-                    currentIndex: currentProjectIndex === -1 ? 0 : currentProjectIndex,
-                    total: userProjectList.length,
-                    nextId: nextProjectId,
-                    prevId: prevProjectId,
-                    filteredIds: filteredIdsParam ?? undefined,
-                }}
             />
             <main className="flex-1 h-full overflow-y-auto p-4 md:p-6">
-                <ProjectForm project={project} userRole={activeRole} nextProjectId={nextProjectId} filteredIds={filteredIdsParam ?? undefined}/>
+                <div className="animated-border">
+                    <Card>
+                        <CardHeader>
+                            <div className="flex justify-between items-center">
+                                <CardTitle>{project.refNumber}</CardTitle>
+                                <Badge variant="outline">{project.workflowStatus}</Badge>
+                            </div>
+                            <CardDescription>{project.subject}</CardDescription>
+                        </CardHeader>
+                        <CardContent className="grid gap-4 md:grid-cols-2">
+                           <div className="space-y-1">
+                                <p className="text-sm font-medium text-muted-foreground">Client Name</p>
+                                <p className="text-base font-semibold">{project.clientName}</p>
+                           </div>
+                           <div className="space-y-1">
+                                <p className="text-sm font-medium text-muted-foreground">Process</p>
+                                <p className="text-base font-semibold">{project.process}</p>
+                           </div>
+                           <div className="space-y-1">
+                                <p className="text-sm font-medium text-muted-foreground">Processor</p>
+                                <p className="text-base font-semibold">{project.processor}</p>
+                           </div>
+                            <div className="space-y-1">
+                                <p className="text-sm font-medium text-muted-foreground">QA</p>
+                                <p className="text-base font-semibold">{project.qa}</p>
+                           </div>
+                            <div className="space-y-1">
+                                <p className="text-sm font-medium text-muted-foreground">Allocation Date</p>
+                                <p className="text-base font-semibold">{project.allocationDate}</p>
+                           </div>
+                           <div className="space-y-1">
+                                <p className="text-sm font-medium text-muted-foreground">Email Date</p>
+                                <p className="text-base font-semibold">{project.emailDate}</p>
+                           </div>
+                        </CardContent>
+                    </Card>
+                </div>
             </main>
         </div>
     );
