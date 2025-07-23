@@ -195,7 +195,10 @@ function Dashboard({
     // In mock mode, we just reset to the original mock data.
     // In a real app, this would re-fetch from the database.
     setProjects(mockProjects);
-    router.refresh(); // Important to get fresh server state
+    
+    // A simple router.refresh() should get fresh server state which triggers re-render
+    router.refresh();
+
   }, [router]);
 
   React.useEffect(() => {
@@ -275,19 +278,22 @@ function Dashboard({
         header: true,
         skipEmptyLines: true,
         complete: (results) => {
-            const newProjects = results.data.map((row: any) => {
+            const newProjects = results.data.map((row: any, index: number) => {
                 // Basic validation and type coercion
                 const clientName = clientNames.includes(row.clientName) ? row.clientName : clientNames[0];
                 const process = processes.includes(row.process) ? row.process : processes[0];
-                const processor = processors.includes(row.processor) ? row.processor : processors[0];
-                const qa = qas.includes(row.qa) ? row.qa : qas[0];
+                const processor = processors.includes(row.processor) ? row.processor : "";
+                const qa = qas.includes(row.qa) ? row.qa : "";
                 const workflowStatus = workflowStatuses.includes(row.workflowStatus) ? row.workflowStatus : 'With Processor';
                 const processorStatus = allProcessorStatuses.includes(row.processorStatus) ? row.processorStatus : 'Pending';
                 const qaStatus = allQaStatuses.includes(row.qaStatus) ? row.qaStatus : 'Pending';
+                
+                let lastRefNumber = parseInt(projects.map(p => p.refNumber.replace('REF', '')).sort((a,b) => parseInt(b) - parseInt(a))[0] || '0');
+                lastRefNumber++;
 
                 return {
-                    id: `proj_${Date.now()}_${Math.random()}`,
-                    refNumber: row.refNumber || `REF${Date.now()}`,
+                    id: `proj_${Date.now()}_${index}`,
+                    refNumber: row.refNumber || `REF${String(lastRefNumber).padStart(3, '0')}`,
                     clientName,
                     process,
                     applicationNumber: row.applicationNumber || null,
@@ -308,7 +314,7 @@ function Dashboard({
             }).filter(p => p.refNumber);
 
             if (newProjects.length > 0) {
-                setProjects(prev => [...prev, ...newProjects]);
+                setProjects(prev => [...newProjects, ...prev]);
                 toast({
                     title: "Bulk Add Complete",
                     description: `${newProjects.length} projects have been added.`,
@@ -351,7 +357,10 @@ function Dashboard({
                 return fieldValue?.toLowerCase().includes(criterion.value.toLowerCase()) ?? false;
             case 'dateEquals':
                  if (!fieldValue) return false;
-                 return new Date(fieldValue).toDateString() === new Date(new Date(criterion.value).getTime() + (new Date(criterion.value).getTimezoneOffset() * 60000)).toDateString();
+                 // Adjust for timezone issues when comparing dates
+                 const projectDate = new Date(fieldValue.replaceAll('-', '/'));
+                 const filterDate = new Date(criterion.value.replaceAll('-', '/'));
+                 return projectDate.toDateString() === filterDate.toDateString();
             default:
                 return true;
         }
@@ -386,10 +395,8 @@ function Dashboard({
     let baseProjects: Project[];
 
     if (isManagerOrAdminView) {
-        // For managers, if a search is active, use filtered, otherwise use all projects.
         baseProjects = filteredProjects ?? projects;
     } else {
-        // For other roles, start with all projects and filter by their specific queues.
         baseProjects = [...projects];
         if (activeRole === 'Processor') {
           baseProjects = baseProjects.filter(p => p.processor === user.name && p.workflowStatus === 'With Processor' && processorActionableStatuses.includes(p.processorStatus));
@@ -398,7 +405,6 @@ function Dashboard({
         }
     }
     
-    // Quick search and filters are applied to the base project list for the current view.
     let filtered = baseProjects;
 
     if (search) {
@@ -427,7 +433,6 @@ function Dashboard({
       });
     }
 
-    // For manager view, if no advanced search is done, we don't want to show the table yet.
     if (isManagerOrAdminView && !filteredProjects) {
         return [];
     }
@@ -467,6 +472,8 @@ function Dashboard({
                 project={editingProject}
                 onUpdateSuccess={refreshProjects}
                 userRole={activeRole}
+                projectQueue={dashboardProjects}
+                onNavigate={setEditingProject}
             />
         )}
         {sourceProject && (

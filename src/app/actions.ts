@@ -1,4 +1,5 @@
 
+
 "use server";
 
 import { z } from "zod";
@@ -33,17 +34,35 @@ export async function bulkUpdateProjects(data: z.infer<typeof bulkUpdateSchema>)
     return { success: true, updatedProjects };
 }
 
+const projectEntrySchema = z.object({
+    id: z.string(),
+    applicationNumber: z.string().nullable(),
+    patentNumber: z.string().nullable(),
+    country: z.string().nullable(),
+    status: z.string().nullable(),
+    notes: z.string().nullable(),
+});
+
 const updateProjectSchema = z.object({
   id: z.string(),
-  processor: z.string().optional(),
-  qa: z.string().optional(),
-  processorStatus: z.enum(["Pending", "On Hold", "Re-Work", "Processed", "NTP", "Client Query", "Already Processed"]).optional(),
-  qaStatus: z.enum(["Pending", "Complete", "NTP", "Client Query", "Already Processed"]).optional(),
-  reworkReason: z.string().nullable().optional(),
+  refNumber: z.string(),
+  clientName: z.string(),
+  process: z.enum(["Patent", "TM", "IDS", "Project"]),
+  subject: z.string(),
+  applicationNumber: z.string().nullable(),
+  patentNumber: z.string().nullable(),
+  emailDate: z.string(),
+  allocationDate: z.string(),
+  processor: z.string(),
+  qa: z.string(),
+  processorStatus: z.enum(["Pending", "On Hold", "Re-Work", "Processed", "NTP", "Client Query", "Already Processed"]),
+  qaStatus: z.enum(["Pending", "Complete", "NTP", "Client Query", "Already Processed"]),
+  reworkReason: z.string().nullable(),
+  entries: z.array(projectEntrySchema).optional(),
 });
 
 
-export async function updateProject(data: Partial<Project>, submitAction?: 'submit_for_qa' | 'submit_qa' | 'send_rework'): Promise<{success: boolean, project?: Project}> {
+export async function updateProject(data: Partial<Project>, submitAction?: 'submit_for_qa' | 'submit_qa' | 'send_rework' | 'save'): Promise<{success: boolean, project?: Project}> {
     const validatedData = updateProjectSchema.parse(data);
     const projectIndex = projects.findIndex(p => p.id === validatedData.id);
     if (projectIndex === -1) {
@@ -62,7 +81,6 @@ export async function updateProject(data: Partial<Project>, submitAction?: 'subm
     } else if (submitAction === 'send_rework') {
       updatedProject.workflowStatus = 'With Processor';
       updatedProject.processorStatus = 'Re-Work';
-      // reworkReason is already part of validatedData
     }
 
 
