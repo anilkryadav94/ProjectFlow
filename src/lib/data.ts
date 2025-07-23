@@ -84,7 +84,7 @@ export const clientNames = ['Client A', 'Client B', 'Client C'];
 export const processes: ProcessType[] = ['Patent', 'TM', 'IDS', 'Project'];
 export const projectStatuses: any[] = ["Pending", "Completed", "On Hold"];
 export const countries = ['USA', 'India', 'Canada', 'UK', 'Germany'];
-export const caseManagers = ['CM Alice', 'CM Bob'];
+export const caseManagers = ['CM Alice', 'CM Bob', 'Rahul'];
 
 
 export let users: Omit<User, 'id'>[] = [
@@ -97,7 +97,7 @@ export let users: Omit<User, 'id'>[] = [
     { email: 'eve@example.com', password: 'password', name: 'Eve', roles: ['QA'] },
     { email: 'anil@example.com', password: 'password', name: 'Anil', roles: ['QA'] },
     { email: 'ankit@example.com', password: 'password', name: 'Ankit', roles: ['QA'] },
-    { email: 'rahul@example.com', password: 'password', name: 'Rahul', roles: ['Admin', 'Manager', 'QA', 'Processor'] },
+    { email: 'rahul@example.com', password: 'password', name: 'Rahul', roles: ['Admin', 'Manager', 'QA', 'Processor', 'Case Manager'] },
     { email: 'cm.alice@example.com', password: 'password', name: 'CM Alice', roles: ['Case Manager'] },
     { email: 'cm.bob@example.com', password: 'password', name: 'CM Bob', roles: ['Case Manager'] },
 ];
@@ -255,7 +255,7 @@ let initialProjects: Omit<Project, 'id'>[] = [
     allocation_date: '2023-10-19',
     processor: 'Rahul',
     qa: 'Rahul',
-    case_manager: 'CM Alice',
+    case_manager: 'Rahul',
     workflowStatus: 'With QA',
     processing_status: 'Processed',
     qa_status: 'Client Query',
@@ -769,7 +769,7 @@ let initialProjects: Omit<Project, 'id'>[] = [
     email_renaming: 'REF019_PCT_Filing.eml',
     email_forwarded: null,
     reportout_date: null,
-    manager_name: 'Manager User',
+    manager_name: 'Manager User'
   },
   {
     ref_number: '',
@@ -804,7 +804,7 @@ let initialProjects: Omit<Project, 'id'>[] = [
     email_renaming: null,
     email_forwarded: null,
     reportout_date: null,
-    manager_name: 'Manager User',
+    manager_name: 'Manager User'
   },
   {
     ref_number: '',
