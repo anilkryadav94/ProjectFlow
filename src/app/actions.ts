@@ -126,6 +126,21 @@ const fieldsToCopy = z.enum([
 
 type FieldToCopyId = z.infer<typeof fieldsToCopy>;
 
+function generateAlphanumericId() {
+    const letters = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ';
+    const numbers = '0123456789';
+    let result = '';
+    for (let i = 0; i < 3; i++) {
+        result += letters.charAt(Math.floor(Math.random() * letters.length));
+    }
+    for (let i = 0; i < 3; i++) {
+        result += numbers.charAt(Math.floor(Math.random() * numbers.length));
+    }
+    // Shuffle the result
+    return result.split('').sort(() => 0.5 - Math.random()).join('');
+}
+
+
 export async function addRows(
   sourceProjectId: string,
   fieldsToCopy: FieldToCopyId[],
@@ -141,14 +156,11 @@ export async function addRows(
     return { success: false, error: "Count must be a positive number."}
   }
 
-  let lastRefNumber = parseInt(projects.map(p => p.ref_number.replace('REF', '')).sort((a,b) => parseInt(b) - parseInt(a))[0]);
-
   for (let i = 0; i < count; i++) {
-    lastRefNumber++;
     const newProject: Project = {
         // Default values
         id: `proj_${Date.now()}_${i}`,
-        ref_number: `REF${String(lastRefNumber).padStart(3, '0')}`,
+        ref_number: generateAlphanumericId(),
         application_number: null,
         patent_number: null,
         workflowStatus: 'With Processor',
