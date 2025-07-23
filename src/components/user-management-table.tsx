@@ -17,7 +17,7 @@ import { Button } from "@/components/ui/button";
 import { type User, roles, type Role } from "@/lib/data";
 import { useToast } from "@/hooks/use-toast";
 import { updateUser, addUser, addBulkUsers, getUsers } from "@/lib/auth";
-import { ChevronsUpDown, Loader2, PlusCircle, Upload } from "lucide-react";
+import { ChevronsUpDown, Loader2, PlusCircle, Upload, Search } from "lucide-react";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "./ui/card";
 import { AddUserDialog } from "./add-user-dialog";
 import { useRouter } from "next/navigation";
@@ -27,6 +27,7 @@ export function UserManagementTable({ sessionUser }: { sessionUser: User }) {
     const [isLoading, setIsLoading] = React.useState(true);
     const [isSubmitting, setIsSubmitting] = React.useState<Record<string, boolean>>({});
     const [isAddUserDialogOpen, setIsAddUserDialogOpen] = React.useState(false);
+    const [searchTerm, setSearchTerm] = React.useState("");
     const fileInputRef = React.useRef<HTMLInputElement>(null);
     const { toast } = useToast();
     const router = useRouter();
@@ -160,19 +161,32 @@ export function UserManagementTable({ sessionUser }: { sessionUser: User }) {
         });
 
         event.target.value = '';
-    }
+    };
+
+    const filteredUsers = users.filter(user => 
+        user.name.toLowerCase().includes(searchTerm.toLowerCase())
+    );
 
     return (
         <>
             <div className="animated-border shadow-md">
                 <Card>
                     <CardHeader>
-                        <div className="flex items-center justify-between">
+                        <div className="flex items-center justify-between gap-4">
                             <div>
                                 <CardTitle>User Management</CardTitle>
                                 <CardDescription>Manage user details, roles, and permissions for the application.</CardDescription>
                             </div>
-                            <div className="flex gap-2">
+                            <div className="flex items-center gap-2">
+                                 <div className="relative">
+                                    <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground/80" />
+                                    <Input
+                                        placeholder="Search by username..."
+                                        className="pl-9 h-9 w-64"
+                                        value={searchTerm}
+                                        onChange={(e) => setSearchTerm(e.target.value)}
+                                    />
+                                </div>
                                 <input
                                     type="file"
                                     ref={fileInputRef}
@@ -211,7 +225,7 @@ export function UserManagementTable({ sessionUser }: { sessionUser: User }) {
                                             </TableCell>
                                         </TableRow>
                                     ) : (
-                                        users.map((user) => (
+                                        filteredUsers.map((user) => (
                                             <TableRow key={user.id}>
                                                 <TableCell>
                                                     <Input

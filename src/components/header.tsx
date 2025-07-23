@@ -1,5 +1,4 @@
 
-
 "use client"
 
 import * as React from "react"
@@ -233,7 +232,7 @@ export function Header({
               </div>
             )}
 
-            {isManagerOrAdmin && !hasSearchResults && setManagerSearch && setManagerSearchColumn && handleManagerQuickSearch && (
+            {activeRole === 'Manager' && !hasSearchResults && setManagerSearch && setManagerSearchColumn && handleManagerQuickSearch && (
                  <div className="flex items-center space-x-0">
                     <Select value={managerSearchColumn} onValueChange={(v) => setManagerSearchColumn(v as SearchableColumn)}>
                         <SelectTrigger className="w-[180px] rounded-r-none focus:ring-0 text-foreground h-9">
