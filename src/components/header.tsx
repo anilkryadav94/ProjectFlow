@@ -274,7 +274,7 @@ export function Header({
 
             {children}
 
-            {handleDownload && (
+            {handleDownload && activeRole !== 'Admin' && (
                 <Button variant="ghost" size="icon" onClick={handleDownload} disabled={isDownloadDisabled} className="h-8 w-8 hover:bg-primary/80">
                   <FileSpreadsheet className="h-5 w-5" />
                   <span className="sr-only">Download CSV</span>
@@ -321,4 +321,3 @@ export function Header({
     </header>
   )
 }
-
