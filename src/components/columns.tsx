@@ -163,13 +163,19 @@ export const getColumns = (
     columns.push(actionColumn);
   } else if (activeRole === 'Case Manager') {
       const clientViewColumns = [
-          'id', 'ref_number', 'application_number', 'country', 'patent_number', 'sender', 'subject_line', 'client_query_description', 'client_comments', 'clientquery_status', 'client_error_description'
+          'id', 'ref_number', 'application_number', 'country', 'patent_number', 'sender', 'subject_line', 'client_query_description', 'client_comments', 'clientquery_status', 'client_error_description', 'case_manager'
       ];
       // Special case for qa_date to show as 'Client Query Date'
       const qaDateColumn = baseColumns.find(c => c.key === 'qa_date');
-      const clientColumns = baseColumns.filter(c => clientViewColumns.includes(c.key));
+      const clientResponseDateColumn = baseColumns.find(c => c.key === 'client_response_date');
+      
+      let clientColumns = baseColumns.filter(c => clientViewColumns.includes(c.key));
+      
       if(qaDateColumn) {
         clientColumns.push({...qaDateColumn, header: 'Client Query Date'});
+      }
+       if(clientResponseDateColumn) {
+        clientColumns.push(clientResponseDateColumn);
       }
       columns = [actionColumn, ...clientColumns];
   }
