@@ -76,6 +76,7 @@ const updateProjectSchema = z.object({
   email_forwarded: z.string().nullable(),
   reportout_date: z.string().nullable(),
   manager_name: z.string().nullable(),
+  client_response_date: z.string().nullable(),
   workflowStatus: z.string(), // Keep it simple for validation
 });
 
@@ -102,6 +103,7 @@ export async function updateProject(data: Partial<Project>, submitAction?: 'subm
     } else if (submitAction === 'client_submit') {
       updatedProject.workflowStatus = 'With QA';
       updatedProject.qa_status = 'Pending'; // Reset QA status so they know client responded
+      updatedProject.client_response_date = new Date().toISOString().split('T')[0];
     }
 
 
@@ -165,6 +167,7 @@ export async function addRows(
         rework_reason: null,
         client_comments: null,
         clientquery_status: null,
+        client_response_date: null,
         entries: [],
         
         // Potentially copied values

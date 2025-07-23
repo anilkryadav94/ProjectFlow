@@ -72,6 +72,7 @@ export const getColumns = (
     { key: "reportout_date", header: "Report-Out Date" },
     { key: "manager_name", header: "Manager Name" },
     { key: "clientquery_status", header: "Client Query Status" },
+    { key: "client_response_date", header: "Client Response Date" },
     {
       key: "workflowStatus" as const,
       header: "Workflow Status",
