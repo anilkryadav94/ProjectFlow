@@ -38,7 +38,6 @@ const projectEntrySchema = z.object({
 });
 
 // This schema defines ONLY the fields that are allowed to be updated.
-// It does NOT include `id` or `row_number`.
 const updateProjectSchema = z.object({
   ref_number: z.string().nullable().optional(),
   client_name: z.string().optional(),
@@ -81,14 +80,14 @@ export async function updateProject(data: Partial<Project>, submitAction?: 'subm
     const projectId = data.id;
     const projectRef = doc(db, 'projects', projectId);
 
+    // Whitelist approach: Build a new, clean object with only the fields that are allowed to be updated.
     const dataToUpdate: { [key: string]: any } = {};
-
-    // Validate and get only the defined fields from the schema
+    
+    // Validate the incoming data
     const parsedData = updateProjectSchema.parse(data);
 
-    // Copy only the fields that are present in the parsed (and validated) data.
-    // This prevents any 'undefined' values from being included in the update object.
-    for (const key in parsedData) {
+    // Iterate over the schema keys and add only defined values to the update object
+    for (const key of Object.keys(updateProjectSchema.shape)) {
         if (Object.prototype.hasOwnProperty.call(parsedData, key)) {
             const typedKey = key as keyof typeof parsedData;
             if (parsedData[typedKey] !== undefined) {
@@ -113,9 +112,13 @@ export async function updateProject(data: Partial<Project>, submitAction?: 'subm
         dataToUpdate.processing_status = 'Re-Work';
     }
     
-    // Ensure critical IDs are never part of the update payload
-    delete dataToUpdate.id;
-    delete (dataToUpdate as any).row_number;
+    // Only proceed if there's something to update
+    if (Object.keys(dataToUpdate).length === 0) {
+        // This can happen if only 'save' is clicked with no changes
+        const existingDoc = await getDoc(projectRef);
+        const existingProject = { id: existingDoc.id, ...existingDoc.data() } as Project;
+        return { success: true, project: existingProject };
+    }
     
     await updateDoc(projectRef, dataToUpdate);
 
