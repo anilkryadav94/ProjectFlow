@@ -80,16 +80,17 @@ export async function updateProject(data: Partial<Project>, submitAction?: 'subm
     const projectId = data.id;
     const projectRef = doc(db, 'projects', projectId);
 
-    // Whitelist approach: Build a new, clean object with only the fields that are allowed to be updated.
     const dataToUpdate: { [key: string]: any } = {};
     
-    // Validate the incoming data
-    const parsedData = updateProjectSchema.parse(data);
+    // Use .partial() to allow for missing fields, preventing validation errors
+    const parsedData = updateProjectSchema.partial().parse(data);
 
     // Iterate over the schema keys and add only defined values to the update object
+    // This creates a "whitelist" of fields to update.
     for (const key of Object.keys(updateProjectSchema.shape)) {
         if (Object.prototype.hasOwnProperty.call(parsedData, key)) {
             const typedKey = key as keyof typeof parsedData;
+            // Only add the field if it's not undefined
             if (parsedData[typedKey] !== undefined) {
                  dataToUpdate[typedKey] = parsedData[typedKey];
             }
@@ -112,12 +113,14 @@ export async function updateProject(data: Partial<Project>, submitAction?: 'subm
         dataToUpdate.processing_status = 'Re-Work';
     }
     
-    // Only proceed if there's something to update
-    if (Object.keys(dataToUpdate).length === 0) {
+    if (Object.keys(dataToUpdate).length === 0 && !submitAction) {
         // This can happen if only 'save' is clicked with no changes
         const existingDoc = await getDoc(projectRef);
-        const existingProject = { id: existingDoc.id, ...existingDoc.data() } as Project;
-        return { success: true, project: existingProject };
+        if (existingDoc.exists()) {
+            const existingProject = { id: existingDoc.id, ...existingDoc.data() } as Project;
+            return { success: true, project: existingProject };
+        }
+        return { success: false };
     }
     
     await updateDoc(projectRef, dataToUpdate);
