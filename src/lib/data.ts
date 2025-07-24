@@ -261,6 +261,76 @@ export const projects: Project[] = initialProjects.map((p, index) => ({
   id: `PF${String(index + 1).padStart(6, '0')}`,
 }));
 
+export async function addRows(
+  projectsToAdd: Partial<Project>[]
+): Promise<{ success: boolean; addedCount?: number; error?: string }> {
+  
+  if (!projectsToAdd || projectsToAdd.length === 0) {
+    return { success: false, error: "No data provided to add." };
+  }
+
+  const projectsCollection = collection(db, 'projects');
+  const batch = writeBatch(db);
+  
+  try {
+    projectsToAdd.forEach(projectData => {
+        const newProjectRef = doc(projectsCollection); // Auto-generate ID
+
+        const newProject: Omit<Project, 'id'> = {
+            ref_number: '',
+            application_number: null,
+            patent_number: null,
+            workflowStatus: 'With Processor',
+            processing_status: 'Pending',
+            qa_status: 'Pending',
+            processing_date: null,
+            qa_date: null,
+            rework_reason: null,
+            client_comments: null,
+            clientquery_status: null,
+            client_response_date: null,
+            entries: [],
+            subject_line: '',
+            client_name: '',
+            process: 'Patent',
+            processor: '',
+            qa: '',
+            case_manager: '',
+            received_date: new Date().toISOString().split('T')[0],
+            allocation_date: new Date().toISOString().split('T')[0],
+            sender: null,
+            country: null,
+            document_type: null,
+            action_taken: null,
+            renewal_agent: null,
+            client_query_description: null,
+            client_error_description: null,
+            qa_remark: null,
+            error: null,
+            email_renaming: null,
+            email_forwarded: null,
+            reportout_date: null,
+            manager_name: null,
+        };
+
+        // Apply provided data over the defaults
+        const finalProjectData = { ...newProject, ...projectData };
+        
+        batch.set(newProjectRef, finalProjectData);
+    });
+
+    await batch.commit();
+    
+    return { success: true, addedCount: projectsToAdd.length };
+  } catch (error) {
+    console.error("Error adding documents: ", error);
+    if (error instanceof Error) {
+        return { success: false, error: `Permission denied or server error: ${error.message}` };
+    }
+    return { success: false, error: "An unknown error occurred while adding rows."}
+  }
+}
+
 
 // This function is for one-time seeding of the database.
 export async function seedDatabase() {

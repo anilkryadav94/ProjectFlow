@@ -3,7 +3,7 @@
 
 import * as React from 'react';
 import Papa from "papaparse";
-import { type Project, type Role, type User, roleHierarchy, processors, qas, projectStatuses, clientNames, processes, processorActionableStatuses, processorSubmissionStatuses, qaSubmissionStatuses, workflowStatuses, allProcessorStatuses, allQaStatuses } from '@/lib/data';
+import { type Project, type Role, type User, roleHierarchy, processors, qas, projectStatuses, clientNames, processes, processorActionableStatuses, processorSubmissionStatuses, qaSubmissionStatuses, workflowStatuses, allProcessorStatuses, allQaStatuses, addRows } from '@/lib/data';
 import { DataTable } from '@/components/data-table';
 import { getColumns } from '@/components/columns';
 import { Header } from '@/components/header';
@@ -20,7 +20,7 @@ import { cn } from '@/lib/utils';
 import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from './ui/accordion';
 import { EditProjectDialog } from './edit-project-dialog';
 import { AddRowsDialog } from './add-rows-dialog';
-import { addRows, bulkUpdateProjects } from '@/app/actions';
+import { bulkUpdateProjects } from '@/app/actions';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from './ui/table';
 
 interface DashboardProps {
