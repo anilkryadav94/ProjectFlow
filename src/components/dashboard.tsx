@@ -500,6 +500,7 @@ function Dashboard({
     return {
         count: outsideTatCount,
         greeting: `Hi ${user.name}, ${greeting}!`,
+        plural: outsideTatCount === 1 ? 'Email' : 'Emails',
     };
   }, [activeRole, dashboardProjects, user.name]);
 
@@ -589,12 +590,12 @@ function Dashboard({
             <div className="flex-shrink-0 border-b bg-muted">
                 <div className="flex items-center justify-end gap-2 py-1 px-4">
                      {activeRole === 'Case Manager' ? (
-                        <div className="flex-grow text-left text-sm font-semibold text-primary">
+                        <div className="flex-grow text-left text-sm font-semibold text-muted-foreground">
                             {dashboardProjects.length > 0 && caseManagerTatInfo && (
                                 <>
                                     <span>{caseManagerTatInfo.greeting} </span>
                                     {caseManagerTatInfo.count > 0 && (
-                                        <span>{`${caseManagerTatInfo.count} Emails Identified Outside TAT Threshold – Your Attention Required.`}</span>
+                                        <span>{`${caseManagerTatInfo.count} ${caseManagerTatInfo.plural} Identified Outside TAT Threshold – Your Attention Required.`}</span>
                                     )}
                                 </>
                             )}
@@ -816,3 +817,4 @@ export default Dashboard;
     
 
     
+
