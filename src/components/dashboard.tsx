@@ -11,7 +11,7 @@ import { UserManagementTable } from './user-management-table';
 import { Button } from './ui/button';
 import { useToast } from '@/hooks/use-toast';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from './ui/select';
-import { FileUp, Loader2, Upload, X } from 'lucide-react';
+import { FileUp, Loader2, Upload, X, Download } from 'lucide-react';
 import { AdvancedSearchForm, type SearchCriteria } from './advanced-search-form';
 import { useSearchParams, useRouter } from 'next/navigation';
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from './ui/card';
@@ -175,12 +175,7 @@ function Dashboard({
                             sanitizedRow[key] = row[key] === undefined || row[key] === '' ? null : row[key];
                         }
                     }
-                    return {
-                        ...sanitizedRow,
-                        // Ensure dates are correctly formatted or defaulted
-                        received_date: sanitizedRow.received_date ? new Date(sanitizedRow.received_date).toISOString().split('T')[0] : new Date().toISOString().split('T')[0],
-                        allocation_date: sanitizedRow.allocation_date ? new Date(sanitizedRow.allocation_date).toISOString().split('T')[0] : new Date().toISOString().split('T')[0],
-                    };
+                    return sanitizedRow;
                 });
 
 
@@ -208,6 +203,22 @@ function Dashboard({
             setIsUploading(false);
         }
     });
+  }
+
+  const handleDownloadSample = () => {
+    const headers = "ref_number,client_name,process,processor,sender,subject_line,received_date,case_manager,allocation_date,country,document_type,action_taken";
+    const exampleRow = "REF-123,Client A,Patent,Alice,sender@example.com,New Invention Disclosure,2024-01-15,CM Alice,2024-01-16,USA,Disclosure,Filed";
+    const csvContent = `${headers}\n${exampleRow}`;
+    
+    const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
+    const link = document.createElement("a");
+    const url = URL.createObjectURL(blob);
+    link.setAttribute("href", url);
+    link.setAttribute("download", `sample_project_upload.csv`);
+    link.style.visibility = 'hidden';
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
   }
 
 
@@ -479,7 +490,7 @@ function Dashboard({
                                <Card>
                                 <CardHeader>
                                     <CardTitle>Bulk Upload Records (Testing)</CardTitle>
-                                    <CardDescription>Upload a CSV file to add multiple new project records at once for testing.</CardDescription>
+                                    <CardDescription>Upload a CSV file to add multiple new project records at once for testing. Please ensure dates are in YYYY-MM-DD format.</CardDescription>
                                 </CardHeader>
                                 <CardContent>
                                     <div className="flex items-center gap-4">
@@ -491,10 +502,14 @@ function Dashboard({
                                          {selectedFile && <Button size="sm" variant="ghost" onClick={() => setSelectedFile(null)}><X /></Button>}
                                     </div>
                                 </CardContent>
-                                <CardFooter>
+                                <CardFooter className="gap-4">
                                     <Button onClick={handleProcessUpload} disabled={!selectedFile || isUploading}>
                                         {isUploading ? <Loader2 className="mr-2 animate-spin" /> : <FileUp className="mr-2" />}
                                         Process Upload
+                                    </Button>
+                                    <Button variant="secondary" onClick={handleDownloadSample}>
+                                        <Download className="mr-2" />
+                                        Download Sample CSV
                                     </Button>
                                 </CardFooter>
                                </Card>
@@ -635,5 +650,7 @@ function Dashboard({
 }
 
 export default Dashboard;
+
+    
 
     
