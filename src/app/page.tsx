@@ -7,9 +7,20 @@ import type { User, Project } from '@/lib/data';
 import { onAuthChanged, getSession, logout } from '@/lib/auth';
 import { useRouter } from 'next/navigation';
 import { Loader2 } from 'lucide-react';
-import { getDocs, collection, query, where } from 'firebase/firestore';
+import { getDocs, collection, query, where, Timestamp } from 'firebase/firestore';
 import { db } from '@/lib/firebase';
 import { seedDatabase } from '@/lib/data';
+
+function convertTimestampsToDates(project: any): Project {
+    const newProject: { [key: string]: any } = { ...project };
+    for (const key in newProject) {
+        if (newProject[key] instanceof Timestamp) {
+            newProject[key] = newProject[key].toDate().toISOString().split('T')[0];
+        }
+    }
+    return newProject as Project;
+}
+
 
 async function getProjectsForUser(user: User): Promise<Project[]> {
     const projectsCollection = collection(db, "projects");
@@ -33,10 +44,14 @@ async function getProjectsForUser(user: User): Promise<Project[]> {
     }
 
     const projectSnapshot = await getDocs(projectsQuery);
-    const projectList = projectSnapshot.docs.map(doc => ({
-        id: doc.id,
-        ...doc.data()
-    })) as Project[];
+    const projectList = projectSnapshot.docs.map(doc => {
+        const data = doc.data();
+        const projectWithConvertedDates = convertTimestampsToDates(data);
+        return {
+            id: doc.id,
+            ...projectWithConvertedDates
+        } as Project;
+    });
     return projectList;
 }
 
