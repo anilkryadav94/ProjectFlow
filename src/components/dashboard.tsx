@@ -422,7 +422,7 @@ function Dashboard({
     setIsEditDialogOpen(true);
   };
   
-  const handleOpenAddRowsDialog = (project: Project) => {
+  const handleAddRowsDialog = (project: Project) => {
     setSourceProject(project);
     setIsAddRowsDialogOpen(true);
   }
@@ -678,3 +678,5 @@ function Dashboard({
 }
 
 export default Dashboard;
+
+    
