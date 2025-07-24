@@ -29,17 +29,7 @@ const statusColors: Record<string, string> = {
 };
 
 
-export const getColumns = (
-  isManagerOrAdmin: boolean,
-  activeRole: Role,
-  rowSelection: Record<string, boolean>,
-  setRowSelection: (selection: Record<string, boolean>) => void,
-  allProjectsOnPage: Project[],
-  handleEditProject: (project: Project) => void,
-  handleAddRows: (project: Project) => void
-) => {
-
-  const baseColumns = [
+export const allColumns: { key: keyof Project | 'actions' | 'select', header: string, render?: (p: Project) => React.ReactNode }[] = [
     { key: "row_number", header: "Row Number" },
     { key: "ref_number", header: "Ref Number", render: (p: Project) => <div className="font-medium">{p.ref_number}</div> },
     { key: "client_name", header: "Client Name" },
@@ -74,7 +64,7 @@ export const getColumns = (
     { key: "clientquery_status", header: "Client Query Status" },
     { key: "client_response_date", header: "Client Response Date" },
     {
-      key: "workflowStatus" as const,
+      key: "workflowStatus",
       header: "Workflow Status",
       render: (project: Project) => {
         let statusText: string = project.workflowStatus;
@@ -98,9 +88,18 @@ export const getColumns = (
         )
       }
     },
-  ];
+];
 
-  let columns = [...baseColumns];
+export const getColumns = (
+  isManagerOrAdmin: boolean,
+  activeRole: Role,
+  rowSelection: Record<string, boolean>,
+  setRowSelection: (selection: Record<string, boolean>) => void,
+  allProjectsOnPage: Project[],
+  handleEditProject: (project: Project) => void,
+  handleAddRows: (project: Project) => void,
+  visibleColumnKeys: string[]
+) => {
 
   const actionColumn = {
       key: 'actions',
@@ -117,10 +116,9 @@ export const getColumns = (
           )}
         </div>
       )
-  }
+  };
   
-  if (isManagerOrAdmin) {
-    const selectionColumn = {
+  const selectionColumn = {
       key: "select",
       header: (
         <Checkbox
@@ -159,32 +157,19 @@ export const getColumns = (
         />
       ),
     };
-    if (activeRole === 'Admin') {
-      columns.unshift(actionColumn);
-    }
-    columns.unshift(selectionColumn);
-  } else if (activeRole === 'Case Manager') {
-      const clientViewColumns = [
-          'row_number', 'ref_number', 'application_number', 'country', 'patent_number', 'sender', 'subject_line', 'client_query_description', 'client_comments', 'clientquery_status', 'client_error_description', 'case_manager'
-      ];
-      // Special case for qa_date to show as 'Client Query Date'
-      const qaDateColumn = baseColumns.find(c => c.key === 'qa_date');
-      const clientResponseDateColumn = baseColumns.find(c => c.key === 'client_response_date');
-      
-      let clientColumns = baseColumns.filter(c => clientViewColumns.includes(c.key));
-      
-      if(qaDateColumn) {
-        clientColumns.push({...qaDateColumn, header: 'Client Query Date'});
-      }
-       if(clientResponseDateColumn) {
-        clientColumns.push(clientResponseDateColumn);
-      }
-      columns = [actionColumn, ...clientColumns];
-  }
-   else {
-      // Add actions for other non-admin roles
-      columns.unshift(actionColumn);
+  
+  const allPossibleColumns = [...allColumns];
+  if (isManagerOrAdmin) {
+    allPossibleColumns.unshift(actionColumn, selectionColumn);
+  } else {
+    allPossibleColumns.unshift(actionColumn);
   }
 
-  return columns;
+  // Filter and order columns based on visibleColumnKeys
+  const visibleColumns = visibleColumnKeys
+    .map(key => allPossibleColumns.find(col => col.key === key))
+    .filter((col): col is typeof allPossibleColumns[number] => !!col);
+
+  return visibleColumns;
+
 };

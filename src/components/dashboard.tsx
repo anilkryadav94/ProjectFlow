@@ -3,15 +3,15 @@
 
 import * as React from 'react';
 import Papa from "papaparse";
-import { type Project, type Role, type User, roleHierarchy, processors, qas, projectStatuses, clientNames, processes, processorActionableStatuses, processorSubmissionStatuses, qaSubmissionStatuses, workflowStatuses, allProcessorStatuses, allQaStatuses, addRows } from '@/lib/data';
+import { type Project, type Role, type User, roleHierarchy, processors, qas, projectStatuses, clientNames, processes, processorActionableStatuses, processorSubmissionStatuses, qaSubmissionStatuses, workflowStatuses, allProcessorStatuses, allQaStatuses } from '@/lib/data';
 import { DataTable } from '@/components/data-table';
-import { getColumns } from '@/components/columns';
+import { getColumns, allColumns } from '@/components/columns';
 import { Header } from '@/components/header';
 import { UserManagementTable } from './user-management-table';
 import { Button } from './ui/button';
 import { useToast } from '@/hooks/use-toast';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from './ui/select';
-import { FileUp, Loader2, Upload, X, Download, FileDown } from 'lucide-react';
+import { FileUp, Loader2, Upload, X, Download, FileDown, Rows, Save } from 'lucide-react';
 import { AdvancedSearchForm, type SearchCriteria } from './advanced-search-form';
 import { useSearchParams, useRouter } from 'next/navigation';
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from './ui/card';
@@ -22,6 +22,8 @@ import { EditProjectDialog } from './edit-project-dialog';
 import { AddRowsDialog } from './add-rows-dialog';
 import { bulkUpdateProjects } from '@/app/actions';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from './ui/table';
+import { addRows } from '@/lib/data';
+import { ColumnSelectDialog } from './column-select-dialog';
 
 interface DashboardProps {
   user: User;
@@ -47,7 +49,7 @@ function Dashboard({
 }: DashboardProps) {
   const searchParams = useSearchParams();
   const router = useRouter();
-  const fileInputRef = React.useRef<HTMLInputElement>(null);
+  fileInputRef = React.useRef<HTMLInputElement>(null);
   
   const [activeRole, setActiveRole] = React.useState<Role | null>(null);
   const [projects, setProjects] = React.useState<Project[]>(initialProjects);
@@ -75,6 +77,22 @@ function Dashboard({
 
   const [isAddRowsDialogOpen, setIsAddRowsDialogOpen] = React.useState(false);
   const [sourceProject, setSourceProject] = React.useState<Project | null>(null);
+
+  const [isColumnSelectOpen, setIsColumnSelectOpen] = React.useState(false);
+
+  const defaultProcessorQAColumns = [
+    'actions', 'row_number', 'ref_number', 'client_name', 'process', 'processor', 'sender', 'subject_line', 'received_date', 'case_manager', 'allocation_date', 'processing_date', 'processing_status', 'qa_status', 'workflowStatus'
+  ];
+  
+  const defaultCaseManagerColumns = [
+      'actions', 'row_number', 'ref_number', 'application_number', 'country', 'patent_number', 'sender', 'subject_line', 'client_query_description', 'client_comments', 'clientquery_status', 'client_error_description', 'case_manager', 'qa_date', 'client_response_date'
+  ];
+
+  const defaultManagerAdminColumns = [
+      'select', 'actions', 'row_number', 'ref_number', 'client_name', 'process', 'processor', 'qa', 'case_manager', 'workflowStatus', 'processing_status', 'qa_status', 'received_date', 'allocation_date', 'processing_date', 'qa_date'
+  ];
+
+  const [visibleColumnKeys, setVisibleColumnKeys] = React.useState<string[]>(defaultProcessorQAColumns);
   
   const { toast } = useToast();
   
@@ -89,6 +107,7 @@ function Dashboard({
 
     if (newActiveRole !== activeRole) {
         setActiveRole(newActiveRole);
+        loadColumnLayout(newActiveRole);
         const currentUrlRole = searchParams.get('role');
         if (currentUrlRole !== newActiveRole) {
              router.replace(`/?role=${newActiveRole}`, { scroll: false });
@@ -99,6 +118,32 @@ function Dashboard({
   React.useEffect(() => {
     setProjects(initialProjects);
   }, [initialProjects]);
+
+  const loadColumnLayout = (role: Role) => {
+    const savedLayout = localStorage.getItem(`columnLayout-${role}`);
+    if (savedLayout) {
+        setVisibleColumnKeys(JSON.parse(savedLayout));
+    } else {
+        if (role === 'Processor' || role === 'QA') {
+            setVisibleColumnKeys(defaultProcessorQAColumns);
+        } else if (role === 'Case Manager') {
+            setVisibleColumnKeys(defaultCaseManagerColumns);
+        } else if (role === 'Admin' || role === 'Manager') {
+            setVisibleColumnKeys(defaultManagerAdminColumns);
+        }
+    }
+  };
+
+  const saveColumnLayout = () => {
+    if (activeRole) {
+        localStorage.setItem(`columnLayout-${activeRole}`, JSON.stringify(visibleColumnKeys));
+        toast({
+            title: "Layout Saved",
+            description: `Your column layout for the ${activeRole} role has been saved.`,
+        });
+    }
+  };
+
 
   const handleDownload = () => {
     const dataToExport = dashboardProjects;
@@ -171,6 +216,7 @@ function Dashboard({
                     const sanitizedRow: { [key: string]: any } = {};
                     for (const key in row) {
                         if (Object.prototype.hasOwnProperty.call(row, key)) {
+                            // Ensure row_number is not copied from CSV
                             if (key === 'row_number') continue;
                             sanitizedRow[key] = row[key] === undefined || row[key] === '' ? null : row[key];
                         }
@@ -181,11 +227,11 @@ function Dashboard({
             try {
                 const result = await addRows(projectsToAdd);
                 if (result.success) {
-                    window.location.reload();
                     toast({
                         title: "Bulk Add Complete",
                         description: `${result.addedCount} projects have been added.`,
                     });
+                    window.location.reload();
                 } else {
                     throw new Error(result.error || "An unknown error occurred during upload.");
                 }
@@ -393,7 +439,8 @@ function Dashboard({
       setRowSelection, 
       dashboardProjects,
       handleOpenEditDialog,
-      handleAddRowsDialog
+      handleAddRowsDialog,
+      visibleColumnKeys
   );
   const selectedBulkUpdateField = bulkUpdateFields.find(f => f.value === bulkUpdateField);
   const showManagerAccordions = isManagerOrAdmin && filteredProjects === null;
@@ -428,6 +475,14 @@ function Dashboard({
             onAddRowsSuccess={refreshProjects}
           />
         )}
+        <ColumnSelectDialog
+            isOpen={isColumnSelectOpen}
+            onOpenChange={setIsColumnSelectOpen}
+            allColumns={allColumns}
+            visibleColumns={visibleColumnKeys}
+            setVisibleColumns={setVisibleColumnKeys}
+        />
+
         <Header 
             user={user}
             activeRole={activeRole}
@@ -448,6 +503,20 @@ function Dashboard({
             clientNames={clientNames}
             processes={processes}
         />
+         {(!isManagerOrAdmin && activeRole !== 'Admin') && (
+            <div className="flex-shrink-0 bg-card border-b px-4 py-2 shadow-sm">
+                <div className="flex items-center justify-end gap-2">
+                    <Button variant="outline" size="sm" onClick={() => setIsColumnSelectOpen(true)}>
+                        <Rows className="mr-2 h-4 w-4" />
+                        Select Columns
+                    </Button>
+                    <Button variant="outline" size="sm" onClick={saveColumnLayout}>
+                        <Save className="mr-2 h-4 w-4" />
+                        Save Layout
+                    </Button>
+                </div>
+            </div>
+        )}
         <main className="flex flex-col flex-grow overflow-y-auto p-4 md:p-6 gap-6">
             {activeRole === 'Admin' ? (
                 <UserManagementTable sessionUser={user} />
