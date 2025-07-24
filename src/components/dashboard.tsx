@@ -217,7 +217,7 @@ function Dashboard({
                     for (const key in row) {
                         if (Object.prototype.hasOwnProperty.call(row, key)) {
                             // Ensure row_number is not copied from CSV
-                            if (key === 'row_number') continue;
+                            if (key === 'row_number' || key === 'id') continue;
                             sanitizedRow[key] = row[key] === undefined || row[key] === '' ? null : row[key];
                         }
                     }
@@ -505,13 +505,13 @@ function Dashboard({
         />
         {(!isManagerOrAdmin && activeRole !== 'Admin') && (
             <div className="flex-shrink-0 border-b px-4 bg-muted">
-                <div className="flex items-center justify-end gap-2 h-10">
-                    <Button variant="outline" size="sm" onClick={() => setIsColumnSelectOpen(true)}>
-                        <Rows className="mr-2 h-4 w-4" />
+                <div className="flex items-center justify-end gap-2 py-1">
+                    <Button variant="outline" className="h-7 px-2 text-xs" onClick={() => setIsColumnSelectOpen(true)}>
+                        <Rows className="mr-1.5 h-3.5 w-3.5" />
                         Select Columns
                     </Button>
-                    <Button variant="outline" size="sm" onClick={saveColumnLayout}>
-                        <Save className="mr-2 h-4 w-4" />
+                    <Button variant="outline" className="h-7 px-2 text-xs" onClick={saveColumnLayout}>
+                        <Save className="mr-1.5 h-3.5 w-3.5" />
                         Save Layout
                     </Button>
                 </div>
@@ -690,3 +690,5 @@ function Dashboard({
 }
 
 export default Dashboard;
+
+    
