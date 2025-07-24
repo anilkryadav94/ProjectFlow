@@ -116,18 +116,14 @@ export async function addRows(
 ): Promise<{ success: boolean; addedCount?: number; error?: string }> {
   
   if (count <= 0) {
-    return { success: false, error: "Count must be a positive number."}
+    return { success: false, error: "Count must be a positive number." };
   }
 
   const projectsCollection = collection(db, 'projects');
   
   try {
-    const batch = writeBatch(db);
-
+    let addedCount = 0;
     for (let i = 0; i < count; i++) {
-        // Create a new document reference with an auto-generated ID
-        const newProjectRef = doc(projectsCollection);
-
         const newProject: Omit<Project, 'id'> = {
             ref_number: '',
             application_number: null,
@@ -168,13 +164,12 @@ export async function addRows(
         // Apply copied data over the defaults
         Object.assign(newProject, projectDataToCopy);
         
-        batch.set(newProjectRef, newProject);
+        await addDoc(projectsCollection, newProject);
+        addedCount++;
     }
     
-    await batch.commit();
-
     revalidatePath('/');
-    return { success: true, addedCount: count };
+    return { success: true, addedCount: addedCount };
   } catch (error) {
     console.error("Error adding documents: ", error);
     if (error instanceof Error) {
