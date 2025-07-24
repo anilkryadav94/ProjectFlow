@@ -175,6 +175,7 @@ export function Header({
                             placeholder="Quick search..."
                             value={search}
                             onChange={(e) => setSearch(e.target.value)}
+                            onKeyDown={(e) => e.key === 'Enter' && onQuickSearch && onQuickSearch()}
                             className="rounded-l-none focus-visible:ring-0 h-8 w-48 text-foreground text-xs"
                         />
                       </>
@@ -186,6 +187,7 @@ export function Header({
                             placeholder="Quick search..."
                             value={search}
                             onChange={(e) => setSearch(e.target.value)}
+                            onKeyDown={(e) => e.key === 'Enter' && onQuickSearch && onQuickSearch()}
                             className="focus-visible:ring-0 h-8 w-64 text-foreground pl-9"
                         />
                       </>
@@ -222,7 +224,7 @@ export function Header({
               </div>
             )}
             
-            {activeRole === 'Manager' && !hasSearchResults && setSearch && setSearchColumn && onQuickSearch && (
+            {activeRole === 'Manager' && setSearch && setSearchColumn && onQuickSearch && (
                 <div className="flex items-center space-x-0 relative">
                     <Select value={searchColumn} onValueChange={(v) => setSearchColumn(v as SearchableColumn)}>
                         <SelectTrigger className="w-[180px] rounded-r-none focus:ring-0 text-foreground h-8 text-xs">
