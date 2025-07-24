@@ -111,19 +111,18 @@ export async function updateProject(data: Partial<Project>, submitAction?: 'subm
 }
 
 export async function addRows(
-  projectDataToCopy: Partial<Project>,
-  count: number
+  projectsToAdd: Partial<Project>[]
 ): Promise<{ success: boolean; addedCount?: number; error?: string }> {
   
-  if (count <= 0) {
-    return { success: false, error: "Count must be a positive number." };
+  if (!projectsToAdd || projectsToAdd.length === 0) {
+    return { success: false, error: "No data provided to add." };
   }
 
   const projectsCollection = collection(db, 'projects');
   
   try {
     let addedCount = 0;
-    for (let i = 0; i < count; i++) {
+    for (const projectData of projectsToAdd) {
         const newProject: Omit<Project, 'id'> = {
             ref_number: '',
             application_number: null,
@@ -161,8 +160,8 @@ export async function addRows(
             manager_name: null,
         };
 
-        // Apply copied data over the defaults
-        Object.assign(newProject, projectDataToCopy);
+        // Apply provided data over the defaults
+        Object.assign(newProject, projectData);
         
         await addDoc(projectsCollection, newProject);
         addedCount++;

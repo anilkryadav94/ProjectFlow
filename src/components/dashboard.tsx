@@ -165,10 +165,13 @@ function Dashboard({
                 return;
             }
 
+            const projectsToAdd: Partial<Project>[] = rows.map(row => ({
+                ...row
+            }));
+
+
             try {
-                // For simplicity, we'll just add the first row's data as new rows.
-                // A real implementation would handle mapping columns.
-                const result = await addRows({}, rows.length);
+                const result = await addRows(projectsToAdd);
                 if (result.success) {
                     await refreshProjects();
                     toast({

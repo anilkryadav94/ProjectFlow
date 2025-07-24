@@ -79,14 +79,18 @@ export function AddRowsDialog({
   const onSubmit = async (data: AddRowsFormValues) => {
     setIsSubmitting(true);
     try {
-      const projectDataToCopy: Partial<Project> = {};
-      (data.fields as FieldToCopyId[]).forEach(field => {
-          if(sourceProject.hasOwnProperty(field)) {
-              projectDataToCopy[field] = sourceProject[field as keyof Project];
-          }
-      });
+      const projectsToAdd: Partial<Project>[] = [];
+      for (let i = 0; i < data.count; i++) {
+        const projectDataToCopy: Partial<Project> = {};
+        (data.fields as FieldToCopyId[]).forEach(field => {
+            if(sourceProject.hasOwnProperty(field)) {
+                projectDataToCopy[field] = sourceProject[field as keyof Project];
+            }
+        });
+        projectsToAdd.push(projectDataToCopy);
+      }
 
-      const result = await addRows(projectDataToCopy, data.count);
+      const result = await addRows(projectsToAdd);
       if (result.success) {
         toast({
           title: "Success",
