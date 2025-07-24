@@ -76,6 +76,7 @@ export function DataTable({
                 <TableRow 
                   key={row.id}
                   data-state={rowSelection[row.id] ? "selected" : undefined}
+                  className={cn(row.isOutOfTat && "bg-red-500/10 hover:bg-red-500/20 data-[state=selected]:bg-red-500/25")}
                 >
                   {columns.map((column) => (
                     <TableCell key={column.key} className={cn(column.key === 'select' && 'pr-0')}>

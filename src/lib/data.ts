@@ -1,3 +1,4 @@
+
 import { collection, writeBatch, doc, getDocs, query, orderBy, limit } from 'firebase/firestore';
 import { db } from './firebase';
 
@@ -80,6 +81,7 @@ export type Project = {
     client_response_date: string | null;
     workflowStatus: WorkflowStatus;
     entries?: ProjectEntry[];
+    isOutOfTat?: boolean;
 };
 
 
@@ -383,3 +385,5 @@ export async function seedDatabase() {
     console.error('Error seeding database:', error);
   }
 }
+
+    

@@ -11,7 +11,7 @@ import { UserManagementTable } from './user-management-table';
 import { Button } from './ui/button';
 import { useToast } from '@/hooks/use-toast';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from './ui/select';
-import { FileUp, Loader2, Upload, X, Download, FileDown, Rows, Save, FileSpreadsheet, RotateCcw } from 'lucide-react';
+import { FileUp, Loader2, Upload, X, Download, FileDown, Rows, Save, FileSpreadsheet, RotateCcw, Search } from 'lucide-react';
 import { AdvancedSearchForm, type SearchCriteria } from './advanced-search-form';
 import { useSearchParams, useRouter } from 'next/navigation';
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from './ui/card';
@@ -100,6 +100,8 @@ function Dashboard({
   const refreshProjects = () => {
     window.location.reload();
   };
+  
+  const isManagerOrAdmin = React.useMemo(() => activeRole === 'Manager' || activeRole === 'Admin', [activeRole]);
 
   React.useEffect(() => {
     const highestRole = roleHierarchy.find(role => user.roles.includes(role)) || user.roles[0];
@@ -145,7 +147,6 @@ function Dashboard({
     }
   };
 
-  const isManagerOrAdmin = React.useMemo(() => activeRole === 'Manager' || activeRole === 'Admin', [activeRole]);
 
   const handleDownload = () => {
     const dataToExport = dashboardProjects;
@@ -414,6 +415,14 @@ function Dashboard({
         filtered = filtered.filter(p => p.process === processFilter);
     }
     
+    // Add isOutOfTat for Case Manager view
+    if (activeRole === 'Case Manager') {
+        filtered = filtered.map(p => ({
+            ...p,
+            isOutOfTat: p.qa_date ? differenceInBusinessDays(new Date(), new Date(p.qa_date)) > 3 : false,
+        }));
+    }
+
     if (sort && filtered) {
       filtered.sort((a, b) => {
         const valA = a[sort.key];
@@ -742,7 +751,7 @@ function Dashboard({
                         </Accordion>
                     </div>
                 )}
-                 <div className="flex-grow flex flex-col">
+                 <div className="flex-grow flex flex-col overflow-y-auto">
                     {Object.keys(rowSelection).length > 0 && (
                         <div className="flex-shrink-0 flex items-center gap-4 p-4 border-b bg-muted/50">
                             <span className="text-sm font-semibold">{Object.keys(rowSelection).length} selected</span>
@@ -779,7 +788,7 @@ function Dashboard({
                         </div>
                     )}
                     {showDataTable && (
-                        <div className="flex-grow flex flex-col">
+                        <div className="flex-grow flex flex-col p-4 md:p-6 pb-6">
                           <DataTable 
                               data={dashboardProjects}
                               columns={columns}
@@ -796,7 +805,7 @@ function Dashboard({
 
               </div>
             ) : (
-                 <div className="flex flex-col flex-grow">
+                 <div className="flex flex-col flex-grow p-4 md:p-6 pb-6">
                      <DataTable 
                         data={dashboardProjects}
                         columns={columns}
@@ -817,7 +826,3 @@ function Dashboard({
 export default Dashboard;
 
     
-
-    
-
-
