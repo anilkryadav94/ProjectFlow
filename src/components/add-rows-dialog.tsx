@@ -79,7 +79,7 @@ export function AddRowsDialog({
   const onSubmit = async (data: AddRowsFormValues) => {
     setIsSubmitting(true);
     try {
-      const result = await addRows(sourceProject.id, data.fields as FieldToCopyId[], data.count);
+      const result = await addRows(sourceProject, data.fields as FieldToCopyId[], data.count);
       if (result.success) {
         toast({
           title: "Success",

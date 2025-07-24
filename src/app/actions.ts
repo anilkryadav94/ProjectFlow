@@ -124,17 +124,11 @@ const fieldsToCopy = z.enum([
 type FieldToCopyId = z.infer<typeof fieldsToCopy>;
 
 export async function addRows(
-  sourceProjectId: string,
+  sourceProjectData: Project,
   fieldsToCopy: FieldToCopyId[],
   count: number
 ): Promise<{ success: boolean; addedCount?: number; error?: string }> {
   
-  const sourceProjectDoc = await getDoc(doc(db, 'projects', sourceProjectId));
-  if (!sourceProjectDoc.exists()) {
-    return { success: false, error: "Source project not found." };
-  }
-  const sourceProject = sourceProjectDoc.data() as Project;
-
   if (count <= 0) {
     return { success: false, error: "Count must be a positive number."}
   }
@@ -180,8 +174,8 @@ export async function addRows(
     };
 
     fieldsToCopy.forEach(field => {
-      if (sourceProject.hasOwnProperty(field)) {
-        (newProject as any)[field] = sourceProject[field as keyof Project];
+      if (sourceProjectData.hasOwnProperty(field)) {
+        (newProject as any)[field] = sourceProjectData[field as keyof Project];
       }
     });
     
@@ -191,4 +185,3 @@ export async function addRows(
   revalidatePath('/');
   return { success: true, addedCount: count };
 }
-
