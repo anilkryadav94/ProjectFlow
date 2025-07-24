@@ -11,7 +11,7 @@ import { UserManagementTable } from './user-management-table';
 import { Button } from './ui/button';
 import { useToast } from '@/hooks/use-toast';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from './ui/select';
-import { FileUp, Loader2, Upload, X } from 'lucide-react';
+import { FileUp, Loader2, Upload, X, BarChart, FileText } from 'lucide-react';
 import { AdvancedSearchForm, type SearchCriteria } from './advanced-search-form';
 import { useSearchParams, useRouter } from 'next/navigation';
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from './ui/card';
@@ -22,6 +22,13 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '.
 import { EditProjectDialog } from './edit-project-dialog';
 import { AddRowsDialog } from './add-rows-dialog';
 import { addRows, bulkUpdateProjects } from '@/app/actions';
+import {
+  ChartContainer,
+  ChartTooltip,
+  ChartTooltipContent,
+} from "@/components/ui/chart"
+import { Bar, BarChart as RechartsBarChart, CartesianGrid, XAxis, YAxis } from "recharts"
+import { format, subDays } from 'date-fns';
 
 interface DashboardProps {
   user: User;
@@ -44,113 +51,141 @@ type ProcessingSummaryData = Record<string, { pending: number, processed: number
 type QASummaryData = Record<string, { pending: number, processed: number, clientQuery: number }>;
 
 
-const ProcessingStatusSummary = ({ projects }: { projects: Project[] }) => {
-    const summary = React.useMemo(() => {
-        const today = new Date().toISOString().split('T')[0];
-        const data: ProcessingSummaryData = clientNames.reduce((acc, name) => {
-            acc[name] = { pending: 0, processed: 0 };
-            return acc;
-        }, {} as ProcessingSummaryData);
+const WelcomeDashboard = ({ projects, user }: { projects: Project[]; user: User }) => {
+    const isProcessor = user.roles.includes('Processor');
+    const isQA = user.roles.includes('QA');
 
-        projects.forEach(p => {
-            if (!data[p.client_name]) return;
+    const { processorStats, qaStats, chartData } = React.useMemo(() => {
+        const today = new Date();
+        const last7Days = Array.from({ length: 7 }, (_, i) => format(subDays(today, i), 'yyyy-MM-dd')).reverse();
+        
+        const chartDataTemplate: Record<string, { date: string, processor: number, qa: number }> = last7Days.reduce((acc, date) => {
+            acc[date] = { date: format(new Date(date.replaceAll('-', '/')), 'MMM d'), processor: 0, qa: 0 };
+            return acc;
+        }, {} as Record<string, { date: string, processor: number, qa: number }>);
+
+
+        let processorPending = 0;
+        let qaPending = 0;
+        let qaClientQuery = 0;
+
+        for (const p of projects) {
+            // Processor stats
+            if (isProcessor && p.processor === user.name) {
+                if (processorActionableStatuses.includes(p.processing_status)) {
+                    processorPending++;
+                }
+                if (p.processing_date && last7Days.includes(p.processing_date)) {
+                   chartDataTemplate[p.processing_date].processor++;
+                }
+            }
+
+            // QA stats
+            if (isQA && p.qa === user.name) {
+                 if (p.qa_status === 'Pending') {
+                    qaPending++;
+                }
+                 if (p.qa_status === 'Client Query') {
+                    qaClientQuery++;
+                }
+                if (p.qa_date && last7Days.includes(p.qa_date)) {
+                   chartDataTemplate[p.qa_date].qa++;
+                }
+            }
+        }
+
+        return {
+            processorStats: { pending: processorPending },
+            qaStats: { pending: qaPending, clientQuery: qaClientQuery },
+            chartData: Object.values(chartDataTemplate)
+        };
+
+    }, [projects, user, isProcessor, isQA]);
+
+    const chartConfig = {
+        processor: {
+            label: "Processing",
+            color: "hsl(var(--chart-1))",
+        },
+        qa: {
+            label: "QA",
+            color: "hsl(var(--chart-2))",
+        },
+    }
+
+    return (
+        <div className="space-y-6">
+            <div className="space-y-2">
+                <h1 className="text-3xl font-bold">Welcome, {user.name}!</h1>
+                <p className="text-muted-foreground">Here's a summary of your work and productivity.</p>
+            </div>
+            <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
+                {isProcessor && (
+                    <Card>
+                        <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+                            <CardTitle className="text-sm font-medium">Processing Work</CardTitle>
+                             <FileText className="h-4 w-4 text-muted-foreground" />
+                        </CardHeader>
+                        <CardContent>
+                            <div className="text-2xl font-bold">{processorStats.pending}</div>
+                            <p className="text-xs text-muted-foreground">Pending / Rework Tasks</p>
+                        </CardContent>
+                    </Card>
+                )}
+                 {isQA && (
+                    <>
+                        <Card>
+                             <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+                                <CardTitle className="text-sm font-medium">QA Pending</CardTitle>
+                                <FileText className="h-4 w-4 text-muted-foreground" />
+                            </CardHeader>
+                            <CardContent>
+                                <div className="text-2xl font-bold">{qaStats.pending}</div>
+                                <p className="text-xs text-muted-foreground">Tasks waiting for your review</p>
+                            </CardContent>
+                        </Card>
+                         <Card>
+                             <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+                                <CardTitle className="text-sm font-medium">QA Client Query</CardTitle>
+                                <FileText className="h-4 w-4 text-muted-foreground" />
+                            </CardHeader>
+                            <CardContent>
+                                <div className="text-2xl font-bold">{qaStats.clientQuery}</div>
+                                <p className="text-xs text-muted-foreground">Tasks waiting for client response</p>
+                            </CardContent>
+                        </Card>
+                    </>
+                )}
+            </div>
             
-            if (processorSubmissionStatuses.includes(p.processing_status)) {
-                 if (p.processing_date === today) {
-                    data[p.client_name].processed++;
-                }
-            } else if (processorActionableStatuses.includes(p.processing_status)) {
-                data[p.client_name].pending++;
-            }
-        });
+             <Card>
+                <CardHeader>
+                    <CardTitle>Productivity: Last 7 Days</CardTitle>
+                    <CardDescription>Tasks completed per day.</CardDescription>
+                </CardHeader>
+                <CardContent>
+                    <ChartContainer config={chartConfig} className="h-64 w-full">
+                        <RechartsBarChart data={chartData} accessibilityLayer>
+                            <CartesianGrid vertical={false} />
+                            <XAxis
+                                dataKey="date"
+                                tickLine={false}
+                                tickMargin={10}
+                                axisLine={false}
+                                tickFormatter={(value) => value}
+                            />
+                            <YAxis allowDecimals={false} />
+                            <ChartTooltip content={<ChartTooltipContent />} />
+                            {isProcessor && <Bar dataKey="processor" fill="var(--color-processor)" radius={4} />}
+                            {isQA && <Bar dataKey="qa" fill="var(--color-qa)" radius={4} />}
+                        </RechartsBarChart>
+                    </ChartContainer>
+                </CardContent>
+            </Card>
 
-        return data;
-    }, [projects]);
-
-    return (
-        <Card>
-            <CardHeader>
-                <CardTitle className="text-base">Processing Work Status</CardTitle>
-            </CardHeader>
-            <CardContent>
-                <Table>
-                    <TableHeader>
-                        <TableRow>
-                            <TableHead>Client Name</TableHead>
-                            <TableHead className="text-right">Pending (All Time)</TableHead>
-                            <TableHead className="text-right">Processed (Today)</TableHead>
-                        </TableRow>
-                    </TableHeader>
-                    <TableBody>
-                        {Object.entries(summary).map(([client, counts]) => (
-                            <TableRow key={client}>
-                                <TableCell className="font-medium">{client}</TableCell>
-                                <TableCell className="text-right">{counts.pending}</TableCell>
-                                <TableCell className="text-right">{counts.processed}</TableCell>
-                            </TableRow>
-                        ))}
-                    </TableBody>
-                </Table>
-            </CardContent>
-        </Card>
-    );
-};
-
-const QAStatusSummary = ({ projects }: { projects: Project[] }) => {
-    const summary = React.useMemo(() => {
-        const today = new Date().toISOString().split('T')[0];
-        const data: QASummaryData = clientNames.reduce((acc, name) => {
-            acc[name] = { pending: 0, processed: 0, clientQuery: 0 };
-            return acc;
-        }, {} as QASummaryData);
-
-        projects.forEach(p => {
-            if (!data[p.client_name]) return;
-
-            if (p.qa_status === 'Complete') {
-                if (p.qa_date === today) {
-                    data[p.client_name].processed++;
-                }
-            } else if (p.qa_status === 'Pending') {
-                data[p.client_name].pending++;
-            } else if (p.qa_status === 'Client Query') {
-                data[p.client_name].clientQuery++;
-            }
-        });
-
-        return data;
-    }, [projects]);
-
-    return (
-        <Card>
-            <CardHeader>
-                <CardTitle className="text-base">QA Work Status</CardTitle>
-            </CardHeader>
-            <CardContent>
-                <Table>
-                    <TableHeader>
-                        <TableRow>
-                            <TableHead>Client Name</TableHead>
-                            <TableHead className="text-right">Pending</TableHead>
-                            <TableHead className="text-right">Client Query</TableHead>
-                            <TableHead className="text-right">Completed (Today)</TableHead>
-                        </TableRow>
-                    </TableHeader>
-                    <TableBody>
-                        {Object.entries(summary).map(([client, counts]) => (
-                            <TableRow key={client}>
-                                <TableCell className="font-medium">{client}</TableCell>
-                                <TableCell className="text-right">{counts.pending}</TableCell>
-                                <TableCell className="text-right">{counts.clientQuery}</TableCell>
-                                <TableCell className="text-right">{counts.processed}</TableCell>
-                            </TableRow>
-                        ))}
-                    </TableBody>
-                </Table>
-            </CardContent>
-        </Card>
-    );
-};
+        </div>
+    )
+}
 
 
 function Dashboard({ 
@@ -464,9 +499,13 @@ function Dashboard({
       setRowSelection, 
       dashboardProjects,
       handleOpenEditDialog,
-      handleOpenAddRowsDialog
+      handleAddRowsDialog
   );
   const selectedBulkUpdateField = bulkUpdateFields.find(f => f.value === bulkUpdateField);
+
+  const highestRoleForWelcome = roleHierarchy.find(role => user.roles.includes(role));
+  const showWelcomeDashboard = highestRoleForWelcome === 'Processor' || highestRoleForWelcome === 'QA' || highestRoleForWelcome === 'Case Manager';
+
 
   return (
     <div className="flex flex-col h-screen bg-background w-full">
@@ -520,7 +559,7 @@ function Dashboard({
             clientNames={clientNames}
             processes={processes}
         />
-        <div className="flex flex-col flex-grow overflow-y-auto p-4 gap-4">
+        <main className="flex flex-col flex-grow overflow-y-auto p-4 md:p-6 gap-4">
             {activeRole === 'Admin' ? (
                 <UserManagementTable sessionUser={user} />
             ) : isManagerOrAdmin ? (
@@ -566,17 +605,6 @@ function Dashboard({
                                         <AdvancedSearchForm onSearch={handleAdvancedSearch} initialCriteria={searchCriteria} />
                                 </AccordionContent>
                                 </div>
-                        </AccordionItem>
-                         <AccordionItem value="work-status" className="border-none">
-                            <div className="animated-border">
-                                <AccordionTrigger className="p-3 bg-card rounded-md text-base font-semibold hover:no-underline">Work Status</AccordionTrigger>
-                                <AccordionContent className="bg-card rounded-b-md p-4">
-                                     <div className="grid md:grid-cols-2 gap-4">
-                                        <ProcessingStatusSummary projects={projects} />
-                                        <QAStatusSummary projects={projects} />
-                                    </div>
-                                </AccordionContent>
-                            </div>
                         </AccordionItem>
                     </Accordion>
                 ) : (
@@ -630,6 +658,8 @@ function Dashboard({
                     </div>
                 )}
               </>
+            ) : showWelcomeDashboard ? (
+                 <WelcomeDashboard projects={initialProjects} user={user} />
             ) : (
                 <DataTable 
                     data={dashboardProjects}
@@ -642,7 +672,7 @@ function Dashboard({
                     totalCount={dashboardProjects.length}
                 />
             )}
-        </div>
+        </main>
     </div>
   );
 }
