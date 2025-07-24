@@ -35,19 +35,30 @@ export default function Home() {
           const projectData = await getProjects();
           setProjects(projectData);
         } else {
-           // If session exists in auth but not firestore, log out
-           setSession(null); 
-           router.push('/login');
+           // If session exists in auth but not firestore, something is wrong.
+           // For now, we will treat this as a loading state, but in production,
+           // this might require logging the user out.
+           console.error("User authenticated but no session data found in Firestore.");
+           // Not redirecting to login to prevent loops. Let it stay in loading state.
         }
       } else {
-        setSession(null);
+        // If onAuthChanged says no user, redirect to login.
+        // This is the primary protection for this page.
         router.push('/login');
       }
-      setLoading(false);
+      // Only set loading to false when we are sure about the state.
+      // If sessionData is null after a user object exists, we might still be loading.
+      // Let's ensure loading stops only when data is loaded or user is confirmed null.
+      if (user && projects) {
+        setLoading(false);
+      }
+       if (!user) {
+         setLoading(false); // also stop loading if we know there is no user
+       }
     });
 
     return () => unsubscribe();
-  }, [router]);
+  }, [router, projects]); // Add projects to dependency array
 
   if (loading || !session || !projects) {
     return (
