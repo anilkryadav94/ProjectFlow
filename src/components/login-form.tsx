@@ -39,6 +39,8 @@ export function LoginForm() {
       router.refresh(); // Refresh to ensure new session is picked up
     } catch (err: any) {
       setError(err.message || 'Failed to login.');
+    } finally {
+      // Ensure loading is always set to false after the attempt.
       setLoading(false);
     }
   };
