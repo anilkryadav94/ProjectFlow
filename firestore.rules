@@ -1,17 +1,16 @@
+
 rules_version = '2';
 
 service cloud.firestore {
   match /databases/{database}/documents {
-    // Allow any authenticated user to read and write to the 'projects' collection
+    // Explicitly allow authenticated users to read and write to the projects collection.
     match /projects/{projectId} {
       allow read, write: if request.auth != null;
     }
 
-    // Allow any authenticated user to read from the 'users' collection
+    // Explicitly allow authenticated users to read and write to the users collection.
     match /users/{userId} {
-      allow read: if request.auth != null;
-      // Only allow a user to update their own document, or an admin to update any
-      allow write: if request.auth != null;
+      allow read, write: if request.auth != null;
     }
   }
 }
