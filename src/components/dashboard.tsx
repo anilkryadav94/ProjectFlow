@@ -21,7 +21,7 @@ import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from './
 import { EditProjectDialog } from './edit-project-dialog';
 import { AddRowsDialog } from './add-rows-dialog';
 import { addRows, bulkUpdateProjects } from '@/app/actions';
-import { WorkStatusChart } from './work-status-chart';
+import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from './ui/table';
 
 interface DashboardProps {
   user: User;
@@ -49,7 +49,6 @@ function Dashboard({
   const router = useRouter();
   const fileInputRef = React.useRef<HTMLInputElement>(null);
   
-  const urlRole = searchParams.get('role') as Role | null;
   const [activeRole, setActiveRole] = React.useState<Role | null>(null);
   const [projects, setProjects] = React.useState<Project[]>(initialProjects);
   const [search, setSearch] = React.useState('');
@@ -92,6 +91,7 @@ function Dashboard({
   
   React.useEffect(() => {
     const highestRole = roleHierarchy.find(role => user.roles.includes(role)) || user.roles[0];
+    const urlRole = searchParams.get('role') as Role | null;
     const newActiveRole = urlRole && user.roles.includes(urlRole) ? urlRole : highestRole;
 
     if (newActiveRole !== activeRole) {
@@ -280,14 +280,62 @@ function Dashboard({
     setIsAddRowsDialogOpen(true);
   }
 
+  const workStatusData = React.useMemo(() => {
+    const today = new Date().toISOString().split('T')[0];
+    const data: Record<string, {
+        clientName: string;
+        pendingProcessing: number;
+        todayProcessed: number;
+        pendingQA: number;
+        clientQueries: number;
+        todayQACompleted: number;
+    }> = {};
+
+    clientNames.forEach(client => {
+        data[client] = {
+            clientName: client,
+            pendingProcessing: 0,
+            todayProcessed: 0,
+            pendingQA: 0,
+            clientQueries: 0,
+            todayQACompleted: 0
+        };
+    });
+
+    projects.forEach(p => {
+        if (!data[p.client_name]) return;
+
+        // Processing Stats
+        if (p.workflowStatus === 'With Processor' && ['Pending', 'On Hold', 'Re-Work'].includes(p.processing_status)) {
+            data[p.client_name].pendingProcessing++;
+        }
+        if (p.processing_date === today) {
+            data[p.client_name].todayProcessed++;
+        }
+
+        // QA Stats
+        if (p.workflowStatus === 'With QA' && p.qa_status === 'Pending') {
+            data[p.client_name].pendingQA++;
+        }
+        if (p.qa_status === 'Client Query') {
+            data[p.client_name].clientQueries++;
+        }
+        if (p.qa_date === today && p.qa_status === 'Complete') {
+            data[p.client_name].todayQACompleted++;
+        }
+    });
+
+    return Object.values(data);
+  }, [projects]);
+
 
   const dashboardProjects = React.useMemo(() => {
     const isManagerOrAdminView = activeRole === 'Manager' || activeRole === 'Admin';
     
     let baseProjects: Project[];
 
-    if (isManagerOrAdminView && activeRole !== 'Admin') {
-        baseProjects = filteredProjects ?? projects;
+    if (isManagerOrAdminView && filteredProjects) {
+        baseProjects = filteredProjects;
     } else {
         baseProjects = [...projects];
         if (activeRole === 'Processor') {
@@ -462,8 +510,55 @@ function Dashboard({
                         <AccordionTrigger className="p-3 bg-card rounded-md text-base font-semibold hover:no-underline">Work Status (Client Wise)</AccordionTrigger>
                         <AccordionContent className="bg-card rounded-b-md">
                             <Card className="border-0 shadow-none">
-                                <CardContent className="pt-4">
-                                    <WorkStatusChart projects={projects} />
+                                <CardContent className="pt-4 grid grid-cols-1 lg:grid-cols-2 gap-6">
+                                    <div>
+                                        <h4 className="text-lg font-semibold mb-2">Processing Status</h4>
+                                        <div className="rounded-md border">
+                                            <Table>
+                                                <TableHeader>
+                                                    <TableRow>
+                                                        <TableHead>Client Name</TableHead>
+                                                        <TableHead className="text-right">Pending (All Time)</TableHead>
+                                                        <TableHead className="text-right">Processed (Today)</TableHead>
+                                                    </TableRow>
+                                                </TableHeader>
+                                                <TableBody>
+                                                    {workStatusData.map(d => (
+                                                        <TableRow key={d.clientName}>
+                                                            <TableCell className="font-medium">{d.clientName}</TableCell>
+                                                            <TableCell className="text-right">{d.pendingProcessing}</TableCell>
+                                                            <TableCell className="text-right">{d.todayProcessed}</TableCell>
+                                                        </TableRow>
+                                                    ))}
+                                                </TableBody>
+                                            </Table>
+                                        </div>
+                                    </div>
+                                    <div>
+                                        <h4 className="text-lg font-semibold mb-2">QA Status</h4>
+                                        <div className="rounded-md border">
+                                            <Table>
+                                                <TableHeader>
+                                                    <TableRow>
+                                                        <TableHead>Client Name</TableHead>
+                                                        <TableHead className="text-right">Pending QA</TableHead>
+                                                        <TableHead className="text-right">Client Queries</TableHead>
+                                                        <TableHead className="text-right">Completed (Today)</TableHead>
+                                                    </TableRow>
+                                                </TableHeader>
+                                                <TableBody>
+                                                    {workStatusData.map(d => (
+                                                        <TableRow key={d.clientName}>
+                                                            <TableCell className="font-medium">{d.clientName}</TableCell>
+                                                            <TableCell className="text-right">{d.pendingQA}</TableCell>
+                                                            <TableCell className="text-right">{d.clientQueries}</TableCell>
+                                                            <TableCell className="text-right">{d.todayQACompleted}</TableCell>
+                                                        </TableRow>
+                                                    ))}
+                                                </TableBody>
+                                            </Table>
+                                        </div>
+                                    </div>
                                 </CardContent>
                             </Card>
                         </AccordionContent>
@@ -540,5 +635,7 @@ function Dashboard({
 }
 
 export default Dashboard;
+
+    
 
     
