@@ -234,7 +234,7 @@ export function Header({
 
             {children}
 
-            {isManagerOrAdmin && hasSearchResults && onResetSearch && (
+            {isManagerOrAdmin && hasSearchResults && onResetSearch && activeRole !== 'Manager' && (
                 <Button variant="outline" className="h-9 text-foreground" onClick={onResetSearch}>
                     <RotateCcw className="mr-2" /> Reset Search
                 </Button>
@@ -242,7 +242,7 @@ export function Header({
             
             <DropdownMenu>
                 <DropdownMenuTrigger asChild>
-                    <Button variant="outline" className="w-auto h-9 text-foreground text-xs px-2">
+                    <Button variant="outline" className="w-auto h-8 text-foreground text-xs px-2">
                        <Settings className="h-4 w-4" />
                     </Button>
                 </DropdownMenuTrigger>
