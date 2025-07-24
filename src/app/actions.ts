@@ -139,7 +139,6 @@ export async function addRows(
     return { success: false, error: "Count must be a positive number."}
   }
 
-  const batch = writeBatch(db);
   const projectsCollection = collection(db, 'projects');
 
   for (let i = 0; i < count; i++) {
@@ -186,12 +185,8 @@ export async function addRows(
       }
     });
     
-    // Let Firestore generate the document ID
-    const newProjectRef = doc(projectsCollection); 
-    batch.set(newProjectRef, newProject);
+    await addDoc(projectsCollection, newProject);
   }
-
-  await batch.commit();
 
   revalidatePath('/');
   return { success: true, addedCount: count };
