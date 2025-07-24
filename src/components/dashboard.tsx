@@ -168,8 +168,7 @@ function Dashboard({
             try {
                 // For simplicity, we'll just add the first row's data as new rows.
                 // A real implementation would handle mapping columns.
-                // The `addRows` function no longer needs sourceProjectData, so we pass an empty object.
-                const result = await addRows({}, [], rows.length);
+                const result = await addRows({}, rows.length);
                 if (result.success) {
                     await refreshProjects();
                     toast({

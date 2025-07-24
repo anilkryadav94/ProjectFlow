@@ -124,8 +124,7 @@ const fieldsToCopy = z.enum([
 type FieldToCopyId = z.infer<typeof fieldsToCopy>;
 
 export async function addRows(
-  sourceProjectData: Partial<Project>,
-  fieldsToCopy: FieldToCopyId[],
+  projectDataToCopy: Partial<Project>,
   count: number
 ): Promise<{ success: boolean; addedCount?: number; error?: string }> {
   
@@ -174,13 +173,9 @@ export async function addRows(
           manager_name: null,
       };
 
-      fieldsToCopy.forEach(field => {
-        if (sourceProjectData.hasOwnProperty(field)) {
-          (newProject as any)[field] = sourceProjectData[field as keyof Project];
-        }
-      });
+      // Apply copied data
+      Object.assign(newProject, projectDataToCopy);
       
-      // Use addDoc to let Firestore generate the ID and add the document
       await addDoc(projectsCollection, newProject);
     }
 
@@ -194,4 +189,3 @@ export async function addRows(
     return { success: false, error: "An unknown error occurred while adding rows."}
   }
 }
-
