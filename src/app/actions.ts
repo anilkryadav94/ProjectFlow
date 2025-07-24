@@ -39,7 +39,6 @@ const projectEntrySchema = z.object({
 
 const updateProjectSchema = z.object({
   id: z.string(),
-  row_number: z.string().optional(),
   ref_number: z.string().nullable(),
   client_name: z.string(),
   process: z.enum(["Patent", "TM", "IDS", "Project"]),
@@ -76,12 +75,14 @@ const updateProjectSchema = z.object({
 
 
 export async function updateProject(data: Partial<Project>, submitAction?: 'submit_for_qa' | 'submit_qa' | 'send_rework' | 'save' | 'client_submit'): Promise<{success: boolean, project?: Project}> {
+    // We only validate the fields that are passed, not the whole object
     const validatedData = updateProjectSchema.partial().parse(data);
     
     if (!validatedData.id) return { success: false };
 
     const projectRef = doc(db, 'projects', validatedData.id);
 
+    // Create a mutable copy of the validated data
     const updatedProjectData: any = { ...validatedData };
     
     // Handle status transitions based on action
@@ -102,7 +103,9 @@ export async function updateProject(data: Partial<Project>, submitAction?: 'subm
 
     // Do not attempt to write the 'id' or 'row_number' field back to the document
     delete updatedProjectData.id;
-    delete updatedProjectData.row_number;
+    if ('row_number' in updatedProjectData) {
+        delete updatedProjectData.row_number;
+    }
 
     await updateDoc(projectRef, updatedProjectData);
 
