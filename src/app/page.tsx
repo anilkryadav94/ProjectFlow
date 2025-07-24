@@ -34,31 +34,25 @@ export default function Home() {
           setSession(sessionData);
           const projectData = await getProjects();
           setProjects(projectData);
+          setLoading(false);
         } else {
            // If session exists in auth but not firestore, something is wrong.
-           // For now, we will treat this as a loading state, but in production,
-           // this might require logging the user out.
+           // We stay in loading state, but won't redirect. Middleware handles unauth users.
            console.error("User authenticated but no session data found in Firestore.");
-           // Not redirecting to login to prevent loops. Let it stay in loading state.
         }
       } else {
-        // If onAuthChanged says no user, redirect to login.
-        // This is the primary protection for this page.
-        router.push('/login');
+        // Middleware is responsible for redirecting to login.
+        // This component should not handle redirection to prevent loops.
+        // If no user, we can just stop loading and let middleware handle it.
+        // For a logged-out user, they shouldn't even reach this page if middleware is correct.
+        // Setting loading to false here might be risky if middleware fails, but
+        // for now we assume middleware works. Let's keep it loading if no user.
+        router.push('/login'); // This is the safe fallback if middleware fails.
       }
-      // Only set loading to false when we are sure about the state.
-      // If sessionData is null after a user object exists, we might still be loading.
-      // Let's ensure loading stops only when data is loaded or user is confirmed null.
-      if (user && projects) {
-        setLoading(false);
-      }
-       if (!user) {
-         setLoading(false); // also stop loading if we know there is no user
-       }
     });
 
     return () => unsubscribe();
-  }, [router, projects]); // Add projects to dependency array
+  }, [router]);
 
   if (loading || !session || !projects) {
     return (
