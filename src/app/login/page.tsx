@@ -31,7 +31,9 @@ export default function LoginPage() {
 
     // In case the listener doesn't fire immediately for a non-logged-in user
     const timer = setTimeout(() => {
-        setLoading(false);
+        if (!auth.currentUser) {
+            setLoading(false);
+        }
     }, 1500); // Failsafe timer
 
     // Cleanup subscription and timer on unmount
