@@ -84,33 +84,35 @@ export async function updateProject(data: Partial<Project>, submitAction?: 'subm
     const projectRef = doc(db, 'projects', projectId);
 
     // Whitelist approach: only build an object with fields that are allowed to be updated.
+    // This is safer than deleting keys from a large object.
     let dataToUpdate: { [key: string]: any } = {};
 
-    // Handle status transitions and data based on action
-    if (submitAction === 'client_submit') {
-      dataToUpdate.workflowStatus = 'With QA';
-      dataToUpdate.qa_status = 'Pending';
-      dataToUpdate.clientquery_status = data.clientquery_status || null;
-      dataToUpdate.client_comments = data.client_comments || null;
-      dataToUpdate.client_response_date = new Date().toISOString().split('T')[0];
-    } else {
-       // For other roles, we can copy the entire data object for now, 
-       // but critically remove the fields that should never be updated.
-       dataToUpdate = { ...data };
-
-        if (submitAction === 'submit_for_qa') {
-            dataToUpdate.workflowStatus = 'With QA';
-            dataToUpdate.processing_date = new Date().toISOString().split('T')[0];
-        } else if (submitAction === 'submit_qa') {
-            dataToUpdate.workflowStatus = 'Completed';
-            dataToUpdate.qa_date = new Date().toISOString().split('T')[0];
-        } else if (submitAction === 'send_rework') {
-            dataToUpdate.workflowStatus = 'With Processor';
-            dataToUpdate.processing_status = 'Re-Work';
+    // Copy only the allowed fields from the incoming data using the schema.
+    const allowedFields = updateProjectSchema.keyof()._def.values;
+    for (const key of allowedFields) {
+        if (data.hasOwnProperty(key)) {
+            dataToUpdate[key] = data[key as keyof typeof data];
         }
     }
 
-    // CRITICAL: Ensure forbidden fields are never sent to Firestore, regardless of action.
+    // Handle status transitions and automatic date stamping based on action
+    if (submitAction === 'client_submit') {
+      dataToUpdate.workflowStatus = 'With QA';
+      dataToUpdate.qa_status = 'Pending';
+      dataToUpdate.client_response_date = new Date().toISOString().split('T')[0];
+    } else if (submitAction === 'submit_for_qa') {
+        dataToUpdate.workflowStatus = 'With QA';
+        dataToUpdate.processing_date = new Date().toISOString().split('T')[0];
+    } else if (submitAction === 'submit_qa') {
+        dataToUpdate.workflowStatus = 'Completed';
+        dataToUpdate.qa_date = new Date().toISOString().split('T')[0];
+    } else if (submitAction === 'send_rework') {
+        dataToUpdate.workflowStatus = 'With Processor';
+        dataToUpdate.processing_status = 'Re-Work';
+    }
+    
+    // CRITICAL: Ensure forbidden fields are never sent to Firestore.
+    // This is a double-check, as the whitelist approach should already prevent this.
     delete dataToUpdate.id;
     delete dataToUpdate.row_number;
     
