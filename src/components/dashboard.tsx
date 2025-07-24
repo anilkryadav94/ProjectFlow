@@ -499,7 +499,7 @@ function Dashboard({
 
     return {
         count: outsideTatCount,
-        greeting: `${greeting}, ${user.name}!`,
+        greeting: `Hi ${user.name}, ${greeting}!`,
     };
   }, [activeRole, dashboardProjects, user.name]);
 
@@ -589,12 +589,12 @@ function Dashboard({
             <div className="flex-shrink-0 border-b bg-muted">
                 <div className="flex items-center justify-end gap-2 py-1 px-4">
                      {activeRole === 'Case Manager' ? (
-                        <div className="flex-grow text-center text-sm font-semibold text-primary">
+                        <div className="flex-grow text-left text-sm font-semibold text-primary">
                             {dashboardProjects.length > 0 && caseManagerTatInfo && (
                                 <>
                                     <span>{caseManagerTatInfo.greeting} </span>
                                     {caseManagerTatInfo.count > 0 && (
-                                        <span className='text-destructive'>{`${caseManagerTatInfo.count} Emails Identified Outside TAT Threshold – Your Attention Required.`}</span>
+                                        <span>{`${caseManagerTatInfo.count} Emails Identified Outside TAT Threshold – Your Attention Required.`}</span>
                                     )}
                                 </>
                             )}
