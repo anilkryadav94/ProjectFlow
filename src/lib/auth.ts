@@ -1,3 +1,4 @@
+
 import { 
     getAuth, 
     signInWithEmailAndPassword, 
@@ -10,7 +11,6 @@ import {
 import { db, auth } from './firebase';
 import { doc, getDoc, setDoc, collection, getDocs, updateDoc, query, where } from 'firebase/firestore';
 import type { User, Role } from './data';
-import { users as mockUsers } from './data'; // For initial setup
 
 // --- Core Auth Functions ---
 
@@ -29,15 +29,16 @@ async function ensureUserDocument(firebaseUser: FirebaseUser): Promise<void> {
     const userDocSnap = await getDoc(userDocRef);
 
     if (!userDocSnap.exists()) {
-        // User document doesn't exist, let's create it from our mock data.
-        const mockUser = mockUsers.find(u => u.email === firebaseUser.email);
-        if (mockUser) {
-            const { password, ...userDataToSave } = mockUser;
-            await setDoc(userDocRef, userDataToSave);
-            console.log(`Created Firestore document for user: ${firebaseUser.email}`);
-        } else {
-            console.warn(`No mock user data found for ${firebaseUser.email} to create Firestore document.`);
-        }
+        // User document doesn't exist, create one with default values.
+        // An admin can then update their roles and name via the user management UI.
+        console.log(`User document for ${firebaseUser.email} not found in Firestore. Creating one with default role.`);
+        const newUser: Omit<User, 'id' | 'password'> = {
+            email: firebaseUser.email || '',
+            name: firebaseUser.displayName || firebaseUser.email || 'New User',
+            roles: ['Processor'], // Assign a default, lowest-privilege role.
+        };
+        await setDoc(userDocRef, newUser);
+        console.log(`Created default Firestore document for user: ${firebaseUser.email}`);
     }
 }
 
