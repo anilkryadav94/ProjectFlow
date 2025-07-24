@@ -83,13 +83,13 @@ export async function updateProject(data: Partial<Project>, submitAction?: 'subm
 
     // Whitelist approach: only build an object with fields that are allowed to be updated.
     // This is safer than deleting keys from a large object.
-    let dataToUpdate: { [key: string]: any } = {};
+    const dataToUpdate: { [key: string]: any } = {};
 
     // Copy only the allowed fields from the incoming data using the schema.
     const allowedFields = updateProjectSchema.keyof()._def.values;
     for (const key of allowedFields) {
         if (data.hasOwnProperty(key)) {
-            dataToUpdate[key] = data[key as keyof typeof data];
+            dataToUpdate[key as keyof typeof dataToUpdate] = data[key as keyof typeof data];
         }
     }
 
