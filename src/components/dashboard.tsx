@@ -459,6 +459,33 @@ function Dashboard({
                                </Card>
                             </AccordionContent>
                         </AccordionItem>
+                        <AccordionItem value="bulk-upload-testing" className="rounded-lg mb-4 border-0 bg-muted/30 shadow-md">
+                            <AccordionTrigger className="px-4 py-3 hover:no-underline">Bulk Upload (Testing)</AccordionTrigger>
+                            <AccordionContent className="p-4 pt-0">
+                               <Card>
+                                <CardHeader>
+                                    <CardTitle>Bulk Upload Records (Testing)</CardTitle>
+                                    <CardDescription>Upload a CSV file to add multiple new project records at once for testing.</CardDescription>
+                                </CardHeader>
+                                <CardContent>
+                                    <div className="flex items-center gap-4">
+                                         <Button variant="outline" onClick={() => fileInputRef.current?.click()} disabled={isUploading}>
+                                            <Upload className="mr-2" />
+                                            Choose CSV File
+                                        </Button>
+                                        {selectedFile && <span className="text-sm text-muted-foreground">{selectedFile.name}</span>}
+                                         {selectedFile && <Button size="sm" variant="ghost" onClick={() => setSelectedFile(null)}><X /></Button>}
+                                    </div>
+                                </CardContent>
+                                <CardFooter>
+                                    <Button onClick={handleProcessUpload} disabled={!selectedFile || isUploading}>
+                                        {isUploading ? <Loader2 className="mr-2 animate-spin" /> : <FileUp className="mr-2" />}
+                                        Process Upload
+                                    </Button>
+                                </CardFooter>
+                               </Card>
+                            </AccordionContent>
+                        </AccordionItem>
                         <AccordionItem value="advanced-search" className="rounded-lg mb-4 border-0 bg-muted/30 shadow-md">
                             <AccordionTrigger className="px-4 py-3 hover:no-underline">Advanced Search</AccordionTrigger>
                             <AccordionContent className="p-4 pt-0">
