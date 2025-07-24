@@ -504,7 +504,7 @@ function Dashboard({
             processes={processes}
         />
          {(!isManagerOrAdmin && activeRole !== 'Admin') && (
-            <div className="flex-shrink-0 bg-card border-b px-4 py-2 shadow-sm">
+            <div className="flex-shrink-0 border-b px-4 py-1 shadow-sm bg-muted/50">
                 <div className="flex items-center justify-end gap-2">
                     <Button variant="outline" size="sm" onClick={() => setIsColumnSelectOpen(true)}>
                         <Rows className="mr-2 h-4 w-4" />
@@ -517,11 +517,11 @@ function Dashboard({
                 </div>
             </div>
         )}
-        <main className="flex flex-col flex-grow overflow-y-auto p-4 md:p-6 gap-6">
+        <main className="flex flex-col flex-grow overflow-y-auto">
             {activeRole === 'Admin' ? (
-                <UserManagementTable sessionUser={user} />
+                <div className="p-4 md:p-6"><UserManagementTable sessionUser={user} /></div>
             ) : activeRole === 'Manager' ? (
-              <div className="space-y-6">
+              <div className="space-y-6 p-4 md:p-6">
                  {showManagerAccordions && (
                     <Accordion type="single" collapsible className="w-full" defaultValue='work-status'>
                         <AccordionItem value="work-allocation" className="rounded-lg mb-4 border-0 bg-muted/30 shadow-md">
