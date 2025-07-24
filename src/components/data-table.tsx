@@ -40,7 +40,7 @@ export function DataTable({
     totalCount
 }: DataTableProps) {
   const handleSort = (key: string) => {
-    if (key === 'select') return;
+    if (key === 'select' || key === 'actions') return;
     const projectKey = key as keyof Project;
     if (sort && sort.key === projectKey) {
       setSort({ key: projectKey, direction: sort.direction === 'asc' ? 'desc' : 'asc' });
@@ -50,15 +50,15 @@ export function DataTable({
   };
 
   return (
-    <div className={cn("h-full flex flex-col")}>
-       <div className={cn("rounded-t-md border bg-card overflow-y-auto relative flex-grow")}>
+    <div className={cn("h-full flex flex-col flex-grow")}>
+       <div className={cn("rounded-t-md border bg-card relative overflow-y-auto")}>
         <Table>
           <TableHeader className="sticky top-0 z-10 bg-primary">
             <TableRow>
               {columns.map((column) => (
                 <TableHead key={column.key} className="text-primary-foreground/90">
                     <div
-                      className={cn("flex items-center gap-2", column.key !== 'select' && "cursor-pointer")}
+                      className={cn("flex items-center gap-2", !['select', 'actions'].includes(column.key) && "cursor-pointer")}
                       onClick={() => handleSort(column.key)}
                     >
                       {column.header}
@@ -71,7 +71,7 @@ export function DataTable({
             </TableRow>
           </TableHeader>
           <TableBody>
-            {data.length ? (
+            {data.length > 0 ? (
               data.map((row) => (
                 <TableRow 
                   key={row.id}
