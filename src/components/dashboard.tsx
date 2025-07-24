@@ -780,7 +780,7 @@ function Dashboard({
                         </div>
                     )}
                     {showDataTable && (
-                        <div className="flex-grow flex flex-col p-4 md:p-6 pb-6">
+                        <div className="flex-grow flex flex-col">
                           <DataTable 
                               data={dashboardProjects}
                               columns={columns}
@@ -797,7 +797,7 @@ function Dashboard({
 
               </div>
             ) : (
-                 <div className="flex-grow flex flex-col p-4 md:p-6 pb-6">
+                 <div className="flex-grow flex flex-col">
                      <DataTable 
                         data={dashboardProjects}
                         columns={columns}
@@ -816,5 +816,3 @@ function Dashboard({
 }
 
 export default Dashboard;
-
-    
