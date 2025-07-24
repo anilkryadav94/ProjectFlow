@@ -1,24 +1,30 @@
-
 import * as React from 'react';
-import { projects } from '@/lib/data';
 import type { Project } from '@/lib/data';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
-import { notFound } from 'next/navigation';
 import { getSession } from '@/lib/auth';
 import { Header } from '@/components/header';
 import { clientNames, processes } from '@/lib/data';
+import { doc, getDoc, collection, getDocs } from 'firebase/firestore';
+import { db } from '@/lib/firebase';
+import { EditProjectDialog } from '@/components/edit-project-dialog';
 
-// This function is required for static export with dynamic routes.
-// It tells Next.js which pages to generate at build time.
+// This function is no longer for static generation, but can help with types.
+// It could be used for generating a sitemap in the future.
 export async function generateStaticParams() {
-    return projects.map((project) => ({
-        id: project.id,
+    const projectsCollection = collection(db, "projects");
+    const projectSnapshot = await getDocs(projectsCollection);
+    return projectSnapshot.docs.map((doc) => ({
+        id: doc.id,
     }));
 }
 
 async function getProjectById(id: string): Promise<Project | undefined> {
-    return projects.find(p => p.id === id);
+    const projectDoc = await getDoc(doc(db, 'projects', id));
+    if (projectDoc.exists()) {
+        return { id: projectDoc.id, ...projectDoc.data() } as Project;
+    }
+    return undefined;
 }
 
 // This is the server component.
@@ -27,10 +33,6 @@ export default async function TaskPage({ params }: { params: { id: string } }) {
   const project = await getProjectById(params.id);
 
   if (!session || !project) {
-    // If no session or project, we can handle it appropriately.
-    // For a static export, redirecting isn't ideal on the server.
-    // Client-side logic will handle redirects if the user is not logged in.
-    // If project is not found, we render a not found message.
     return (
         <div className="flex flex-col h-screen bg-background w-full">
             <Header 
@@ -49,9 +51,13 @@ export default async function TaskPage({ params }: { params: { id: string } }) {
   
   const isManagerOrAdmin = session.user.roles.includes('Manager') || session.user.roles.includes('Admin');
 
+  // Since we are moving to a fully dynamic app, we can no longer rely on
+  // a separate client component. The page itself will be interactive.
+  // We can pass the initial project data to a client component that contains the dialog.
+  
+  // A better approach for a fully dynamic page would be to fetch the data client-side
+  // in a useEffect hook. But for now, we pass it from the server component.
 
-  // All the interactive logic, data fetching based on session, and state
-  // management is now handled inside TaskPageClient.
   return (
      <div className="flex flex-col h-screen bg-background w-full">
             <Header 
@@ -66,7 +72,7 @@ export default async function TaskPage({ params }: { params: { id: string } }) {
                     <Card>
                         <CardHeader>
                             <div className="flex justify-between items-center">
-                                <CardTitle>{project.ref_number}</CardTitle>
+                                <CardTitle>{project.id}</CardTitle>
                                 <Badge variant="outline">{project.workflowStatus}</Badge>
                             </div>
                             <CardDescription>{project.subject_line}</CardDescription>
@@ -99,6 +105,7 @@ export default async function TaskPage({ params }: { params: { id: string } }) {
                         </CardContent>
                     </Card>
                 </div>
+                {/* The dialog should be triggered from the main dashboard, not here */}
             </main>
         </div>
   );

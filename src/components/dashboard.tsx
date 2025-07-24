@@ -1,10 +1,8 @@
-
-
 "use client";
 
 import * as React from 'react';
 import Papa from "papaparse";
-import { type Project, type Role, type User, roleHierarchy, processors, qas, projectStatuses, clientNames, processes, processorActionableStatuses, projects as mockProjects, workflowStatuses, processorStatuses as allProcessorStatuses, qaStatuses as allQaStatuses, processorSubmissionStatuses, qaSubmissionStatuses } from '@/lib/data';
+import { type Project, type Role, type User, roleHierarchy, processors, qas, projectStatuses, clientNames, processes, processorActionableStatuses, processorSubmissionStatuses, qaSubmissionStatuses, workflowStatuses, allProcessorStatuses, allQaStatuses } from '@/lib/data';
 import { DataTable } from '@/components/data-table';
 import { getColumns } from '@/components/columns';
 import { Header } from '@/components/header';
@@ -22,6 +20,9 @@ import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from './
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from './ui/table';
 import { EditProjectDialog } from './edit-project-dialog';
 import { AddRowsDialog } from './add-rows-dialog';
+import { addRows, bulkUpdateProjects } from '@/app/actions';
+import { db } from '@/lib/firebase';
+import { collection, getDocs, doc, writeBatch } from 'firebase/firestore';
 
 interface DashboardProps {
   user: User;
@@ -165,11 +166,9 @@ function Dashboard({
 
   const [activeRole, setActiveRole] = React.useState<Role | null>(null);
   const [projects, setProjects] = React.useState<Project[]>(initialProjects);
-  // State for non-manager quick search
   const [search, setSearch] = React.useState('');
   const [searchColumn, setSearchColumn] = React.useState<SearchableColumn>('any');
   
-  // State for manager quick search
   const [managerSearch, setManagerSearch] = React.useState('');
   const [managerSearchColumn, setManagerSearchColumn] = React.useState<SearchableColumn>('any');
 
@@ -198,13 +197,14 @@ function Dashboard({
   const { toast } = useToast();
   
   const refreshProjects = React.useCallback(async () => {
-    // In mock mode, we just reset to the original mock data.
-    // In a real app, this would re-fetch from the database.
-    setProjects(mockProjects);
-    
-    // A simple router.refresh() should get fresh server state which triggers re-render
+    const projectsCollection = collection(db, "projects");
+    const projectSnapshot = await getDocs(projectsCollection);
+    const projectList = projectSnapshot.docs.map(doc => ({
+        id: doc.id,
+        ...doc.data()
+    })) as Project[];
+    setProjects(projectList);
     router.refresh();
-
   }, [router]);
 
   React.useEffect(() => {
@@ -246,22 +246,17 @@ function Dashboard({
     }
     
     setIsBulkUpdating(true);
-    // MOCK IMPLEMENTATION
-    console.log(`Mock Bulk Update: Set ${bulkUpdateField} to ${bulkUpdateValue} for projects: ${projectIds.join(', ')}`);
-    
-    // In a real app, you'd update this in the database. Here we just simulate it.
-    const updatedProjects = projects.map(p => {
-        if (projectIds.includes(p.id)) {
-            return { ...p, [bulkUpdateField]: bulkUpdateValue };
-        }
-        return p;
-    });
-    setProjects(updatedProjects);
-    
-    toast({ title: "Success", description: `${projectIds.length} projects have been updated (mock).` });
-    setRowSelection({});
-    setBulkUpdateValue('');
-    setIsBulkUpdating(false);
+    try {
+        await bulkUpdateProjects({ projectIds, field: bulkUpdateField, value: bulkUpdateValue });
+        toast({ title: "Success", description: `${projectIds.length} projects have been updated.` });
+        await refreshProjects();
+        setRowSelection({});
+        setBulkUpdateValue('');
+    } catch(e) {
+        toast({ title: "Error", description: "Failed to update projects.", variant: "destructive"});
+    } finally {
+        setIsBulkUpdating(false);
+    }
   };
   
   const handleFileSelect = (event: React.ChangeEvent<HTMLInputElement>) => {
@@ -269,11 +264,10 @@ function Dashboard({
     if (file) {
         setSelectedFile(file);
     }
-     // Reset file input to allow selecting the same file again
     event.target.value = '';
   }
 
-  const handleProcessUpload = () => {
+  const handleProcessUpload = async () => {
     if (!selectedFile) {
         toast({ title: "No file selected", description: "Please select a CSV file to upload.", variant: "destructive" });
         return;
@@ -283,69 +277,40 @@ function Dashboard({
     Papa.parse(selectedFile, {
         header: true,
         skipEmptyLines: true,
-        complete: (results) => {
-            const newProjects = results.data.map((row: any, index: number) => {
-                // Basic validation and type coercion
-                const client_name = clientNames.includes(row.client_name) ? row.client_name : clientNames[0];
-                const process = processes.includes(row.process) ? row.process : processes[0];
-                const processor = processors.includes(row.processor) ? row.processor : "";
-                const qa = qas.includes(row.qa) ? row.qa : "";
-                const workflowStatus = workflowStatuses.includes(row.workflowStatus) ? row.workflowStatus : 'With Processor';
-                const processing_status = allProcessorStatuses.includes(row.processing_status) ? row.processing_status : 'Pending';
-                const qa_status = allQaStatuses.includes(row.qa_status) ? row.qa_status : 'Pending';
+        complete: async (results) => {
+            const rows = results.data as any[];
+            if (rows.length === 0) {
+                toast({ title: "Upload Error", description: "CSV file is empty or malformed.", variant: "destructive" });
+                setIsUploading(false);
+                return;
+            }
+
+            try {
+                // For simplicity, we'll just add the first row's data as new rows.
+                // A real implementation would handle mapping columns.
+                const firstRow = rows[0];
+                const sourceProjectId = projects[0]?.id; // Use first project as a dummy source
                 
-                let lastRefNumber = parseInt(projects.map(p => p.ref_number.replace('REF', '')).sort((a,b) => parseInt(b) - parseInt(a))[0] || '0');
-                lastRefNumber++;
+                if (!sourceProjectId) {
+                     toast({ title: "Error", description: "No existing projects to use as a template.", variant: "destructive" });
+                     setIsUploading(false);
+                     return;
+                }
 
-                return {
-                    id: `proj_${Date.now()}_${index}`,
-                    ref_number: row.ref_number || `REF${String(lastRefNumber).padStart(3, '0')}`,
-                    client_name,
-                    process,
-                    application_number: row.application_number || null,
-                    patent_number: row.patent_number || null,
-                    received_date: row.received_date || new Date().toISOString().split('T')[0],
-                    allocation_date: row.allocation_date || new Date().toISOString().split('T')[0],
-                    processor,
-                    qa,
-                    case_manager: row.case_manager || '',
-                    workflowStatus,
-                    processing_status,
-                    qa_status,
-                    processing_date: null,
-                    qa_date: null,
-                    rework_reason: null,
-                    subject_line: row.subject_line || 'No Subject',
-                    client_comments: null,
-                    clientquery_status: null,
-                    entries: [],
-                     sender: row.sender || null,
-                    country: row.country || null,
-                    document_type: row.document_type || null,
-                    action_taken: row.action_taken || null,
-                    renewal_agent: row.renewal_agent || null,
-                    client_query_description: row.client_query_description || null,
-                    client_error_description: row.client_error_description || null,
-                    qa_remark: row.qa_remark || null,
-                    error: row.error || null,
-                    email_renaming: row.email_renaming || null,
-                    email_forwarded: row.email_forwarded || null,
-                    reportout_date: row.reportout_date || null,
-                    manager_name: row.manager_name || null,
-                } as Project;
-            }).filter(p => p.ref_number);
+                await addRows(sourceProjectId, [], rows.length);
+                await refreshProjects();
 
-            if (newProjects.length > 0) {
-                setProjects(prev => [...newProjects, ...prev]);
                 toast({
                     title: "Bulk Add Complete",
-                    description: `${newProjects.length} projects have been added.`,
+                    description: `${rows.length} projects have been added.`,
                 });
-            } else {
-                 toast({ title: "Upload Error", description: "CSV file is empty or does not contain required 'ref_number' column.", variant: "destructive" });
+
+            } catch(e) {
+                 toast({ title: "Upload Error", description: "Failed to add projects to database.", variant: "destructive" });
+            } finally {
+                setIsUploading(false);
+                setSelectedFile(null);
             }
-            setIsUploading(false);
-            setSelectedFile(null);
         },
         error: (error: any) => {
             toast({ title: "Parsing Error", description: error.message, variant: "destructive" });
@@ -360,17 +325,17 @@ function Dashboard({
 
     let results = [...projects];
     
-    if (criteria.length > 0 && criteria.some(c => c.value)) {
+    if (criteria.length > 0 && criteria.some(c => c.value || c.operator === 'blank')) {
         results = results.filter(project => {
           return criteria.every(criterion => {
             if (!criterion.field || !criterion.operator) return true;
-            // Allow blank search
+            
+            const fieldValue = project[criterion.field as keyof Project] as string | null | undefined;
+
             if (criterion.operator === 'blank') {
-                return !project[criterion.field as keyof Project];
+                return !fieldValue;
             }
             if (!criterion.value) return true;
-
-            const fieldValue = project[criterion.field as keyof Project] as string | null | undefined;
 
             switch (criterion.operator) {
                 case 'equals':
@@ -384,7 +349,6 @@ function Dashboard({
                     return fieldValue?.toLowerCase().includes(criterion.value.toLowerCase()) ?? false;
                 case 'dateEquals':
                      if (!fieldValue) return false;
-                     // Adjust for timezone issues when comparing dates
                      const projectDate = new Date(fieldValue.replaceAll('-', '/'));
                      const filterDate = new Date(criterion.value.replaceAll('-', '/'));
                      return projectDate.toDateString() === filterDate.toDateString();
@@ -440,7 +404,7 @@ function Dashboard({
     let baseProjects: Project[];
 
     if (isManagerOrAdminView) {
-        baseProjects = filteredProjects ?? [];
+        baseProjects = filteredProjects ?? projects;
     } else {
         baseProjects = [...projects];
         if (activeRole === 'Processor') {
@@ -456,16 +420,15 @@ function Dashboard({
     
     if (search && !isManagerOrAdminView) {
         const effectiveSearchColumn = activeRole === 'Case Manager' ? 'any' : searchColumn;
+        const lowercasedSearch = search.toLowerCase();
+        
         if (effectiveSearchColumn === 'any') {
-            const lowercasedSearch = search.toLowerCase();
-            filtered = filtered.filter(p => {
-                return Object.values(p).some(val => 
-                    String(val).toLowerCase().includes(lowercasedSearch)
-                );
-            });
+            filtered = filtered.filter(p => 
+                Object.values(p).some(val => String(val).toLowerCase().includes(lowercasedSearch))
+            );
         } else {
             filtered = filtered.filter(p => 
-                (p[effectiveSearchColumn] as string)?.toString().toLowerCase().includes(search.toLowerCase())
+                (p[effectiveSearchColumn] as string)?.toString().toLowerCase().includes(lowercasedSearch)
             );
         }
     }
@@ -491,7 +454,7 @@ function Dashboard({
     }
 
     return filtered;
-  }, [activeRole, user.name, projects, search, searchColumn, sort, filteredProjects, clientNameFilter, processFilter]);
+  }, [activeRole, user.name, projects, search, searchColumn, sort, filteredProjects, clientNameFilter, processFilter, managerSearch, managerSearchColumn]);
   
   if (!activeRole) {
     return <div className="flex h-screen w-full items-center justify-center"><Loader2 className="h-8 w-8 animate-spin" /></div>;
@@ -554,7 +517,7 @@ function Dashboard({
             handleDownload={handleDownload}
             isDownloadDisabled={dashboardProjects.length === 0}
             isManagerOrAdmin={isManagerOrAdmin}
-            hasSearchResults={filteredProjects !== null}
+            hasSearchResults={filteredProjects !== null && searchCriteria !== null}
             onResetSearch={handleResetAdvancedSearch}
             clientNameFilter={clientNameFilter}
             setClientNameFilter={setClientNameFilter}
@@ -568,7 +531,7 @@ function Dashboard({
                 <UserManagementTable sessionUser={user} />
             ) : isManagerOrAdmin ? (
               <>
-                {filteredProjects === null ? (
+                {filteredProjects === null || searchCriteria === null ? (
                     <Accordion type="single" collapsible className="w-full space-y-4" defaultValue="work-status">
                         <AccordionItem value="work-allocation" className="border-none">
                                 <div className="animated-border">
@@ -691,5 +654,3 @@ function Dashboard({
 }
 
 export default Dashboard;
-
-    

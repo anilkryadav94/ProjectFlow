@@ -1,11 +1,6 @@
-
-// This file is intentionally left with a mock setup.
-// In a real Firebase app, you would initialize Firebase here.
-// To re-enable Firebase, you would uncomment the code below and fill in your config.
-/*
 import { initializeApp, getApps, getApp } from "firebase/app";
-import { getAuth, connectAuthEmulator } from "firebase/auth";
-import { getFirestore, connectFirestoreEmulator } from "firebase/firestore";
+import { getAuth } from "firebase/auth";
+import { getFirestore } from "firebase/firestore";
 
 // Your web app's Firebase configuration
 const firebaseConfig = {
@@ -22,17 +17,4 @@ const app = !getApps().length ? initializeApp(firebaseConfig) : getApp();
 const auth = getAuth(app);
 const db = getFirestore(app);
 
-if (process.env.NODE_ENV === 'development' && typeof window !== 'undefined' && !(auth as any).emulatorConfig) {
-    // Set up emulators
-    // connectAuthEmulator(auth, "http://localhost:9099", { disableWarnings: true });
-    // connectFirestoreEmulator(db, "localhost", 8080);
-}
-
-
 export { app, auth, db };
-*/
-
-// Mock exports for when Firebase is not used.
-export const app = {};
-export const auth = {};
-export const db = {};

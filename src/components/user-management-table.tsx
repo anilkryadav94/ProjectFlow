@@ -1,4 +1,3 @@
-
 "use client";
 
 import * as React from "react";
@@ -24,6 +23,7 @@ import { useRouter } from "next/navigation";
 
 export function UserManagementTable({ sessionUser }: { sessionUser: User }) {
     const [users, setUsers] = React.useState<User[]>([]);
+    const [editableUsers, setEditableUsers] = React.useState<Record<string, User>>({});
     const [isLoading, setIsLoading] = React.useState(true);
     const [isSubmitting, setIsSubmitting] = React.useState<Record<string, boolean>>({});
     const [isAddUserDialogOpen, setIsAddUserDialogOpen] = React.useState(false);
@@ -33,64 +33,72 @@ export function UserManagementTable({ sessionUser }: { sessionUser: User }) {
     const router = useRouter();
 
 
-    React.useEffect(() => {
-        async function fetchUsers() {
-            setIsLoading(true);
-            const userList = await getUsers();
-            setUsers(userList);
-            setIsLoading(false);
-        }
-        fetchUsers();
+    const fetchUsers = React.useCallback(async () => {
+        setIsLoading(true);
+        const userList = await getUsers();
+        setUsers(userList);
+        const editable = userList.reduce((acc, user) => {
+            acc[user.id] = user;
+            return acc;
+        }, {} as Record<string, User>);
+        setEditableUsers(editable);
+        setIsLoading(false);
     }, []);
 
+    React.useEffect(() => {
+        fetchUsers();
+    }, [fetchUsers]);
+
     const handleInputChange = (userId: string, field: keyof User, value: any) => {
-        setUsers(prevUsers => 
-            prevUsers.map(u => u.id === userId ? { ...u, [field]: value } : u)
-        );
+        setEditableUsers(prev => ({
+            ...prev,
+            [userId]: {
+                ...prev[userId],
+                [field]: value
+            }
+        }));
     };
 
     const handleRoleChange = (userId: string, role: Role, checked: boolean) => {
-         setUsers(prevUsers =>
-            prevUsers.map(user => {
-                if (user.id === userId) {
-                    const newRoles = checked
-                        ? [...user.roles, role]
-                        : user.roles.filter(r => r !== role);
-                    return { ...user, roles: newRoles };
-                }
-                return user;
-            })
-        );
+         setEditableUsers(prev => {
+             const user = prev[userId];
+             const newRoles = checked
+                ? [...user.roles, role]
+                : user.roles.filter(r => r !== role);
+             return {
+                 ...prev,
+                 [userId]: { ...user, roles: newRoles }
+             }
+         });
     }
 
     const handleUpdateUser = async (userId: string) => {
-        const user = users.find(u => u.id === userId);
+        const user = editableUsers[userId];
         if (!user) return;
 
         setIsSubmitting(prev => ({ ...prev, [user.id]: true }));
         try {
-            const result = await updateUser(user.id, {
+            await updateUser(user.id, {
                 name: user.name,
                 roles: user.roles,
-                password: user.password // Password will be undefined if not changed
+                password: user.password 
             });
 
             toast({
-                title: "Success (Mock)",
+                title: "Success",
                 description: `User ${user.name} has been updated.`,
             });
             
-            // In real app, you might want to refresh session if the logged in user is updated
             if (user.id === sessionUser.id) {
                 router.refresh();
             }
 
-            // Clear password field after successful update
             handleInputChange(userId, 'password', '');
+            await fetchUsers();
             
         } catch (error) {
             toast({
-                title: "Error (Mock)",
+                title: "Error",
                 description: `Failed to update user. ${error instanceof Error ? error.message : ''}`,
                 variant: "destructive",
             });
@@ -105,18 +113,16 @@ export function UserManagementTable({ sessionUser }: { sessionUser: User }) {
                  toast({ title: "Error", description: "Password is required.", variant: "destructive" });
                  return;
             }
-            const result = await addUser(newUser.email, newUser.password, newUser.name, newUser.roles);
-            if(result.success && result.user) {
-                setUsers(prev => [result.user!, ...prev]);
-                toast({
-                    title: "User Added (Mock)",
-                    description: `User ${result.user.name} has been successfully added.`,
-                });
-                setIsAddUserDialogOpen(false);
-            }
+            await addUser(newUser.email, newUser.password, newUser.name, newUser.roles);
+            toast({
+                title: "User Added",
+                description: `User record for ${newUser.name} created. You must now create the user in the Firebase Authentication console.`,
+            });
+            setIsAddUserDialogOpen(false);
+            await fetchUsers();
         } catch(error) {
             toast({
-                title: "Error (Mock)",
+                title: "Error",
                 description: `Failed to add user. ${error instanceof Error ? error.message : ''}`,
                 variant: "destructive",
             });
@@ -145,10 +151,9 @@ export function UserManagementTable({ sessionUser }: { sessionUser: User }) {
                 
                 try {
                     const { addedCount, errors } = await addBulkUsers(newUsers);
-                    const freshUserList = await getUsers();
-                    setUsers(freshUserList);
+                    await fetchUsers();
                     toast({
-                        title: "Bulk Upload Complete (Mock)",
+                        title: "Bulk Upload Complete",
                         description: `${addedCount} users added. ${errors.length} duplicates/errors.`,
                     });
                 } catch(e) {
@@ -170,11 +175,10 @@ export function UserManagementTable({ sessionUser }: { sessionUser: User }) {
         }
 
         const usersToExport = filteredUsers.map(user => {
-            // Omitting password for security
             const { password, ...rest } = user;
             return {
                 ...rest,
-                roles: user.roles.join(', ') // Convert roles array to a comma-separated string
+                roles: user.roles.join(', ')
             };
         });
 
@@ -261,7 +265,7 @@ export function UserManagementTable({ sessionUser }: { sessionUser: User }) {
                                             <TableRow key={user.id}>
                                                 <TableCell>
                                                     <Input
-                                                        value={user.name}
+                                                        value={editableUsers[user.id]?.name || ''}
                                                         onChange={(e) => handleInputChange(user.id, 'name', e.target.value)}
                                                         disabled={isSubmitting[user.id]}
                                                     />
@@ -269,9 +273,8 @@ export function UserManagementTable({ sessionUser }: { sessionUser: User }) {
                                                 <TableCell>
                                                     <Input
                                                         type="email"
-                                                        value={user.email}
-                                                        onChange={(e) => handleInputChange(user.id, 'email', e.target.value)}
-                                                        disabled={isSubmitting[user.id]}
+                                                        value={editableUsers[user.id]?.email || ''}
+                                                        disabled={true} // Email should not be editable
                                                     />
                                                 </TableCell>
                                                 <TableCell>
@@ -280,14 +283,14 @@ export function UserManagementTable({ sessionUser }: { sessionUser: User }) {
                                                         disabled={isSubmitting[user.id]}
                                                         placeholder="Set new password"
                                                         type="password"
-                                                        value={user.password || ''}
+                                                        value={editableUsers[user.id]?.password || ''}
                                                     />
                                                 </TableCell>
                                                 <TableCell>
                                                     <DropdownMenu>
                                                         <DropdownMenuTrigger asChild>
                                                             <Button variant="outline" className="w-full justify-between" disabled={isSubmitting[user.id]}>
-                                                                <span className="truncate">{user.roles?.join(', ') || 'Select roles'}</span>
+                                                                <span className="truncate">{editableUsers[user.id]?.roles?.join(', ') || 'Select roles'}</span>
                                                                 <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
                                                             </Button>
                                                         </DropdownMenuTrigger>
@@ -297,7 +300,7 @@ export function UserManagementTable({ sessionUser }: { sessionUser: User }) {
                                                             {roles.map((role) => (
                                                                 <DropdownMenuCheckboxItem
                                                                     key={role}
-                                                                    checked={user.roles?.includes(role)}
+                                                                    checked={editableUsers[user.id]?.roles?.includes(role)}
                                                                     onCheckedChange={(checked) => handleRoleChange(user.id, role, !!checked)}
                                                                     onSelect={(e) => e.preventDefault()}
                                                                 >

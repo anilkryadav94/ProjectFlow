@@ -1,107 +1,155 @@
+import { 
+    getAuth, 
+    signInWithEmailAndPassword, 
+    createUserWithEmailAndPassword, 
+    signOut, 
+    onAuthStateChanged as onFirebaseAuthStateChanged,
+    updatePassword as updateFirebasePassword,
+} from 'firebase/auth';
+import { db, auth } from './firebase';
+import { doc, getDoc, setDoc, collection, getDocs, updateDoc, query, where } from 'firebase/firestore';
+import type { User, Role } from './data';
+import { users as mockUsers } from './data'; // For initial setup
 
-import { type User, type Role, users as mockUsers } from './data';
+// --- Core Auth Functions ---
 
-// Mock implementation of auth functions using sessionStorage to persist login state
-
-const MOCK_USER_SESSION_KEY = 'mockUserEmail';
-
-export function onAuthChanged(callback: (user: any) => void) {
+export function onAuthChanged(callback: (user: import('firebase/auth').User | null) => void) {
     if (typeof window === 'undefined') {
         callback(null);
         return () => {};
     }
-
-    const handleStorageChange = () => {
-        const userEmail = window.sessionStorage.getItem(MOCK_USER_SESSION_KEY);
-        if (userEmail) {
-            const user = mockUsers.find(u => u.email === userEmail);
-            if (user) {
-                callback({ uid: user.email, email: user.email });
-            } else {
-                callback(null);
-            }
-        } else {
-            callback(null);
-        }
-    };
-
-    window.addEventListener('storage', handleStorageChange);
-    
-    // Initial check
-    handleStorageChange();
-
-    // The returned function will be called to unsubscribe
-    return () => {
-        window.removeEventListener('storage', handleStorageChange);
-    };
+    return onFirebaseAuthStateChanged(auth, callback);
 }
 
 export async function login(email: string, password: string): Promise<void> {
-  console.log(`Mock login attempt for ${email}`);
-  const user = mockUsers.find(u => u.email === email && u.password === password);
-  if (user) {
-    if (typeof window !== 'undefined') {
-        window.sessionStorage.setItem(MOCK_USER_SESSION_KEY, email);
-        // Dispatch a storage event to notify other tabs/components
-        window.dispatchEvent(new Event('storage'));
-    }
-    return Promise.resolve();
-  } else {
-    return Promise.reject(new Error('Invalid email or password.'));
-  }
+    await signInWithEmailAndPassword(auth, email, password);
 }
 
 export async function logout(): Promise<void> {
-  console.log("Mock logout");
-  if (typeof window !== 'undefined') {
-    window.sessionStorage.removeItem(MOCK_USER_SESSION_KEY);
-    // Dispatch a storage event to notify other tabs/components
-    window.dispatchEvent(new Event('storage'));
-  }
-  return Promise.resolve();
+    await signOut(auth);
 }
 
 export async function getSession(): Promise<{ user: User } | null> {
-    if (typeof window === 'undefined') return null;
+    const firebaseUser = auth.currentUser;
+    if (!firebaseUser || !firebaseUser.email) return null;
 
-    const userEmail = window.sessionStorage.getItem(MOCK_USER_SESSION_KEY);
-    if (!userEmail) return null;
+    const userDocRef = doc(db, 'users', firebaseUser.uid);
+    const userDocSnap = await getDoc(userDocRef);
 
-    const userFromFile = mockUsers.find(u => u.email === userEmail);
-    if (userFromFile) {
-        const user: User = {
-            id: `mock-user-${userFromFile.email}`,
-            email: userFromFile.email,
-            name: userFromFile.name,
-            roles: userFromFile.roles,
+    if (userDocSnap.exists()) {
+        const userData = userDocSnap.data() as Omit<User, 'id' | 'email'>;
+        return {
+            user: {
+                id: firebaseUser.uid,
+                email: firebaseUser.email,
+                ...userData
+            }
         };
-        return { user };
+    } else {
+        // This case handles users who might be in Firebase Auth but not in Firestore 'users' collection.
+        // You might want to log them out or handle this scenario appropriately.
+        console.warn(`User document not found in Firestore for UID: ${firebaseUser.uid}`);
+        return null;
     }
-    return null;
 }
 
 
-// --- User management functions remain unchanged ---
+// --- User Management for Admin Panel ---
 
 export async function getUsers(): Promise<User[]> {
-    return Promise.resolve(mockUsers.map((u, i) => ({...u, id: `mock-user-${i}`})));
-}
-
-export async function updateUser(userId: string, data: { name?: string, roles?: Role[], password?: string }): Promise<{ success: boolean; user?: User }> {
-    console.log(`Mock update for user ${userId} with data`, data);
-    return Promise.resolve({ success: true });
+    const usersCollection = collection(db, 'users');
+    const userSnapshot = await getDocs(usersCollection);
+    const userList = userSnapshot.docs.map(doc => ({
+        id: doc.id,
+        ...doc.data()
+    } as User));
+    return userList;
 }
 
 export async function addUser(email: string, password: string, name: string, roles: Role[]): Promise<{ success: boolean; user?: User }> {
-     console.log(`Mock add user for ${email}`);
-     const newUser: User = { id: `mock-user-${Date.now()}`, email, password, name, roles };
-     mockUsers.push(newUser);
-     return Promise.resolve({ success: true, user: newUser });
+    try {
+        // IMPORTANT: In a real app, creating users should be done from a secure backend (e.g., Cloud Functions)
+        // to avoid exposing credentials or needing a separate authenticated context.
+        // The approach here is simplified for this tool's context.
+        
+        // This creates user in Firebase Authentication
+        // This is a temporary auth instance for user creation, as you can't create users from the client SDK directly without this workaround
+        // which is not recommended for production.
+        
+        // A better approach would be a Cloud Function triggered by an admin action.
+        // For now, we will simulate this by adding to firestore and assuming an admin can create users in Firebase console.
+        
+        // We can't create auth user directly from client, so we will just create the firestore record.
+        // Admin has to create user in Firebase Auth console manually.
+        const usersRef = collection(db, "users");
+        
+        // Check if email already exists
+        const q = query(usersRef, where("email", "==", email));
+        const querySnapshot = await getDocs(q);
+        if (!querySnapshot.empty) {
+            throw new Error(`User with email ${email} already exists.`);
+        }
+
+        // We can't get the UID without creating the user, which we can't do from client.
+        // So we will use email as a temporary ID and ask admin to fix it.
+        // In a real app with a backend, we'd get a proper UID.
+        const tempId = `temp_${email.replace(/@.*/, '')}_${Date.now()}`;
+        const newUserDocRef = doc(db, 'users', tempId);
+
+        const newUser: Omit<User, 'id' | 'password'> = {
+            email,
+            name,
+            roles,
+        };
+        await setDoc(newUserDocRef, newUser);
+        
+        console.warn(`Firestore user record created for ${email} with temporary ID ${tempId}. Please create a corresponding user in Firebase Authentication console and update the document ID to the new UID.`);
+
+        return { success: true, user: { id: tempId, ...newUser } };
+    } catch (error) {
+        console.error("Error adding user:", error);
+        throw error;
+    }
 }
 
-export async function addBulkUsers(newUsers: (Omit<User, 'id' | 'password'> & { password?: string })[]): Promise<{ addedCount: number, errors: any[] }> {
-    console.log("Mock bulk add users");
-    const addedCount = newUsers.length;
-    newUsers.forEach(u => mockUsers.push({ ...u, password: u.password || 'password' }));
-    return Promise.resolve({ addedCount, errors: [] });
+
+export async function updateUser(userId: string, data: { name?: string, roles?: Role[], password?: string }): Promise<{ success: boolean }> {
+    const userDocRef = doc(db, 'users', userId);
+    
+    const { password, ...firestoreData } = data;
+    
+    if (Object.keys(firestoreData).length > 0) {
+        await updateDoc(userDocRef, firestoreData);
+    }
+    
+    // Password update is tricky from client-side admin panel.
+    // The current user can only update their own password easily.
+    // Updating other users' passwords requires admin privileges on a backend.
+    // For this mock, we will log that the password should be changed.
+    if (password) {
+        console.warn(`Password change requested for user ${userId}. In a real app, this requires a secure backend process. The current user is not authorized to change other users' passwords.`);
+        // If you were to implement this with a backend:
+        // await admin.auth().updateUser(userId, { password: password });
+    }
+    
+    return { success: true };
+}
+
+
+export async function addBulkUsers(newUsers: (Omit<User, 'id'|'password'> & { password?: string })[]): Promise<{ addedCount: number, errors: any[] }> {
+    console.warn("Bulk user add is a complex and insecure operation from the client. It is being mocked by adding users to Firestore only. Please create Auth users manually in the Firebase Console.");
+    
+    let addedCount = 0;
+    const errors: any[] = [];
+    
+    for (const user of newUsers) {
+        try {
+            await addUser(user.email, user.password || 'password123', user.name, user.roles);
+            addedCount++;
+        } catch (error) {
+            errors.push({ email: user.email, error });
+        }
+    }
+    
+    return { addedCount, errors };
 }

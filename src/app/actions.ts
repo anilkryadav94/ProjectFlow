@@ -1,11 +1,10 @@
-
-
 "use server";
 
 import { z } from "zod";
 import type { Project, Role, ClientStatus } from "@/lib/data";
-import { projects } from "@/lib/data";
 import { revalidatePath } from "next/cache";
+import { db } from "@/lib/firebase";
+import { collection, getDocs, doc, writeBatch, updateDoc, serverTimestamp, addDoc, getDoc } from "firebase/firestore";
 
 const bulkUpdateSchema = z.object({
   projectIds: z.array(z.string()),
@@ -13,25 +12,19 @@ const bulkUpdateSchema = z.object({
   value: z.string().min(1, "New value cannot be empty."),
 });
 
-export async function bulkUpdateProjects(data: z.infer<typeof bulkUpdateSchema>): Promise<{ success: boolean; updatedProjects: Project[] }> {
+export async function bulkUpdateProjects(data: z.infer<typeof bulkUpdateSchema>): Promise<{ success: boolean; updatedProjects?: Project[] }> {
     const validatedData = bulkUpdateSchema.parse(data);
-    const updatedProjects: Project[] = [];
+    const batch = writeBatch(db);
 
     validatedData.projectIds.forEach(id => {
-        const projectIndex = projects.findIndex(p => p.id === id);
-        if (projectIndex !== -1) {
-            const updatedProject = {
-                ...projects[projectIndex],
-                [validatedData.field]: validatedData.value,
-            };
-            projects[projectIndex] = updatedProject;
-            updatedProjects.push(updatedProject);
-        }
+        const projectRef = doc(db, 'projects', id);
+        batch.update(projectRef, { [validatedData.field]: validatedData.value });
     });
 
-    revalidatePath('/');
+    await batch.commit();
 
-    return { success: true, updatedProjects };
+    revalidatePath('/');
+    return { success: true };
 }
 
 const projectEntrySchema = z.object({
@@ -62,7 +55,6 @@ const updateProjectSchema = z.object({
   client_comments: z.string().nullable(),
   clientquery_status: z.enum(["Approved", "Clarification Required"]).nullable(),
   entries: z.array(projectEntrySchema).optional(),
-   // Adding all new fields to be safe
   sender: z.string().nullable(),
   country: z.string().nullable(),
   document_type: z.string().nullable(),
@@ -77,42 +69,44 @@ const updateProjectSchema = z.object({
   reportout_date: z.string().nullable(),
   manager_name: z.string().nullable(),
   client_response_date: z.string().nullable(),
-  workflowStatus: z.string(), // Keep it simple for validation
+  workflowStatus: z.string(),
 });
 
 
 export async function updateProject(data: Partial<Project>, submitAction?: 'submit_for_qa' | 'submit_qa' | 'send_rework' | 'save' | 'client_submit'): Promise<{success: boolean, project?: Project}> {
     const validatedData = updateProjectSchema.partial().parse(data);
-    const projectIndex = projects.findIndex(p => p.id === validatedData.id);
-    if (projectIndex === -1) {
-        return { success: false };
-    }
+    
+    if (!validatedData.id) return { success: false };
 
-    const updatedProject = { ...projects[projectIndex], ...validatedData };
+    const projectRef = doc(db, 'projects', validatedData.id);
+
+    const updatedProjectData = { ...validatedData };
     
     // Handle status transitions based on action
     if (submitAction === 'submit_for_qa') {
-      updatedProject.workflowStatus = 'With QA';
-      updatedProject.processing_date = new Date().toISOString().split('T')[0];
+      updatedProjectData.workflowStatus = 'With QA';
+      updatedProjectData.processing_date = new Date().toISOString().split('T')[0];
     } else if (submitAction === 'submit_qa') {
-      updatedProject.workflowStatus = 'Completed';
-      updatedProject.qa_date = new Date().toISOString().split('T')[0];
+      updatedProjectData.workflowStatus = 'Completed';
+      updatedProjectData.qa_date = new Date().toISOString().split('T')[0];
     } else if (submitAction === 'send_rework') {
-      updatedProject.workflowStatus = 'With Processor';
-      updatedProject.processing_status = 'Re-Work';
+      updatedProjectData.workflowStatus = 'With Processor';
+      updatedProjectData.processing_status = 'Re-Work';
     } else if (submitAction === 'client_submit') {
-      updatedProject.workflowStatus = 'With QA';
-      updatedProject.qa_status = 'Pending'; // Reset QA status so they know client responded
-      updatedProject.client_response_date = new Date().toISOString().split('T')[0];
+      updatedProjectData.workflowStatus = 'With QA';
+      updatedProjectData.qa_status = 'Pending';
+      updatedProjectData.client_response_date = new Date().toISOString().split('T')[0];
     }
 
-
-    projects[projectIndex] = updatedProject as Project;
+    await updateDoc(projectRef, updatedProjectData);
 
     revalidatePath('/');
     revalidatePath(`/task/${validatedData.id}`);
     
-    return { success: true, project: updatedProject as Project };
+    const updatedDoc = await getDoc(projectRef);
+    const finalProject = { id: updatedDoc.id, ...updatedDoc.data() } as Project;
+
+    return { success: true, project: finalProject };
 }
 
 const fieldsToCopy = z.enum([
@@ -128,7 +122,20 @@ const fieldsToCopy = z.enum([
 
 type FieldToCopyId = z.infer<typeof fieldsToCopy>;
 
+async function getNextProjectId(): Promise<string> {
+    const projectsRef = collection(db, 'projects');
+    const q = query(projectsRef, orderBy("id", "desc"), limit(1));
+    const querySnapshot = await getDocs(q);
 
+    if (querySnapshot.empty) {
+        return "PF000001";
+    }
+
+    const lastId = querySnapshot.docs[0].id;
+    const lastNumber = parseInt(lastId.replace('PF', ''), 10);
+    const nextNumber = lastNumber + 1;
+    return `PF${String(nextNumber).padStart(6, '0')}`;
+}
 
 export async function addRows(
   sourceProjectId: string,
@@ -136,27 +143,32 @@ export async function addRows(
   count: number
 ): Promise<{ success: boolean; addedCount?: number; error?: string }> {
   
-  const sourceProject = projects.find(p => p.id === sourceProjectId);
-  if (!sourceProject) {
+  const sourceProjectDoc = await getDoc(doc(db, 'projects', sourceProjectId));
+  if (!sourceProjectDoc.exists()) {
     return { success: false, error: "Source project not found." };
   }
+  const sourceProject = sourceProjectDoc.data() as Project;
 
   if (count <= 0) {
     return { success: false, error: "Count must be a positive number."}
   }
 
-  const numericIds = projects.map(p => parseInt(p.id.replace('PF', ''), 10)).filter(n => !isNaN(n));
-  let lastIdNumber = numericIds.length > 0 ? Math.max(...numericIds) : 0;
-
+  const batch = writeBatch(db);
+  let currentIdNumber = 0; // Will be set on the first iteration
 
   for (let i = 0; i < count; i++) {
-    lastIdNumber++;
-    const newId = `PF${String(lastIdNumber).padStart(6, '0')}`;
+    let nextId: string;
+    if (i === 0) {
+        const lastId = await getNextProjectId();
+        currentIdNumber = parseInt(lastId.replace('PF', ''), 10);
+        nextId = `PF${String(currentIdNumber).padStart(6, '0')}`;
+    } else {
+        currentIdNumber++;
+        nextId = `PF${String(currentIdNumber).padStart(6, '0')}`;
+    }
 
-    const newProject: Project = {
-        // Default values
-        id: newId,
-        ref_number: '', // Manual entry
+    const newProject: Omit<Project, 'id'> = {
+        ref_number: '',
         application_number: null,
         patent_number: null,
         workflowStatus: 'With Processor',
@@ -169,8 +181,6 @@ export async function addRows(
         clientquery_status: null,
         client_response_date: null,
         entries: [],
-        
-        // Potentially copied values
         subject_line: '',
         client_name: '',
         process: 'Patent',
@@ -179,8 +189,6 @@ export async function addRows(
         case_manager: '',
         received_date: new Date().toISOString().split('T')[0],
         allocation_date: new Date().toISOString().split('T')[0],
-
-        // Other new fields with default null
         sender: null,
         country: null,
         document_type: null,
@@ -202,11 +210,12 @@ export async function addRows(
       }
     });
 
-    projects.unshift(newProject);
+    const newProjectRef = doc(db, 'projects', nextId);
+    batch.set(newProjectRef, newProject);
   }
+
+  await batch.commit();
 
   revalidatePath('/');
   return { success: true, addedCount: count };
 }
-
-    
