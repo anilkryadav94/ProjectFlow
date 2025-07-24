@@ -415,14 +415,6 @@ function Dashboard({
         filtered = filtered.filter(p => p.process === processFilter);
     }
     
-    // Add isOutOfTat for Case Manager view
-    if (activeRole === 'Case Manager') {
-        filtered = filtered.map(p => ({
-            ...p,
-            isOutOfTat: p.qa_date ? differenceInBusinessDays(new Date(), new Date(p.qa_date)) > 3 : false,
-        }));
-    }
-
     if (sort && filtered) {
       filtered.sort((a, b) => {
         const valA = a[sort.key];
@@ -805,7 +797,7 @@ function Dashboard({
 
               </div>
             ) : (
-                 <div className="flex flex-col flex-grow p-4 md:p-6 pb-6">
+                 <div className="flex-grow flex flex-col p-4 md:p-6 pb-6">
                      <DataTable 
                         data={dashboardProjects}
                         columns={columns}
