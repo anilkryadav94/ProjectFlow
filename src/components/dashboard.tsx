@@ -167,12 +167,19 @@ function Dashboard({
 
             const projectsToAdd: Partial<Project>[] = rows
                 .filter(row => row.client_name || row.subject_line) // Basic validation
-                .map(row => ({
-                    ...row,
-                    // Ensure dates are in the correct 'yyyy-MM-dd' format or null
-                    received_date: row.received_date ? new Date(row.received_date).toISOString().split('T')[0] : new Date().toISOString().split('T')[0],
-                    allocation_date: row.allocation_date ? new Date(row.allocation_date).toISOString().split('T')[0] : new Date().toISOString().split('T')[0],
-                }));
+                .map(row => {
+                    const sanitizedRow: { [key: string]: any } = {};
+                    for (const key in row) {
+                        if (Object.prototype.hasOwnProperty.call(row, key)) {
+                            sanitizedRow[key] = row[key] === undefined || row[key] === '' ? null : row[key];
+                        }
+                    }
+                    return {
+                        ...sanitizedRow,
+                        received_date: sanitizedRow.received_date ? new Date(sanitizedRow.received_date).toISOString().split('T')[0] : new Date().toISOString().split('T')[0],
+                        allocation_date: sanitizedRow.allocation_date ? new Date(sanitizedRow.allocation_date).toISOString().split('T')[0] : new Date().toISOString().split('T')[0],
+                    };
+                });
 
 
             try {
