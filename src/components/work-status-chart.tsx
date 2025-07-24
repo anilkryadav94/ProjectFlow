@@ -5,7 +5,8 @@ import * as React from "react";
 import { Bar, BarChart, CartesianGrid, XAxis, YAxis, Tooltip, Legend, ResponsiveContainer } from "recharts";
 import { type Project, clientNames, workflowStatuses } from "@/lib/data";
 import { Card, CardHeader, CardTitle, CardDescription, CardContent } from "./ui/card";
-import { ChartTooltipContent } from "./ui/chart";
+import { ChartTooltipContent, ChartContainer } from "./ui/chart";
+import type { ChartConfig } from "./ui/chart";
 
 interface WorkStatusChartProps {
     projects: Project[];
@@ -20,7 +21,7 @@ const statusColors: { [key: string]: string } = {
 
 export function WorkStatusChart({ projects }: WorkStatusChartProps) {
     const chartData = React.useMemo(() => {
-        const clientData: Record<string, Record<string, number>> = {};
+        const clientData: Record<string, Record<string, any>> = {};
 
         clientNames.forEach(client => {
             clientData[client] = { name: client };
@@ -44,18 +45,25 @@ export function WorkStatusChart({ projects }: WorkStatusChartProps) {
     const chartConfig = workflowStatuses.reduce((acc, status) => {
         acc[status] = { label: status, color: statusColors[status] };
         return acc;
-    }, {} as any);
+    }, {} as ChartConfig);
 
 
     return (
         <Card className="border-0 shadow-none">
-            <ResponsiveContainer width="100%" height={300}>
-                <BarChart data={chartData} margin={{ top: 20, right: 30, left: 20, bottom: 5 }}>
-                    <CartesianGrid strokeDasharray="3 3" />
-                    <XAxis dataKey="name" />
+            <ChartContainer config={chartConfig} className="min-h-[200px] w-full">
+                <BarChart accessibilityLayer data={chartData} margin={{ top: 20, right: 30, left: 20, bottom: 5 }}>
+                    <CartesianGrid vertical={false} />
+                    <XAxis
+                        dataKey="name"
+                        tickLine={false}
+                        tickMargin={10}
+                        axisLine={false}
+                        tickFormatter={(value) => value.slice(0, 3)}
+                    />
                     <YAxis allowDecimals={false} />
                     <Tooltip
-                      content={<ChartTooltipContent />}
+                      cursor={false}
+                      content={<ChartTooltipContent indicator="dot" />}
                     />
                     <Legend />
                     {workflowStatuses.map((status) => (
@@ -63,11 +71,12 @@ export function WorkStatusChart({ projects }: WorkStatusChartProps) {
                           key={status} 
                           dataKey={status} 
                           stackId="a" 
-                          fill={statusColors[status]} 
+                          fill={`var(--color-${status})`}
+                          radius={[4, 4, 0, 0]}
                         />
                     ))}
                 </BarChart>
-            </ResponsiveContainer>
+            </ChartContainer>
         </Card>
     );
 }
