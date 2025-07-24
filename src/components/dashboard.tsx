@@ -11,7 +11,7 @@ import { UserManagementTable } from './user-management-table';
 import { Button } from './ui/button';
 import { useToast } from '@/hooks/use-toast';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from './ui/select';
-import { FileUp, Loader2, Upload, X, Download } from 'lucide-react';
+import { FileUp, Loader2, Upload, X, Download, FileDown } from 'lucide-react';
 import { AdvancedSearchForm, type SearchCriteria } from './advanced-search-form';
 import { useSearchParams, useRouter } from 'next/navigation';
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from './ui/card';
@@ -78,12 +78,8 @@ function Dashboard({
   
   const { toast } = useToast();
   
-  const refreshProjects = async () => {
-    // This will be a server action or API call in a real app
-    // For now, we just re-set the state from initial props
-    // In a real scenario, you'd fetch from Firestore here.
-    setProjects(initialProjects);
-    router.refresh(); // Re-runs the server component to get new initialProjects
+  const refreshProjects = () => {
+    router.refresh();
   };
   
   React.useEffect(() => {
@@ -100,6 +96,10 @@ function Dashboard({
     }
   }, [user.roles, router, activeRole, searchParams]);
   
+  React.useEffect(() => {
+    setProjects(initialProjects);
+  }, [initialProjects]);
+
   const handleDownload = () => {
     const dataToExport = dashboardProjects;
     if (dataToExport.length === 0) {
@@ -129,7 +129,7 @@ function Dashboard({
     try {
         await bulkUpdateProjects({ projectIds, field: bulkUpdateField, value: bulkUpdateValue });
         toast({ title: "Success", description: `${projectIds.length} projects have been updated.` });
-        await refreshProjects();
+        refreshProjects();
         setRowSelection({});
         setBulkUpdateValue('');
     } catch(e) {
@@ -165,14 +165,13 @@ function Dashboard({
                 return;
             }
 
-            // Sanitize rows: convert undefined to null and ensure no row_number is passed
             const projectsToAdd: Partial<Project>[] = rows
-                .filter(row => row.client_name || row.subject_line) // Basic validation
+                .filter(row => row.client_name || row.subject_line)
                 .map(row => {
                     const sanitizedRow: { [key: string]: any } = {};
                     for (const key in row) {
-                        if (key === 'row_number') continue; // Explicitly skip copying row_number
                         if (Object.prototype.hasOwnProperty.call(row, key)) {
+                            if (key === 'row_number') continue;
                             sanitizedRow[key] = row[key] === undefined || row[key] === '' ? null : row[key];
                         }
                     }
@@ -182,7 +181,7 @@ function Dashboard({
             try {
                 const result = await addRows(projectsToAdd);
                 if (result.success) {
-                    await refreshProjects();
+                    refreshProjects();
                     toast({
                         title: "Bulk Add Complete",
                         description: `${result.addedCount} projects have been added.`,
@@ -259,6 +258,22 @@ function Dashboard({
   const handleAddRowsDialog = (project: Project) => {
     setSourceProject(project);
     setIsAddRowsDialogOpen(true);
+  }
+
+  const handleDownloadSample = () => {
+    const headers = "case_manager,manager_name,processor,sender,received_date,allocation_date,process,client_name,rework_reason,client_error_description,subject_line";
+    const sampleData = `CM Alice,Manager User,Alice,sender@example.com,2024-01-01,2024-01-02,Patent,Client A,,,"Sample Subject 1"`;
+    const csvContent = `${headers}\n${sampleData}`;
+    
+    const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
+    const link = document.createElement("a");
+    const url = URL.createObjectURL(blob);
+    link.setAttribute("href", url);
+    link.setAttribute("download", `sample_projects.csv`);
+    link.style.visibility = 'hidden';
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
   }
 
   const dashboardProjects = React.useMemo(() => {
@@ -446,7 +461,7 @@ function Dashboard({
                                <Card>
                                 <CardHeader>
                                     <CardTitle>Bulk Upload Records</CardTitle>
-                                    <CardDescription>Upload a CSV file to add multiple new project records at once.</CardDescription>
+                                    <CardDescription>Upload a CSV file to add multiple new project records at once. Download the sample file for the correct format.</CardDescription>
                                 </CardHeader>
                                 <CardContent>
                                     <div className="flex items-center gap-4">
@@ -458,10 +473,14 @@ function Dashboard({
                                          {selectedFile && <Button size="sm" variant="ghost" onClick={() => setSelectedFile(null)}><X /></Button>}
                                     </div>
                                 </CardContent>
-                                <CardFooter>
+                                <CardFooter className="gap-2">
                                     <Button onClick={handleProcessUpload} disabled={!selectedFile || isUploading}>
                                         {isUploading ? <Loader2 className="mr-2 animate-spin" /> : <FileUp className="mr-2" />}
                                         Process Upload
+                                    </Button>
+                                    <Button variant="secondary" onClick={handleDownloadSample}>
+                                        <FileDown className="mr-2" />
+                                        Download Sample CSV
                                     </Button>
                                 </CardFooter>
                                </Card>
