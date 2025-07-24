@@ -81,7 +81,7 @@ export async function updateProject(data: Partial<Project>, submitAction?: 'subm
 
     const projectRef = doc(db, 'projects', validatedData.id);
 
-    const updatedProjectData = { ...validatedData };
+    const updatedProjectData: any = { ...validatedData };
     
     // Handle status transitions based on action
     if (submitAction === 'submit_for_qa') {
@@ -98,6 +98,9 @@ export async function updateProject(data: Partial<Project>, submitAction?: 'subm
       updatedProjectData.qa_status = 'Pending';
       updatedProjectData.client_response_date = new Date().toISOString().split('T')[0];
     }
+
+    // Do not attempt to write the 'id' field back to the document
+    delete updatedProjectData.id;
 
     await updateDoc(projectRef, updatedProjectData);
 
