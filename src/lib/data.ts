@@ -1,4 +1,4 @@
-import { collection, writeBatch, doc } from 'firebase/firestore';
+import { collection, writeBatch, doc, getDocs, query, orderBy, limit } from 'firebase/firestore';
 import { db } from './firebase';
 
 export type Role = 'Admin' | 'Manager' | 'Processor' | 'QA' | 'Case Manager';
@@ -273,8 +273,24 @@ export async function addRows(
   const batch = writeBatch(db);
   
   try {
-    projectsToAdd.forEach(projectData => {
-        const newProjectRef = doc(projectsCollection); // Auto-generate ID
+    // Get the last project ID to determine the next one
+    const q = query(projectsCollection, orderBy("id", "desc"), limit(1));
+    const querySnapshot = await getDocs(q);
+    
+    let lastIdNumber = 0;
+    if (!querySnapshot.empty) {
+      const lastId = querySnapshot.docs[0].id;
+      // Extract number from PF00000X format
+      const match = lastId.match(/^PF(\d+)$/);
+      if (match && match[1]) {
+        lastIdNumber = parseInt(match[1], 10);
+      }
+    }
+
+    projectsToAdd.forEach((projectData, index) => {
+        const newIdNumber = lastIdNumber + 1 + index;
+        const newId = `PF${String(newIdNumber).padStart(6, '0')}`;
+        const newProjectRef = doc(db, 'projects', newId);
 
         const newProject: Omit<Project, 'id'> = {
             ref_number: '',
@@ -313,7 +329,6 @@ export async function addRows(
             manager_name: null,
         };
 
-        // Apply provided data over the defaults
         const finalProjectData = { ...newProject, ...projectData };
         
         batch.set(newProjectRef, finalProjectData);
