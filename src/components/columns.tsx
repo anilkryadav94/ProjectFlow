@@ -110,7 +110,7 @@ export const getColumns = (
           <Button size="icon" variant="ghost" onClick={() => handleEditProject(project)}>
               <Edit className="h-4 w-4"/>
           </Button>
-          {activeRole === 'Admin' && (
+          {(activeRole === 'Admin' || activeRole === 'Processor' || activeRole === 'QA') && (
             <Button size="icon" variant="ghost" onClick={() => handleAddRows(project)}>
                 <PlusCircle className="h-4 w-4"/>
             </Button>
