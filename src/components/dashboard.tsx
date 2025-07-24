@@ -49,7 +49,7 @@ function Dashboard({
 }: DashboardProps) {
   const searchParams = useSearchParams();
   const router = useRouter();
-  fileInputRef = React.useRef<HTMLInputElement>(null);
+  const fileInputRef = React.useRef<HTMLInputElement>(null);
   
   const [activeRole, setActiveRole] = React.useState<Role | null>(null);
   const [projects, setProjects] = React.useState<Project[]>(initialProjects);
