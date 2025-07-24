@@ -40,7 +40,7 @@ export const getColumns = (
 ) => {
 
   const baseColumns = [
-    { key: "id", header: "ID" },
+    { key: "row_number", header: "Row Number" },
     { key: "ref_number", header: "Ref Number", render: (p: Project) => <div className="font-medium">{p.ref_number}</div> },
     { key: "client_name", header: "Client Name" },
     { key: "process", header: "Process" },
@@ -165,7 +165,7 @@ export const getColumns = (
     columns.unshift(selectionColumn);
   } else if (activeRole === 'Case Manager') {
       const clientViewColumns = [
-          'id', 'ref_number', 'application_number', 'country', 'patent_number', 'sender', 'subject_line', 'client_query_description', 'client_comments', 'clientquery_status', 'client_error_description', 'case_manager'
+          'row_number', 'ref_number', 'application_number', 'country', 'patent_number', 'sender', 'subject_line', 'client_query_description', 'client_comments', 'clientquery_status', 'client_error_description', 'case_manager'
       ];
       // Special case for qa_date to show as 'Client Query Date'
       const qaDateColumn = baseColumns.find(c => c.key === 'qa_date');

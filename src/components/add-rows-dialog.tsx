@@ -83,7 +83,10 @@ export function AddRowsDialog({
         const projectDataToCopy: Partial<Project> = {};
         (data.fields as FieldToCopyId[]).forEach(field => {
             if(sourceProject.hasOwnProperty(field)) {
-                projectDataToCopy[field] = sourceProject[field as keyof Project];
+                // Ensure row_number is never copied
+                if (field !== 'row_number') {
+                    projectDataToCopy[field] = sourceProject[field as keyof Project];
+                }
             }
         });
         projectsToAdd.push(projectDataToCopy);

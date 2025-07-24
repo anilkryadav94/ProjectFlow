@@ -1,4 +1,4 @@
-import { collection, writeBatch, doc } from 'firebase/firestore';
+import { collection, writeBatch, doc, getDocs, query, orderBy, limit } from 'firebase/firestore';
 import { db } from './firebase';
 
 export type Role = 'Admin' | 'Manager' | 'Processor' | 'QA' | 'Case Manager';
@@ -45,6 +45,7 @@ export type ProjectEntry = {
 
 export type Project = {
     id: string;
+    row_number?: string;
     ref_number: string | null;
     client_name: string;
     process: ProcessType;
@@ -108,6 +109,7 @@ export let users: Omit<User, 'id'>[] = [
 
 let initialProjects: Omit<Project, 'id'>[] = [
   {
+    row_number: 'PF231001001',
     ref_number: 'REF-001',
     client_name: 'Client A',
     process: 'Patent',
@@ -146,6 +148,7 @@ let initialProjects: Omit<Project, 'id'>[] = [
     manager_name: 'Manager User'
   },
   {
+    row_number: 'PF231003001',
     ref_number: 'REF-002',
     client_name: 'Client B',
     process: 'Patent',
@@ -182,6 +185,7 @@ let initialProjects: Omit<Project, 'id'>[] = [
     manager_name: 'Manager User'
   },
   {
+    row_number: 'PF231010001',
     ref_number: '',
     client_name: 'Client C',
     process: 'TM',
@@ -218,6 +222,7 @@ let initialProjects: Omit<Project, 'id'>[] = [
     manager_name: 'Manager User'
   },
    {
+    row_number: 'PF231018001',
     ref_number: 'REF-005',
     client_name: 'Client B',
     process: 'Patent',
@@ -258,8 +263,9 @@ let initialProjects: Omit<Project, 'id'>[] = [
 
 export const projects: Project[] = initialProjects.map((p, index) => ({
   ...p,
-  id: `PF${String(index + 1).padStart(6, '0')}`,
+  id: `proj_${String(index + 1).padStart(4, '0')}`,
 }));
+
 
 export async function addRows(
   projectsToAdd: Partial<Project>[]
@@ -273,10 +279,40 @@ export async function addRows(
   const batch = writeBatch(db);
   
   try {
-    projectsToAdd.forEach((projectData) => {
-        const newProjectRef = doc(collection(db, 'projects')); // Let Firestore generate ID
+    const now = new Date();
+    const year = now.getFullYear().toString().slice(-2);
+    const month = (now.getMonth() + 1).toString().padStart(2, '0');
+    const day = now.getDate().toString().padStart(2, '0');
+    const datePrefix = `PF${year}${month}${day}`;
+
+    // Get the last project ID for today to determine the next sequence
+    const q = query(
+      projectsCollection, 
+      orderBy("row_number", "desc"), 
+      limit(1)
+    );
+    const querySnapshot = await getDocs(q);
+    
+    let lastSequence = 0;
+    if (!querySnapshot.empty) {
+      const lastId = querySnapshot.docs[0].data().row_number || '';
+      if (lastId.startsWith(datePrefix)) {
+          const sequenceStr = lastId.substring(datePrefix.length);
+          lastSequence = parseInt(sequenceStr, 10);
+      }
+    }
+
+    projectsToAdd.forEach((projectData, index) => {
+        const newSequence = lastSequence + 1 + index;
+        const newRowNumber = `${datePrefix}${newSequence.toString().padStart(5, '0')}`;
+        
+        const newProjectRef = doc(projectsCollection); // Let Firestore generate the document ID
+
+        // Make sure row_number is not copied from the source project
+        const { row_number, ...restOfProjectData } = projectData;
 
         const newProject: Omit<Project, 'id'> = {
+            row_number: newRowNumber,
             ref_number: '',
             application_number: null,
             patent_number: null,
@@ -313,7 +349,7 @@ export async function addRows(
             manager_name: null,
         };
 
-        const finalProjectData = { ...newProject, ...projectData };
+        const finalProjectData = { ...newProject, ...restOfProjectData };
         
         batch.set(newProjectRef, finalProjectData);
     });
@@ -347,15 +383,3 @@ export async function seedDatabase() {
     console.error('Error seeding database:', error);
   }
 }
-
-// You can call seedDatabase() from a component's useEffect hook once to populate Firestore.
-// Example:
-// React.useEffect(() => {
-//   const doSeed = async () => {
-//     const projectsCol = await getDocs(collection(db, 'projects'));
-//     if (projectsCol.empty) {
-//       await seedDatabase();
-//     }
-//   }
-//   doSeed();
-// }, []);

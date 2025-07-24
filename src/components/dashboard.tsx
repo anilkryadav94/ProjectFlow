@@ -165,19 +165,19 @@ function Dashboard({
                 return;
             }
 
+            // Sanitize rows: convert undefined to null and ensure no row_number is passed
             const projectsToAdd: Partial<Project>[] = rows
                 .filter(row => row.client_name || row.subject_line) // Basic validation
                 .map(row => {
                     const sanitizedRow: { [key: string]: any } = {};
                     for (const key in row) {
+                        if (key === 'row_number') continue; // Explicitly skip copying row_number
                         if (Object.prototype.hasOwnProperty.call(row, key)) {
-                            // Convert undefined or empty strings to null for Firestore
                             sanitizedRow[key] = row[key] === undefined || row[key] === '' ? null : row[key];
                         }
                     }
                     return sanitizedRow;
                 });
-
 
             try {
                 const result = await addRows(projectsToAdd);
@@ -602,9 +602,3 @@ function Dashboard({
 }
 
 export default Dashboard;
-
-    
-
-    
-
-    
