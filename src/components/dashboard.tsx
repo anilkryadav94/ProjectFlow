@@ -1,3 +1,4 @@
+
 "use client";
 
 import * as React from 'react';
@@ -26,7 +27,6 @@ import { collection, getDocs, doc, writeBatch } from 'firebase/firestore';
 
 interface DashboardProps {
   user: User;
-  initialProjects: Project[];
 }
 
 export function DashboardWrapper(props: DashboardProps) {
@@ -156,16 +156,15 @@ const QAStatusSummary = ({ projects }: { projects: Project[] }) => {
 
 function Dashboard({ 
   user, 
-  initialProjects,
 }: DashboardProps) {
   const searchParams = useSearchParams();
   const router = useRouter();
   const fileInputRef = React.useRef<HTMLInputElement>(null);
   
   const urlRole = searchParams.get('role') as Role | null;
-
+  const [isLoading, setIsLoading] = React.useState(true);
   const [activeRole, setActiveRole] = React.useState<Role | null>(null);
-  const [projects, setProjects] = React.useState<Project[]>(initialProjects);
+  const [projects, setProjects] = React.useState<Project[]>([]);
   const [search, setSearch] = React.useState('');
   const [searchColumn, setSearchColumn] = React.useState<SearchableColumn>('any');
   
@@ -197,6 +196,7 @@ function Dashboard({
   const { toast } = useToast();
   
   const refreshProjects = React.useCallback(async () => {
+    setIsLoading(true);
     const projectsCollection = collection(db, "projects");
     const projectSnapshot = await getDocs(projectsCollection);
     const projectList = projectSnapshot.docs.map(doc => ({
@@ -205,7 +205,12 @@ function Dashboard({
     })) as Project[];
     setProjects(projectList);
     router.refresh();
+    setIsLoading(false);
   }, [router]);
+  
+  React.useEffect(() => {
+    refreshProjects();
+  }, [refreshProjects]);
 
   React.useEffect(() => {
     const highestRole = roleHierarchy.find(role => user.roles.includes(role)) || user.roles[0];
@@ -456,7 +461,7 @@ function Dashboard({
     return filtered;
   }, [activeRole, user.name, projects, search, searchColumn, sort, filteredProjects, clientNameFilter, processFilter, managerSearch, managerSearchColumn]);
   
-  if (!activeRole) {
+  if (!activeRole || isLoading) {
     return <div className="flex h-screen w-full items-center justify-center"><Loader2 className="h-8 w-8 animate-spin" /></div>;
   }
   
@@ -512,7 +517,6 @@ function Dashboard({
             managerSearch={managerSearch}
             setManagerSearch={setManagerSearch}
             managerSearchColumn={managerSearchColumn}
-            setManagerSearchColumn={setManagerSearchColumn}
             handleManagerQuickSearch={handleManagerQuickSearch}
             handleDownload={handleDownload}
             isDownloadDisabled={dashboardProjects.length === 0}
