@@ -310,8 +310,8 @@ export async function addRows(
         
         const newProjectRef = doc(projectsCollection); // Let Firestore generate the document ID
 
-        // Make sure row_number is not copied from the source project
-        const { row_number, ...restOfProjectData } = projectData;
+        // Make sure row_number and id are not copied from the source project
+        const { row_number, id, ...restOfProjectData } = projectData as Partial<Project> & {row_number?: string, id?: string};
 
         const newProject: Omit<Project, 'id'> = {
             row_number: newRowNumber,
@@ -385,5 +385,3 @@ export async function seedDatabase() {
     console.error('Error seeding database:', error);
   }
 }
-
-    

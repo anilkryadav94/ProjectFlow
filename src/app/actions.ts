@@ -39,6 +39,7 @@ const projectEntrySchema = z.object({
 
 const updateProjectSchema = z.object({
   id: z.string(),
+  row_number: z.string().optional(),
   ref_number: z.string().nullable(),
   client_name: z.string(),
   process: z.enum(["Patent", "TM", "IDS", "Project"]),
@@ -99,8 +100,9 @@ export async function updateProject(data: Partial<Project>, submitAction?: 'subm
       updatedProjectData.client_response_date = new Date().toISOString().split('T')[0];
     }
 
-    // Do not attempt to write the 'id' field back to the document
+    // Do not attempt to write the 'id' or 'row_number' field back to the document
     delete updatedProjectData.id;
+    delete updatedProjectData.row_number;
 
     await updateDoc(projectRef, updatedProjectData);
 
