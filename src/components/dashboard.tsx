@@ -165,9 +165,14 @@ function Dashboard({
                 return;
             }
 
-            const projectsToAdd: Partial<Project>[] = rows.map(row => ({
-                ...row
-            }));
+            const projectsToAdd: Partial<Project>[] = rows
+                .filter(row => row.client_name || row.subject_line) // Basic validation
+                .map(row => ({
+                    ...row,
+                    // Ensure dates are in the correct 'yyyy-MM-dd' format or null
+                    received_date: row.received_date ? new Date(row.received_date).toISOString().split('T')[0] : new Date().toISOString().split('T')[0],
+                    allocation_date: row.allocation_date ? new Date(row.allocation_date).toISOString().split('T')[0] : new Date().toISOString().split('T')[0],
+                }));
 
 
             try {

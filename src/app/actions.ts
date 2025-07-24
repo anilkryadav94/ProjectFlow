@@ -119,10 +119,12 @@ export async function addRows(
   }
 
   const projectsCollection = collection(db, 'projects');
+  const batch = writeBatch(db);
   
   try {
-    let addedCount = 0;
-    for (const projectData of projectsToAdd) {
+    projectsToAdd.forEach(projectData => {
+        const newProjectRef = doc(projectsCollection); // Auto-generate ID
+
         const newProject: Omit<Project, 'id'> = {
             ref_number: '',
             application_number: null,
@@ -161,14 +163,15 @@ export async function addRows(
         };
 
         // Apply provided data over the defaults
-        Object.assign(newProject, projectData);
+        const finalProjectData = { ...newProject, ...projectData };
         
-        await addDoc(projectsCollection, newProject);
-        addedCount++;
-    }
+        batch.set(newProjectRef, finalProjectData);
+    });
+
+    await batch.commit();
     
     revalidatePath('/');
-    return { success: true, addedCount: addedCount };
+    return { success: true, addedCount: projectsToAdd.length };
   } catch (error) {
     console.error("Error adding documents: ", error);
     if (error instanceof Error) {
