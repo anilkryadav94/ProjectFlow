@@ -51,11 +51,7 @@ interface HeaderProps {
     setProcessFilter?: (value: string | 'all') => void;
 
     // For manager roles
-    managerSearch?: string;
-    setManagerSearch?: (search: string) => void;
-    managerSearchColumn?: SearchableColumn;
-    setManagerSearchColumn?: (column: SearchableColumn) => void;
-    handleManagerQuickSearch?: () => void;
+    onOpenAdvancedSearch?: () => void;
 
     handleDownload?: () => void;
     isDownloadDisabled?: boolean;
@@ -81,11 +77,7 @@ export function Header({
   setClientNameFilter,
   processFilter,
   setProcessFilter,
-  managerSearch,
-  setManagerSearch,
-  managerSearchColumn,
-  setManagerSearchColumn,
-  handleManagerQuickSearch,
+  onOpenAdvancedSearch,
   handleDownload,
   isDownloadDisabled,
   isManagerOrAdmin,
@@ -163,12 +155,17 @@ export function Header({
 
         <div className="flex items-center gap-2 flex-shrink-0">
             
-            {isManagerOrAdmin && hasSearchResults && onResetSearch && (
-                <div className="flex items-center gap-2">
-                     <Button variant="outline" size="sm" onClick={onResetSearch} className="text-foreground">
-                        <RotateCcw /> Reset Search
-                    </Button>
-                </div>
+            {isManagerOrAdmin && (
+              <div className="flex items-center gap-2">
+                {hasSearchResults && onResetSearch && (
+                  <Button variant="outline" size="sm" onClick={onResetSearch} className="text-foreground">
+                      <RotateCcw /> Reset Search
+                  </Button>
+                )}
+                <Button variant="outline" size="sm" onClick={onOpenAdvancedSearch} className="text-foreground">
+                    <Search className="mr-2" /> Advanced Search
+                </Button>
+              </div>
             )}
             
             {setSearch && setSearchColumn && !isManagerOrAdmin && (
@@ -245,36 +242,6 @@ export function Header({
               </div>
             )}
 
-            {activeRole === 'Manager' && !hasSearchResults && setManagerSearch && setManagerSearchColumn && handleManagerQuickSearch && (
-                 <div className="flex items-center space-x-0">
-                    <Select value={managerSearchColumn} onValueChange={(v) => setManagerSearchColumn(v as SearchableColumn)}>
-                        <SelectTrigger className="w-[180px] rounded-r-none focus:ring-0 text-foreground h-9">
-                            <SelectValue placeholder="Select column" />
-                        </SelectTrigger>
-                        <SelectContent>
-                            <SelectItem value="any">Any Text/Number</SelectItem>
-                            <SelectItem value="ref_number">Ref Number</SelectItem>
-                            <SelectItem value="application_number">Application No.</SelectItem>
-                            <SelectItem value="patent_number">Patent No.</SelectItem>
-                            <SelectItem value="subject_line">Subject</SelectItem>
-                            <SelectItem value="processing_status">Processor Status</SelectItem>
-                            <SelectItem value="qa_status">QA Status</SelectItem>
-                            <SelectItem value="workflowStatus">Workflow Status</SelectItem>
-                        </SelectContent>
-                    </Select>
-                    <Input
-                        type="text"
-                        placeholder="Manager quick search..."
-                        value={managerSearch}
-                        onChange={(e) => setManagerSearch(e.target.value)}
-                        className="rounded-l-none focus-visible:ring-0 h-9 w-48 text-foreground"
-                    />
-                     <Button variant="outline" size="icon" onClick={handleManagerQuickSearch} className="h-9 w-9 rounded-l-none border-l-0 text-foreground">
-                        <Search className="h-4 w-4" />
-                    </Button>
-                </div>
-            )}
-
             {taskPagination && (
                  <div className="flex items-center gap-2 text-sm font-medium">
                     <Button variant="outline" size="icon" className="h-8 w-8 text-foreground" disabled={!taskPagination.prevId} onClick={() => handlePagination(taskPagination.prevId)}>
@@ -336,3 +303,5 @@ export function Header({
     </header>
   )
 }
+
+    

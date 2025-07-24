@@ -66,6 +66,8 @@ function Dashboard({
 
   const [searchCriteria, setSearchCriteria] = React.useState<SearchCriteria | null>(null);
   const [filteredProjects, setFilteredProjects] = React.useState<Project[] | null>(null);
+  
+  const [isAdvancedSearchOpen, setIsAdvancedSearchOpen] = React.useState(false);
 
   const [clientNameFilter, setClientNameFilter] = React.useState('all');
   const [processFilter, setProcessFilter] = React.useState<string | 'all'>('all');
@@ -205,6 +207,7 @@ function Dashboard({
 
   const handleAdvancedSearch = (criteria: SearchCriteria) => {
     setSearchCriteria(criteria);
+    setIsAdvancedSearchOpen(false); // Close dialog on search
 
     let results = [...projects];
     
@@ -279,55 +282,6 @@ function Dashboard({
     setSourceProject(project);
     setIsAddRowsDialogOpen(true);
   }
-
-  const workStatusData = React.useMemo(() => {
-    const today = new Date().toISOString().split('T')[0];
-    const data: Record<string, {
-        clientName: string;
-        pendingProcessing: number;
-        todayProcessed: number;
-        pendingQA: number;
-        clientQueries: number;
-        todayQACompleted: number;
-    }> = {};
-
-    clientNames.forEach(client => {
-        data[client] = {
-            clientName: client,
-            pendingProcessing: 0,
-            todayProcessed: 0,
-            pendingQA: 0,
-            clientQueries: 0,
-            todayQACompleted: 0
-        };
-    });
-
-    projects.forEach(p => {
-        if (!data[p.client_name]) return;
-
-        // Processing Stats
-        if (p.workflowStatus === 'With Processor' && ['Pending', 'On Hold', 'Re-Work'].includes(p.processing_status)) {
-            data[p.client_name].pendingProcessing++;
-        }
-        if (p.processing_date === today) {
-            data[p.client_name].todayProcessed++;
-        }
-
-        // QA Stats
-        if (p.workflowStatus === 'With QA' && p.qa_status === 'Pending') {
-            data[p.client_name].pendingQA++;
-        }
-        if (p.qa_status === 'Client Query') {
-            data[p.client_name].clientQueries++;
-        }
-        if (p.qa_date === today && p.qa_status === 'Complete') {
-            data[p.client_name].todayQACompleted++;
-        }
-    });
-
-    return Object.values(data);
-  }, [projects]);
-
 
   const dashboardProjects = React.useMemo(() => {
     const isManagerOrAdminView = activeRole === 'Manager' || activeRole === 'Admin';
@@ -440,13 +394,10 @@ function Dashboard({
             setSearch={setSearch}
             searchColumn={searchColumn}
             setSearchColumn={setSearchColumn}
-            managerSearch={managerSearch}
-            setManagerSearch={setManagerSearch}
-            managerSearchColumn={managerSearchColumn}
-            handleManagerQuickSearch={handleManagerQuickSearch}
             handleDownload={handleDownload}
             isDownloadDisabled={dashboardProjects.length === 0}
             isManagerOrAdmin={isManagerOrAdmin}
+            onOpenAdvancedSearch={() => setIsAdvancedSearchOpen(true)}
             hasSearchResults={filteredProjects !== null && searchCriteria !== null}
             onResetSearch={handleResetAdvancedSearch}
             clientNameFilter={clientNameFilter}
@@ -461,112 +412,7 @@ function Dashboard({
                 <UserManagementTable sessionUser={user} />
             ) : activeRole === 'Manager' ? (
               <div className="space-y-6">
-                 <Accordion type="single" collapsible className="w-full" defaultValue="work-allocation">
-                    <AccordionItem value="work-allocation" className="border-none">
-                        <div className="animated-border">
-                        <AccordionTrigger className="p-3 bg-card rounded-md text-base font-semibold hover:no-underline">Work Allocation / Records Addition</AccordionTrigger>
-                        <AccordionContent className="bg-card rounded-b-md">
-                            <Card className="border-0 shadow-none">
-                                <CardContent className="pt-4">
-                                    <div className="flex items-center gap-4">
-                                        <div 
-                                            className="flex items-center justify-center border-2 border-dashed rounded-md p-4 w-full cursor-pointer hover:bg-muted/50"
-                                            onClick={() => fileInputRef.current?.click()}
-                                        >
-                                            <div className="flex-grow flex items-center gap-2 text-muted-foreground">
-                                            <FileUp className="h-5 w-5" />
-                                            <span>{selectedFile ? selectedFile.name : 'Click to select a CSV file'}</span>
-                                            </div>
-                                        </div>
-                                    </div>
-                                </CardContent>
-                                <CardFooter className="flex justify-end gap-2">
-                                    <Button variant="outline" onClick={() => setSelectedFile(null)} disabled={!selectedFile || isUploading}>
-                                        <X className="mr-2 h-4 w-4" /> Cancel
-                                    </Button>
-                                    <Button onClick={handleProcessUpload} disabled={!selectedFile || isUploading}>
-                                        {isUploading ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Upload className="mr-2 h-4 w-4" />}
-                                        Upload
-                                    </Button>
-                                </CardFooter>
-                            </Card>
-                        </AccordionContent>
-                        </div>
-                    </AccordionItem>
-                </Accordion>
-                <Accordion type="single" collapsible className="w-full">
-                    <AccordionItem value="advanced-search" className="border-none">
-                        <div className="animated-border">
-                        <AccordionTrigger className="p-3 bg-card rounded-md text-base font-semibold hover:no-underline">Advanced Search</AccordionTrigger>
-                        <AccordionContent className="pt-0 bg-card rounded-b-md">
-                                <AdvancedSearchForm onSearch={handleAdvancedSearch} initialCriteria={searchCriteria} />
-                        </AccordionContent>
-                        </div>
-                    </AccordionItem>
-                </Accordion>
-                 <Accordion type="single" collapsible className="w-full">
-                    <AccordionItem value="work-status" className="border-none">
-                        <div className="animated-border">
-                        <AccordionTrigger className="p-3 bg-card rounded-md text-base font-semibold hover:no-underline">Work Status (Client Wise)</AccordionTrigger>
-                        <AccordionContent className="bg-card rounded-b-md">
-                            <Card className="border-0 shadow-none">
-                                <CardContent className="pt-4 grid grid-cols-1 lg:grid-cols-2 gap-6">
-                                    <div>
-                                        <h4 className="text-lg font-semibold mb-2">Processing Status</h4>
-                                        <div className="rounded-md border">
-                                            <Table>
-                                                <TableHeader>
-                                                    <TableRow>
-                                                        <TableHead>Client Name</TableHead>
-                                                        <TableHead className="text-right">Pending (All Time)</TableHead>
-                                                        <TableHead className="text-right">Processed (Today)</TableHead>
-                                                    </TableRow>
-                                                </TableHeader>
-                                                <TableBody>
-                                                    {workStatusData.map(d => (
-                                                        <TableRow key={d.clientName}>
-                                                            <TableCell className="font-medium">{d.clientName}</TableCell>
-                                                            <TableCell className="text-right">{d.pendingProcessing}</TableCell>
-                                                            <TableCell className="text-right">{d.todayProcessed}</TableCell>
-                                                        </TableRow>
-                                                    ))}
-                                                </TableBody>
-                                            </Table>
-                                        </div>
-                                    </div>
-                                    <div>
-                                        <h4 className="text-lg font-semibold mb-2">QA Status</h4>
-                                        <div className="rounded-md border">
-                                            <Table>
-                                                <TableHeader>
-                                                    <TableRow>
-                                                        <TableHead>Client Name</TableHead>
-                                                        <TableHead className="text-right">Pending QA</TableHead>
-                                                        <TableHead className="text-right">Client Queries</TableHead>
-                                                        <TableHead className="text-right">Completed (Today)</TableHead>
-                                                    </TableRow>
-                                                </TableHeader>
-                                                <TableBody>
-                                                    {workStatusData.map(d => (
-                                                        <TableRow key={d.clientName}>
-                                                            <TableCell className="font-medium">{d.clientName}</TableCell>
-                                                            <TableCell className="text-right">{d.pendingQA}</TableCell>
-                                                            <TableCell className="text-right">{d.clientQueries}</TableCell>
-                                                            <TableCell className="text-right">{d.todayQACompleted}</TableCell>
-                                                        </TableRow>
-                                                    ))}
-                                                </TableBody>
-                                            </Table>
-                                        </div>
-                                    </div>
-                                </CardContent>
-                            </Card>
-                        </AccordionContent>
-                        </div>
-                    </AccordionItem>
-                </Accordion>
-
-                {filteredProjects && (
+                 {filteredProjects && (
                     <div className="space-y-4">
                         <DataTable 
                             data={dashboardProjects}
@@ -615,7 +461,7 @@ function Dashboard({
                             )}
                         </DataTable>
                     </div>
-                )}
+                 )}
               </div>
             ) : (
                 <DataTable 
@@ -630,14 +476,19 @@ function Dashboard({
                 />
             )}
         </main>
+
+        <EditProjectDialog
+          isOpen={isAdvancedSearchOpen}
+          onOpenChange={setIsAdvancedSearchOpen}
+          title="Advanced Search"
+          description="Build a query to search for projects."
+        >
+          <AdvancedSearchForm onSearch={handleAdvancedSearch} initialCriteria={searchCriteria} />
+        </EditProjectDialog>
     </div>
   );
 }
 
 export default Dashboard;
-
-    
-
-    
 
     
