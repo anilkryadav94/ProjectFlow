@@ -3,13 +3,27 @@
 
 import * as React from 'react';
 import { DashboardWrapper } from '@/components/dashboard';
-import type { User } from '@/lib/data';
+import type { User, Project } from '@/lib/data';
 import { onAuthChanged, getSession } from '@/lib/auth';
 import { useRouter } from 'next/navigation';
 import { Loader2 } from 'lucide-react';
+import { getDocs, collection } from 'firebase/firestore';
+import { db } from '@/lib/firebase';
+
+async function getProjects(): Promise<Project[]> {
+    const projectsCollection = collection(db, "projects");
+    const projectSnapshot = await getDocs(projectsCollection);
+    const projectList = projectSnapshot.docs.map(doc => ({
+        id: doc.id,
+        ...doc.data()
+    })) as Project[];
+    return projectList;
+}
+
 
 export default function Home() {
   const [session, setSession] = React.useState<{ user: User } | null>(null);
+  const [initialProjects, setInitialProjects] = React.useState<Project[] | null>(null);
   const [loading, setLoading] = React.useState(true);
   const router = useRouter();
 
@@ -19,33 +33,23 @@ export default function Home() {
         const sessionData = await getSession();
         if (sessionData) {
           setSession(sessionData);
+          const projects = await getProjects();
+          setInitialProjects(projects);
         } else {
-           // This state is unlikely if onAuthChanged(user) is true, but as a safeguard:
            setSession(null); 
+           router.push('/login');
         }
       } else {
         setSession(null);
-        // Middleware handles the redirect, no need to push here.
+        router.push('/login');
       }
-       // Only stop loading after we have a definitive auth state.
       setLoading(false);
     });
 
     return () => unsubscribe();
   }, [router]);
 
-  if (loading) {
-    return (
-        <div className="flex h-screen w-full items-center justify-center">
-            <Loader2 className="h-8 w-8 animate-spin" />
-        </div>
-    );
-  }
-
-  // If there's a session, show the dashboard.
-  // The middleware (`src/middleware.ts`) is responsible for redirecting to /login if there's no session.
-  if (!session) {
-    // This can be shown briefly while the middleware redirects.
+  if (loading || !session || !initialProjects) {
     return (
         <div className="flex h-screen w-full items-center justify-center">
             <Loader2 className="h-8 w-8 animate-spin" />
@@ -57,6 +61,7 @@ export default function Home() {
     <main>
       <DashboardWrapper 
         user={session.user} 
+        initialProjects={initialProjects} 
       />
     </main>
   );

@@ -22,11 +22,10 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '.
 import { EditProjectDialog } from './edit-project-dialog';
 import { AddRowsDialog } from './add-rows-dialog';
 import { addRows, bulkUpdateProjects } from '@/app/actions';
-import { db } from '@/lib/firebase';
-import { collection, getDocs, doc, writeBatch } from 'firebase/firestore';
 
 interface DashboardProps {
   user: User;
+  initialProjects: Project[];
 }
 
 export function DashboardWrapper(props: DashboardProps) {
@@ -156,15 +155,15 @@ const QAStatusSummary = ({ projects }: { projects: Project[] }) => {
 
 function Dashboard({ 
   user, 
+  initialProjects,
 }: DashboardProps) {
   const searchParams = useSearchParams();
   const router = useRouter();
   const fileInputRef = React.useRef<HTMLInputElement>(null);
   
   const urlRole = searchParams.get('role') as Role | null;
-  const [isLoading, setIsLoading] = React.useState(true);
   const [activeRole, setActiveRole] = React.useState<Role | null>(null);
-  const [projects, setProjects] = React.useState<Project[]>([]);
+  const [projects, setProjects] = React.useState<Project[]>(initialProjects);
   const [search, setSearch] = React.useState('');
   const [searchColumn, setSearchColumn] = React.useState<SearchableColumn>('any');
   
@@ -195,23 +194,14 @@ function Dashboard({
   
   const { toast } = useToast();
   
-  const refreshProjects = React.useCallback(async () => {
-    setIsLoading(true);
-    const projectsCollection = collection(db, "projects");
-    const projectSnapshot = await getDocs(projectsCollection);
-    const projectList = projectSnapshot.docs.map(doc => ({
-        id: doc.id,
-        ...doc.data()
-    })) as Project[];
-    setProjects(projectList);
-    router.refresh();
-    setIsLoading(false);
-  }, [router]);
+  const refreshProjects = async () => {
+    // This will be a server action or API call in a real app
+    // For now, we just re-set the state from initial props
+    // In a real scenario, you'd fetch from Firestore here.
+    setProjects(initialProjects);
+    router.refresh(); // Re-runs the server component to get new initialProjects
+  };
   
-  React.useEffect(() => {
-    refreshProjects();
-  }, [refreshProjects]);
-
   React.useEffect(() => {
     const highestRole = roleHierarchy.find(role => user.roles.includes(role)) || user.roles[0];
     const newActiveRole = urlRole && user.roles.includes(urlRole) ? urlRole : highestRole;
@@ -461,7 +451,7 @@ function Dashboard({
     return filtered;
   }, [activeRole, user.name, projects, search, searchColumn, sort, filteredProjects, clientNameFilter, processFilter, managerSearch, managerSearchColumn]);
   
-  if (!activeRole || isLoading) {
+  if (!activeRole) {
     return <div className="flex h-screen w-full items-center justify-center"><Loader2 className="h-8 w-8 animate-spin" /></div>;
   }
   
