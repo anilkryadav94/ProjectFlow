@@ -79,7 +79,7 @@ function Dashboard({
   const { toast } = useToast();
   
   const refreshProjects = () => {
-    router.refresh();
+    window.location.reload();
   };
   
   React.useEffect(() => {
@@ -181,7 +181,7 @@ function Dashboard({
             try {
                 const result = await addRows(projectsToAdd);
                 if (result.success) {
-                    refreshProjects();
+                    window.location.reload();
                     toast({
                         title: "Bulk Add Complete",
                         description: `${result.addedCount} projects have been added.`,

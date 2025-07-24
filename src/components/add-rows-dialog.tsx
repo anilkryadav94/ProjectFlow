@@ -98,8 +98,7 @@ export function AddRowsDialog({
           title: "Success",
           description: `${result.addedCount} new rows have been added.`,
         });
-        onAddRowsSuccess();
-        onOpenChange(false);
+        window.location.reload();
       } else {
         throw new Error(result.error || "An unknown error occurred.");
       }
