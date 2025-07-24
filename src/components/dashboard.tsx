@@ -100,8 +100,6 @@ function Dashboard({
   const refreshProjects = () => {
     window.location.reload();
   };
-  
-  const isManagerOrAdmin = React.useMemo(() => activeRole === 'Manager' || activeRole === 'Admin', [activeRole]);
 
   React.useEffect(() => {
     const highestRole = roleHierarchy.find(role => user.roles.includes(role)) || user.roles[0];
@@ -147,6 +145,7 @@ function Dashboard({
     }
   };
 
+  const isManagerOrAdmin = React.useMemo(() => activeRole === 'Manager' || activeRole === 'Admin', [activeRole]);
 
   const handleDownload = () => {
     const dataToExport = dashboardProjects;
@@ -588,7 +587,10 @@ function Dashboard({
         />
         {showSubHeader && (
             <div className="flex-shrink-0 border-b bg-muted">
-                <div className="flex items-center justify-end gap-2 py-1 px-4">
+                <div className={cn(
+                  "flex items-center justify-end gap-2 px-4",
+                  activeRole === 'Case Manager' ? 'py-2.5' : 'py-1'
+                )}>
                      {activeRole === 'Case Manager' ? (
                         <div className="flex-grow text-left text-sm font-semibold text-muted-foreground">
                             {dashboardProjects.length > 0 && caseManagerTatInfo && (
@@ -817,4 +819,5 @@ export default Dashboard;
     
 
     
+
 
