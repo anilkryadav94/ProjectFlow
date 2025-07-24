@@ -35,6 +35,7 @@ export function DataTable({
     sort, 
     setSort, 
     rowSelection, 
+    setRowSelection,
     isManagerOrAdmin, 
     totalCount
 }: DataTableProps) {
@@ -49,8 +50,8 @@ export function DataTable({
   };
 
   return (
-    <div className={cn("shadow-xl h-full flex flex-col")}>
-      <div className={cn("rounded-t-md border bg-card overflow-y-auto relative flex-grow")}>
+    <div className={cn("h-full flex flex-col")}>
+       <div className={cn("rounded-t-md border bg-card overflow-y-auto relative flex-grow")}>
         <Table>
           <TableHeader className="sticky top-0 z-10 bg-primary">
             <TableRow>
