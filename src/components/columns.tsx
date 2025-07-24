@@ -159,8 +159,8 @@ export const getColumns = (
         />
       ),
     };
+    columns.unshift(actionColumn);
     columns.unshift(selectionColumn);
-    columns.push(actionColumn);
   } else if (activeRole === 'Case Manager') {
       const clientViewColumns = [
           'id', 'ref_number', 'application_number', 'country', 'patent_number', 'sender', 'subject_line', 'client_query_description', 'client_comments', 'clientquery_status', 'client_error_description', 'case_manager'
