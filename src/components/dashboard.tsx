@@ -656,18 +656,9 @@ function Dashboard({
                 )}
                  <div className="flex-grow flex flex-col">
                     {showDataTable && (
-                        <DataTable 
-                            data={dashboardProjects}
-                            columns={columns}
-                            sort={sort}
-                            setSort={setSort}
-                            rowSelection={rowSelection}
-                            setRowSelection={setRowSelection}
-                            isManagerOrAdmin={isManagerOrAdmin}
-                            totalCount={dashboardProjects.length}
-                        >
+                        <>
                             {Object.keys(rowSelection).length > 0 && (
-                                <div className="flex items-center gap-4 p-4 border-t bg-muted/50">
+                                <div className="flex items-center gap-4 p-4 border-b bg-muted/50">
                                     <span className="text-sm font-semibold">{Object.keys(rowSelection).length} selected</span>
                                     <div className="flex items-center gap-2">
                                         <Select value={bulkUpdateField} onValueChange={(v) => {
@@ -701,7 +692,17 @@ function Dashboard({
                                     </Button>
                                 </div>
                             )}
-                        </DataTable>
+                            <DataTable 
+                                data={dashboardProjects}
+                                columns={columns}
+                                sort={sort}
+                                setSort={setSort}
+                                rowSelection={rowSelection}
+                                setRowSelection={setRowSelection}
+                                isManagerOrAdmin={isManagerOrAdmin}
+                                totalCount={dashboardProjects.length}
+                            />
+                        </>
                     )}
                  </div>
 

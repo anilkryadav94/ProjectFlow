@@ -26,7 +26,6 @@ interface DataTableProps {
   rowSelection: Record<string, boolean>;
   setRowSelection: (selection: Record<string, boolean>) => void;
   isManagerOrAdmin: boolean;
-  children?: React.ReactNode;
   totalCount: number;
 }
 
@@ -37,7 +36,6 @@ export function DataTable({
     setSort, 
     rowSelection, 
     isManagerOrAdmin, 
-    children, 
     totalCount
 }: DataTableProps) {
   const handleSort = (key: string) => {
@@ -97,7 +95,7 @@ export function DataTable({
       </div>
 
        <div className="flex-shrink-0 rounded-b-md border border-t-0 bg-card">
-         {children}
+         
          <div className="flex items-center justify-end p-2 text-sm text-card-foreground">
              {totalCount > 0 && <span>Total items: {totalCount}</span>}
          </div>
