@@ -123,21 +123,6 @@ const fieldsToCopy = z.enum([
 
 type FieldToCopyId = z.infer<typeof fieldsToCopy>;
 
-async function getNextProjectId(): Promise<string> {
-    const projectsRef = collection(db, 'projects');
-    const q = query(projectsRef, orderBy("id", "desc"), limit(1));
-    const querySnapshot = await getDocs(q);
-
-    if (querySnapshot.empty) {
-        return "PF000001";
-    }
-
-    const lastId = querySnapshot.docs[0].id;
-    const lastNumber = parseInt(lastId.replace('PF', ''), 10);
-    const nextNumber = lastNumber + 1;
-    return `PF${String(nextNumber).padStart(6, '0')}`;
-}
-
 export async function addRows(
   sourceProjectId: string,
   fieldsToCopy: FieldToCopyId[],
@@ -155,19 +140,9 @@ export async function addRows(
   }
 
   const batch = writeBatch(db);
-  let currentIdNumber = 0; // Will be set on the first iteration
+  const projectsCollection = collection(db, 'projects');
 
   for (let i = 0; i < count; i++) {
-    let nextId: string;
-    if (i === 0) {
-        const lastId = await getNextProjectId();
-        currentIdNumber = parseInt(lastId.replace('PF', ''), 10);
-        nextId = `PF${String(currentIdNumber).padStart(6, '0')}`;
-    } else {
-        currentIdNumber++;
-        nextId = `PF${String(currentIdNumber).padStart(6, '0')}`;
-    }
-
     const newProject: Omit<Project, 'id'> = {
         ref_number: '',
         application_number: null,
@@ -210,8 +185,9 @@ export async function addRows(
         (newProject as any)[field] = sourceProject[field as keyof Project];
       }
     });
-
-    const newProjectRef = doc(db, 'projects', nextId);
+    
+    // Let Firestore generate the document ID
+    const newProjectRef = doc(projectsCollection); 
     batch.set(newProjectRef, newProject);
   }
 
