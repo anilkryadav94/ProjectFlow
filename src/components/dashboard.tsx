@@ -333,6 +333,27 @@ function Dashboard({
     
     let filtered = baseProjects;
     
+    // Apply role-based filters first if not a manager/admin
+    if (activeRole === 'Processor') {
+        filtered = filtered.filter(p => 
+            p.processor === user.name && 
+            (['Pending', 'Re-Work', 'On Hold'].includes(p.processing_status) || !p.processing_status)
+        );
+    } else if (activeRole === 'QA') {
+        filtered = filtered.filter(p => 
+            p.qa === user.name &&
+            ['Processed', 'Already Processed', 'NTP', 'Client Query'].includes(p.processing_status) &&
+            (['Pending', 'On Hold'].includes(p.qa_status) || !p.qa_status)
+        );
+    } else if (activeRole === 'Case Manager') {
+        filtered = filtered.filter(p =>
+            p.case_manager === user.name &&
+            p.qa_status === 'Client Query' &&
+            p.clientquery_status === null
+        );
+    }
+
+    // Then apply UI filters if they are active
     if (search && !(activeRole === 'Manager' || activeRole === 'Admin')) {
         const effectiveSearchColumn = activeRole === 'Case Manager' ? 'any' : searchColumn;
         const lowercasedSearch = search.toLowerCase();
