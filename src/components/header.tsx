@@ -50,9 +50,6 @@ interface HeaderProps {
     processFilter?: string | 'all';
     setProcessFilter?: (value: string | 'all') => void;
 
-    // For manager roles
-    onOpenAdvancedSearch?: () => void;
-
     handleDownload?: () => void;
     isDownloadDisabled?: boolean;
     isManagerOrAdmin: boolean;
@@ -77,7 +74,6 @@ export function Header({
   setClientNameFilter,
   processFilter,
   setProcessFilter,
-  onOpenAdvancedSearch,
   handleDownload,
   isDownloadDisabled,
   isManagerOrAdmin,
@@ -155,17 +151,10 @@ export function Header({
 
         <div className="flex items-center gap-2 flex-shrink-0">
             
-            {isManagerOrAdmin && (
-              <div className="flex items-center gap-2">
-                {hasSearchResults && onResetSearch && (
-                  <Button variant="outline" size="sm" onClick={onResetSearch} className="text-foreground">
-                      <RotateCcw /> Reset Search
-                  </Button>
-                )}
-                <Button variant="outline" size="sm" onClick={onOpenAdvancedSearch} className="text-foreground">
-                    <Search className="mr-2" /> Advanced Search
-                </Button>
-              </div>
+            {isManagerOrAdmin && hasSearchResults && onResetSearch && (
+              <Button variant="outline" size="sm" onClick={onResetSearch} className="text-foreground">
+                  <RotateCcw className="mr-2" /> Reset Search
+              </Button>
             )}
             
             {setSearch && setSearchColumn && !isManagerOrAdmin && (
@@ -303,5 +292,3 @@ export function Header({
     </header>
   )
 }
-
-    

@@ -54,9 +54,6 @@ function Dashboard({
   const [search, setSearch] = React.useState('');
   const [searchColumn, setSearchColumn] = React.useState<SearchableColumn>('any');
   
-  const [managerSearch, setManagerSearch] = React.useState('');
-  const [managerSearchColumn, setManagerSearchColumn] = React.useState<SearchableColumn>('any');
-
   const [sort, setSort] = React.useState<{ key: keyof Project; direction: 'asc' | 'desc' } | null>({ key: 'id', direction: 'asc' });
   
   const [rowSelection, setRowSelection] = React.useState<Record<string, boolean>>({});
@@ -66,8 +63,6 @@ function Dashboard({
 
   const [searchCriteria, setSearchCriteria] = React.useState<SearchCriteria | null>(null);
   const [filteredProjects, setFilteredProjects] = React.useState<Project[] | null>(null);
-  
-  const [isAdvancedSearchOpen, setIsAdvancedSearchOpen] = React.useState(false);
 
   const [clientNameFilter, setClientNameFilter] = React.useState('all');
   const [processFilter, setProcessFilter] = React.useState<string | 'all'>('all');
@@ -207,7 +202,6 @@ function Dashboard({
 
   const handleAdvancedSearch = (criteria: SearchCriteria) => {
     setSearchCriteria(criteria);
-    setIsAdvancedSearchOpen(false); // Close dialog on search
 
     let results = [...projects];
     
@@ -246,31 +240,10 @@ function Dashboard({
     }
     setFilteredProjects(results);
   };
-  
-  const handleManagerQuickSearch = () => {
-    const lowercasedSearch = managerSearch.toLowerCase();
-    let results = [...projects];
-
-    if (lowercasedSearch) {
-        results = results.filter(p => {
-            if (managerSearchColumn === 'any') {
-                return Object.values(p).some(val => 
-                    String(val).toLowerCase().includes(lowercasedSearch)
-                );
-            } else {
-                return (p[managerSearchColumn] as string)?.toString().toLowerCase().includes(lowercasedSearch);
-            }
-        });
-    }
-    
-    setFilteredProjects(results);
-  };
 
   const handleResetAdvancedSearch = () => {
       setSearchCriteria(null);
       setFilteredProjects(null);
-      setManagerSearch('');
-      setManagerSearchColumn('any');
   }
   
   const handleOpenEditDialog = (project: Project) => {
@@ -284,26 +257,17 @@ function Dashboard({
   }
 
   const dashboardProjects = React.useMemo(() => {
-    const isManagerOrAdminView = activeRole === 'Manager' || activeRole === 'Admin';
-    
     let baseProjects: Project[];
 
-    if (isManagerOrAdminView && filteredProjects) {
+    if (filteredProjects) {
         baseProjects = filteredProjects;
     } else {
         baseProjects = [...projects];
-        if (activeRole === 'Processor') {
-          baseProjects = baseProjects.filter(p => p.processor === user.name && p.workflowStatus === 'With Processor' && processorActionableStatuses.includes(p.processing_status));
-        } else if (activeRole === 'QA') {
-          baseProjects = baseProjects.filter(p => p.qa === user.name && p.workflowStatus === 'With QA');
-        } else if (activeRole === 'Case Manager') {
-            baseProjects = baseProjects.filter(p => p.case_manager === user.name && p.qa_status === 'Client Query');
-        }
     }
     
     let filtered = baseProjects;
     
-    if (search && !isManagerOrAdminView) {
+    if (search && !(activeRole === 'Manager' || activeRole === 'Admin')) {
         const effectiveSearchColumn = activeRole === 'Case Manager' ? 'any' : searchColumn;
         const lowercasedSearch = search.toLowerCase();
         
@@ -318,11 +282,11 @@ function Dashboard({
         }
     }
 
-    if (clientNameFilter !== 'all' && !isManagerOrAdminView) {
+    if (clientNameFilter !== 'all' && !(activeRole === 'Manager' || activeRole === 'Admin')) {
         filtered = filtered.filter(p => p.client_name === clientNameFilter);
     }
     
-    if (processFilter !== 'all' && !isManagerOrAdminView) {
+    if (processFilter !== 'all' && !(activeRole === 'Manager' || activeRole === 'Admin')) {
         filtered = filtered.filter(p => p.process === processFilter);
     }
     
@@ -339,7 +303,62 @@ function Dashboard({
     }
 
     return filtered;
-  }, [activeRole, user.name, projects, search, searchColumn, sort, filteredProjects, clientNameFilter, processFilter, managerSearch, managerSearchColumn]);
+  }, [activeRole, user.name, projects, search, searchColumn, sort, filteredProjects, clientNameFilter, processFilter]);
+
+  const clientWorkStatus = React.useMemo(() => {
+    const statusByClient: Record<string, {
+        pendingProcessing: number;
+        processedToday: number;
+        pendingQA: number;
+        clientQuery: number;
+        completedToday: number;
+    }> = {};
+
+    const today = new Date().toISOString().split('T')[0];
+
+    for (const client of clientNames) {
+        statusByClient[client] = {
+            pendingProcessing: 0,
+            processedToday: 0,
+            pendingQA: 0,
+            clientQuery: 0,
+            completedToday: 0,
+        };
+    }
+
+    for (const project of projects) {
+        if (!statusByClient[project.client_name]) {
+             statusByClient[project.client_name] = {
+                pendingProcessing: 0,
+                processedToday: 0,
+                pendingQA: 0,
+                clientQuery: 0,
+                completedToday: 0,
+            };
+        }
+
+        // Processing status
+        if (['Pending', 'On Hold', 'Re-Work'].includes(project.processing_status)) {
+            statusByClient[project.client_name].pendingProcessing++;
+        }
+        if (project.processing_date === today) {
+            statusByClient[project.client_name].processedToday++;
+        }
+
+        // QA status
+        if (project.qa_status === 'Pending' && project.workflowStatus === 'With QA') {
+            statusByClient[project.client_name].pendingQA++;
+        }
+        if (project.qa_status === 'Client Query') {
+            statusByClient[project.client_name].clientQuery++;
+        }
+        if (project.qa_date === today && project.qa_status === 'Complete') {
+             statusByClient[project.client_name].completedToday++;
+        }
+    }
+
+    return Object.entries(statusByClient).map(([client, status]) => ({ client, ...status }));
+  }, [projects]);
   
   if (!activeRole) {
     return <div className="flex h-screen w-full items-center justify-center"><Loader2 className="h-8 w-8 animate-spin" /></div>;
@@ -397,8 +416,7 @@ function Dashboard({
             handleDownload={handleDownload}
             isDownloadDisabled={dashboardProjects.length === 0}
             isManagerOrAdmin={isManagerOrAdmin}
-            onOpenAdvancedSearch={() => setIsAdvancedSearchOpen(true)}
-            hasSearchResults={filteredProjects !== null && searchCriteria !== null}
+            hasSearchResults={filteredProjects !== null}
             onResetSearch={handleResetAdvancedSearch}
             clientNameFilter={clientNameFilter}
             setClientNameFilter={setClientNameFilter}
@@ -410,13 +428,13 @@ function Dashboard({
         <main className="flex flex-col flex-grow overflow-y-auto p-4 md:p-6 gap-6">
             {activeRole === 'Admin' ? (
                 <UserManagementTable sessionUser={user} />
-            ) : isManagerOrAdmin ? (
+            ) : activeRole === 'Manager' ? (
               <div className="space-y-6">
-                 <Accordion type="single" collapsible className="w-full" defaultValue="item-1">
-                    <AccordionItem value="item-1">
-                      <AccordionTrigger>Work Allocation / Records Addition</AccordionTrigger>
-                      <AccordionContent>
-                        <Card>
+                <Accordion type="single" collapsible className="w-full" defaultValue='work-status'>
+                    <AccordionItem value="work-allocation">
+                        <AccordionTrigger>Work Allocation / Records Addition</AccordionTrigger>
+                        <AccordionContent>
+                           <Card>
                             <CardHeader>
                                 <CardTitle>Bulk Upload Records</CardTitle>
                                 <CardDescription>Upload a CSV file to add multiple new project records at once.</CardDescription>
@@ -437,8 +455,73 @@ function Dashboard({
                                     Process Upload
                                 </Button>
                             </CardFooter>
-                        </Card>
-                      </AccordionContent>
+                           </Card>
+                        </AccordionContent>
+                    </AccordionItem>
+                    <AccordionItem value="advanced-search">
+                        <AccordionTrigger>Advanced Search</AccordionTrigger>
+                        <AccordionContent>
+                           <AdvancedSearchForm onSearch={handleAdvancedSearch} initialCriteria={searchCriteria} />
+                        </AccordionContent>
+                    </AccordionItem>
+                    <AccordionItem value="work-status">
+                        <AccordionTrigger>Work Status (Client Wise)</AccordionTrigger>
+                        <AccordionContent>
+                          <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+                            <Card>
+                                <CardHeader>
+                                    <CardTitle>Processing Status</CardTitle>
+                                </CardHeader>
+                                <CardContent>
+                                    <Table>
+                                        <TableHeader>
+                                            <TableRow>
+                                                <TableHead>Client</TableHead>
+                                                <TableHead>All Time Pending</TableHead>
+                                                <TableHead>Processed (Today)</TableHead>
+                                            </TableRow>
+                                        </TableHeader>
+                                        <TableBody>
+                                            {clientWorkStatus.map(item => (
+                                                <TableRow key={item.client}>
+                                                    <TableCell>{item.client}</TableCell>
+                                                    <TableCell>{item.pendingProcessing}</TableCell>
+                                                    <TableCell>{item.processedToday}</TableCell>
+                                                </TableRow>
+                                            ))}
+                                        </TableBody>
+                                    </Table>
+                                </CardContent>
+                            </Card>
+                             <Card>
+                                <CardHeader>
+                                    <CardTitle>QA Status</CardTitle>
+                                </CardHeader>
+                                <CardContent>
+                                    <Table>
+                                        <TableHeader>
+                                            <TableRow>
+                                                <TableHead>Client</TableHead>
+                                                <TableHead>Pending QA</TableHead>
+                                                <TableHead>Client Query</TableHead>
+                                                <TableHead>Completed (Today)</TableHead>
+                                            </TableRow>
+                                        </TableHeader>
+                                        <TableBody>
+                                            {clientWorkStatus.map(item => (
+                                                <TableRow key={item.client}>
+                                                    <TableCell>{item.client}</TableCell>
+                                                    <TableCell>{item.pendingQA}</TableCell>
+                                                    <TableCell>{item.clientQuery}</TableCell>
+                                                    <TableCell>{item.completedToday}</TableCell>
+                                                </TableRow>
+                                            ))}
+                                        </TableBody>
+                                    </Table>
+                                </CardContent>
+                            </Card>
+                          </div>
+                        </AccordionContent>
                     </AccordionItem>
                 </Accordion>
                 <DataTable 
@@ -501,19 +584,8 @@ function Dashboard({
                 />
             )}
         </main>
-
-        <EditProjectDialog
-          isOpen={isAdvancedSearchOpen}
-          onOpenChange={setIsAdvancedSearchOpen}
-          title="Advanced Search"
-          description="Build a query to search for projects."
-        >
-          <AdvancedSearchForm onSearch={handleAdvancedSearch} initialCriteria={searchCriteria} />
-        </EditProjectDialog>
     </div>
   );
 }
 
 export default Dashboard;
-
-    
