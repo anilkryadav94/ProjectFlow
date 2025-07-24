@@ -101,7 +101,7 @@ function Dashboard({
              router.replace(`/?role=${newActiveRole}`, { scroll: false });
         }
     }
-  }, [user.roles, urlRole, router, activeRole, searchParams]);
+  }, [user.roles, router, activeRole, searchParams]);
   
   const handleDownload = () => {
     const dataToExport = dashboardProjects;
@@ -635,6 +635,8 @@ function Dashboard({
 }
 
 export default Dashboard;
+
+    
 
     
 
