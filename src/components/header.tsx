@@ -44,6 +44,7 @@ interface HeaderProps {
     setSearch?: (search: string) => void;
     searchColumn?: SearchableColumn;
     setSearchColumn?: (column: SearchableColumn) => void;
+    onQuickSearch?: () => void;
     clientNameFilter?: string;
     setClientNameFilter?: (value: string) => void;
     processFilter?: string | 'all';
@@ -67,6 +68,7 @@ export function Header({
   setSearch,
   searchColumn,
   setSearchColumn,
+  onQuickSearch,
   clientNameFilter,
   setClientNameFilter,
   processFilter,
@@ -146,7 +148,7 @@ export function Header({
 
         <div className="flex items-center gap-2 flex-shrink-0">
             
-            {setSearch && setSearchColumn && !isManagerOrAdmin && (
+            {(setSearch && setSearchColumn && !isManagerOrAdmin) && (
               <div className="flex items-center space-x-2">
                 <div className="flex items-center space-x-0 relative">
                     {activeRole !== 'Case Manager' ? (
@@ -219,6 +221,37 @@ export function Header({
                 )}
               </div>
             )}
+            
+            {activeRole === 'Manager' && !hasSearchResults && setSearch && setSearchColumn && onQuickSearch && (
+                <div className="flex items-center space-x-0 relative">
+                    <Select value={searchColumn} onValueChange={(v) => setSearchColumn(v as SearchableColumn)}>
+                        <SelectTrigger className="w-[180px] rounded-r-none focus:ring-0 text-foreground h-8 text-xs">
+                            <SelectValue placeholder="Select column" />
+                        </SelectTrigger>
+                        <SelectContent>
+                            <SelectItem value="any">Any Text/Number</SelectItem>
+                            <SelectItem value="ref_number">Ref Number</SelectItem>
+                            <SelectItem value="application_number">Application No.</SelectItem>
+                            <SelectItem value="patent_number">Patent No.</SelectItem>
+                            <SelectItem value="subject_line">Subject</SelectItem>
+                            <SelectItem value="processing_status">Processor Status</SelectItem>
+                            <SelectItem value="qa_status">QA Status</SelectItem>
+                             <SelectItem value="workflowStatus">Workflow Status</SelectItem>
+                            <SelectItem value="received_date">Email Date</SelectItem>
+                            <SelectItem value="allocation_date">Allocation Date</SelectItem>
+                        </SelectContent>
+                    </Select>
+                    <Input
+                        type="text"
+                        placeholder="Quick search..."
+                        value={search}
+                        onChange={(e) => setSearch(e.target.value)}
+                        onKeyDown={(e) => e.key === 'Enter' && onQuickSearch()}
+                        className="rounded-l-none focus-visible:ring-0 h-8 w-48 text-foreground text-xs"
+                    />
+                </div>
+            )}
+
 
             {taskPagination && (
                  <div className="flex items-center gap-2 text-sm font-medium">
@@ -233,12 +266,6 @@ export function Header({
             )}
 
             {children}
-
-            {isManagerOrAdmin && hasSearchResults && onResetSearch && activeRole !== 'Manager' && (
-                <Button variant="outline" className="h-9 text-foreground" onClick={onResetSearch}>
-                    <RotateCcw className="mr-2" /> Reset Search
-                </Button>
-            )}
             
             <DropdownMenu>
                 <DropdownMenuTrigger asChild>

@@ -119,6 +119,17 @@ function Dashboard({
     setProjects(initialProjects);
   }, [initialProjects]);
 
+  React.useEffect(() => {
+    // This effect triggers filtering when quick search term changes
+    if (activeRole === 'Manager' && search.trim() !== '') {
+      handleQuickSearch();
+    } else if (activeRole === 'Manager' && search.trim() === '' && filteredProjects !== null && searchCriteria === null) {
+      // If search is cleared, reset the view
+      handleResetAdvancedSearch();
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [search, searchColumn, activeRole]);
+
   const loadColumnLayout = (role: Role) => {
     const savedLayout = localStorage.getItem(`columnLayout-${role}`);
     if (savedLayout) {
@@ -252,6 +263,7 @@ function Dashboard({
 
   const handleAdvancedSearch = (criteria: SearchCriteria) => {
     setSearchCriteria(criteria);
+    setSearch(''); // Clear quick search
 
     let results = [...projects];
     
@@ -290,10 +302,33 @@ function Dashboard({
     }
     setFilteredProjects(results);
   };
+  
+  const handleQuickSearch = () => {
+    setSearchCriteria(null); // Clear advanced search
+    if (search.trim() === '') {
+      setFilteredProjects(null);
+      return;
+    }
+    
+    let results = [...projects];
+    const lowercasedSearch = search.toLowerCase();
+
+    if (searchColumn === 'any') {
+      results = results.filter(p => 
+        Object.values(p).some(val => String(val).toLowerCase().includes(lowercasedSearch))
+      );
+    } else {
+      results = results.filter(p => 
+        (p[searchColumn] as string)?.toString().toLowerCase().includes(lowercasedSearch)
+      );
+    }
+    setFilteredProjects(results);
+  };
 
   const handleResetAdvancedSearch = () => {
       setSearchCriteria(null);
       setFilteredProjects(null);
+      setSearch('');
   }
   
   const handleOpenEditDialog = (project: Project) => {
@@ -354,7 +389,7 @@ function Dashboard({
     }
 
     // Then apply UI filters if they are active
-    if (search && !(activeRole === 'Manager' || activeRole === 'Admin')) {
+    if (search && !isManagerOrAdmin) {
         const effectiveSearchColumn = activeRole === 'Case Manager' ? 'any' : searchColumn;
         const lowercasedSearch = search.toLowerCase();
         
@@ -390,7 +425,7 @@ function Dashboard({
     }
 
     return filtered;
-  }, [activeRole, user.name, projects, search, searchColumn, sort, filteredProjects, clientNameFilter, processFilter]);
+  }, [activeRole, user.name, projects, search, searchColumn, sort, filteredProjects, clientNameFilter, processFilter, isManagerOrAdmin]);
 
   const clientWorkStatus = React.useMemo(() => {
     const statusByClient: Record<string, {
@@ -464,9 +499,15 @@ function Dashboard({
       visibleColumnKeys
   );
   const selectedBulkUpdateField = bulkUpdateFields.find(f => f.value === bulkUpdateField);
-  const showManagerAccordions = isManagerOrAdmin && filteredProjects === null;
-  const showDataTable = !isManagerOrAdmin || filteredProjects !== null;
-  const showSubHeader = (activeRole === 'Processor' || activeRole === 'QA' || activeRole === 'Case Manager') || (activeRole === 'Manager' && showDataTable);
+
+  // When to show the data table vs the accordions for manager
+  const showDataTable = filteredProjects !== null;
+  const showManagerAccordions = isManagerOrAdmin && !showDataTable;
+
+  // When to show the sub-header with column/layout controls
+  const showSubHeader = 
+    (activeRole === 'Processor' || activeRole === 'QA' || activeRole === 'Case Manager') || 
+    (activeRole === 'Manager' && showDataTable);
 
 
   return (
@@ -516,6 +557,7 @@ function Dashboard({
             isManagerOrAdmin={isManagerOrAdmin}
             hasSearchResults={filteredProjects !== null}
             onResetSearch={handleResetAdvancedSearch}
+            onQuickSearch={handleQuickSearch}
             clientNameFilter={clientNameFilter}
             setClientNameFilter={setClientNameFilter}
             processFilter={processFilter}
@@ -555,11 +597,13 @@ function Dashboard({
         )}
         <main className="flex flex-col flex-grow overflow-y-auto">
             {activeRole === 'Admin' ? (
-                <UserManagementTable sessionUser={user} />
+                <div className="flex-grow">
+                    <UserManagementTable sessionUser={user} />
+                </div>
             ) : activeRole === 'Manager' ? (
               <div className="flex flex-col h-full">
                  {showManagerAccordions && (
-                    <div>
+                    <div className="flex-grow">
                         <Accordion type="single" collapsible className="w-full" defaultValue='work-status'>
                             <AccordionItem value="work-allocation" className="border-0 bg-muted/30 shadow-md mb-4">
                                 <AccordionTrigger className="px-4 py-3 hover:no-underline">Work Allocation / Records Addition</AccordionTrigger>
@@ -712,7 +756,6 @@ function Dashboard({
 
               </div>
             ) : (
-                 showDataTable && 
                  <div className="flex flex-col flex-grow">
                      {Object.keys(rowSelection).length > 0 && isManagerOrAdmin && (
                         <div className="flex items-center gap-4 p-4 border-b bg-muted/50">
