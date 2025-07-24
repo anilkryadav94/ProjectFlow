@@ -128,7 +128,7 @@ interface EditProjectDialogProps {
   isOpen: boolean;
   onOpenChange: (isOpen: boolean) => void;
   project?: Project | null;
-  onUpdateSuccess?: (updatedProjectId: string) => void;
+  onUpdateSuccess?: () => void;
   userRole?: Role;
   projectQueue?: Project[]; // To handle next/prev
   onNavigate?: (newProject: Project) => void;
@@ -202,7 +202,7 @@ export function EditProjectDialog({
             const result = await updateProject(data, action);
             if (result.success && result.project) {
                 const currentId = result.project.id;
-                onUpdateSuccess(currentId);
+                onUpdateSuccess();
                 toast({
                     title: "Success",
                     description: `Project ${result.project.ref_number} updated.`,
