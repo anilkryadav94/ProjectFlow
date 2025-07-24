@@ -87,7 +87,7 @@ export function ColumnSelectDialog({
     <Dialog open={isOpen} onOpenChange={onOpenChange}>
       <DialogContent className="max-w-4xl">
         <DialogHeader>
-          <DialogTitle>Customize Columns</DialogTitle>
+          <DialogTitle>Select Columns</DialogTitle>
           <DialogDescription>
             Select which columns to display and set their order.
           </DialogDescription>
@@ -95,15 +95,15 @@ export function ColumnSelectDialog({
         <div className="grid grid-cols-[1fr_auto_1fr] gap-4 items-center min-h-[400px]">
           {/* Available Columns */}
           <div className="flex flex-col h-full border rounded-md">
-            <h3 className="p-2 font-semibold border-b bg-muted">Available Columns</h3>
-            <ScrollArea className="flex-grow">
-              <div className="p-2">
+            <h3 className="p-2 text-sm font-semibold border-b bg-muted">Available Columns</h3>
+            <ScrollArea className="h-[350px]">
+              <div className="p-2 space-y-1">
                 {availableColumns.map((col) => (
                   <div
                     key={col.key}
                     onClick={() => setSelectedAvailable(col.key)}
                     className={cn(
-                      "p-2 rounded-md cursor-pointer hover:bg-muted",
+                      "p-2 rounded-md cursor-pointer hover:bg-muted text-xs",
                       selectedAvailable === col.key && "bg-primary text-primary-foreground"
                     )}
                   >
@@ -126,16 +126,16 @@ export function ColumnSelectDialog({
 
           {/* Visible Columns */}
           <div className="flex flex-col h-full border rounded-md">
-             <h3 className="p-2 font-semibold border-b bg-muted">Visible Columns</h3>
+             <h3 className="p-2 text-sm font-semibold border-b bg-muted">Visible Columns</h3>
             <div className="flex-grow flex">
-                <ScrollArea className="flex-grow">
-                <div className="p-2">
+                <ScrollArea className="h-[350px] flex-grow">
+                <div className="p-2 space-y-1">
                     {visibleColumnsData.map((col) => (
                     <div
                         key={col.key}
                         onClick={() => setSelectedVisible(col.key)}
                         className={cn(
-                        "p-2 rounded-md cursor-pointer hover:bg-muted",
+                        "p-2 rounded-md cursor-pointer hover:bg-muted text-xs",
                         selectedVisible === col.key && "bg-primary text-primary-foreground"
                         )}
                     >
@@ -144,7 +144,7 @@ export function ColumnSelectDialog({
                     ))}
                 </div>
                 </ScrollArea>
-                 <div className="flex flex-col gap-2 p-2 border-l">
+                 <div className="flex flex-col gap-2 p-2 border-l bg-muted/50">
                     <Button size="icon" variant="outline" onClick={() => handleMove('up')} disabled={!selectedVisible}>
                         <ChevronUp className="h-4 w-4" />
                     </Button>
