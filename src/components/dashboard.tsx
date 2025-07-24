@@ -524,7 +524,7 @@ function Dashboard({
             clientNames={clientNames}
             processes={processes}
         />
-        {(!isManagerOrAdmin && activeRole !== 'Admin' && activeRole !== 'Case Manager') && (
+        {(activeRole === 'Processor' || activeRole === 'QA') && (
             <div className="flex-shrink-0 border-b bg-muted">
                 <div className="flex items-center justify-end gap-2 py-1 px-4">
                     <Button variant="outline" className="h-7 px-2 text-xs" onClick={() => setIsColumnSelectOpen(true)}>
@@ -553,7 +553,7 @@ function Dashboard({
             ) : activeRole === 'Manager' ? (
               <div className="flex flex-col h-full">
                  {showManagerAccordions && (
-                    <div className="flex-shrink-0 p-4 md:p-6">
+                    <div className="flex-shrink-0">
                         <Accordion type="single" collapsible className="w-full" defaultValue='work-status'>
                             <AccordionItem value="work-allocation" className="rounded-lg mb-4 border-0 bg-muted/30 shadow-md">
                                 <AccordionTrigger className="px-4 py-3 hover:no-underline">Work Allocation / Records Addition</AccordionTrigger>
@@ -654,7 +654,7 @@ function Dashboard({
                         </Accordion>
                     </div>
                 )}
-                 <div className="flex-grow flex flex-col px-4 md:px-6 pb-6">
+                 <div className="flex-grow flex flex-col">
                     {showDataTable && (
                         <DataTable 
                             data={dashboardProjects}
