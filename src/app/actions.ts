@@ -124,7 +124,7 @@ const fieldsToCopy = z.enum([
 type FieldToCopyId = z.infer<typeof fieldsToCopy>;
 
 export async function addRows(
-  sourceProjectData: Project,
+  sourceProjectData: Partial<Project>,
   fieldsToCopy: FieldToCopyId[],
   count: number
 ): Promise<{ success: boolean; addedCount?: number; error?: string }> {
@@ -134,8 +134,11 @@ export async function addRows(
   }
 
   const projectsCollection = collection(db, 'projects');
+  const batch = writeBatch(db);
 
   for (let i = 0; i < count; i++) {
+    const newProjectRef = doc(projectsCollection); // Let Firestore generate the ID
+
     const newProject: Omit<Project, 'id'> = {
         ref_number: '',
         application_number: null,
@@ -179,8 +182,10 @@ export async function addRows(
       }
     });
     
-    await addDoc(projectsCollection, newProject);
+    batch.set(newProjectRef, newProject);
   }
+
+  await batch.commit();
 
   revalidatePath('/');
   return { success: true, addedCount: count };
