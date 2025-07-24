@@ -37,8 +37,9 @@ const projectEntrySchema = z.object({
     notes: z.string().nullable(),
 });
 
+// This schema defines ONLY the fields that are allowed to be updated.
+// It does NOT include `id` or `row_number`.
 const updateProjectSchema = z.object({
-  id: z.string(),
   ref_number: z.string().nullable(),
   client_name: z.string(),
   process: z.enum(["Patent", "TM", "IDS", "Project"]),
@@ -71,46 +72,46 @@ const updateProjectSchema = z.object({
   manager_name: z.string().nullable(),
   client_response_date: z.string().nullable(),
   workflowStatus: z.string(),
+  processing_date: z.string().nullable(),
+  qa_date: z.string().nullable(),
 });
 
 
 export async function updateProject(data: Partial<Project>, submitAction?: 'submit_for_qa' | 'submit_qa' | 'send_rework' | 'save' | 'client_submit'): Promise<{success: boolean, project?: Project}> {
+    
+    if (!data.id) return { success: false };
+    const projectId = data.id;
+
     // We only validate the fields that are passed, not the whole object
     const validatedData = updateProjectSchema.partial().parse(data);
-    
-    if (!validatedData.id) return { success: false };
+    const projectRef = doc(db, 'projects', projectId);
 
-    const projectRef = doc(db, 'projects', validatedData.id);
-
-    // Create a mutable copy of the validated data
-    const updatedProjectData: any = { ...validatedData };
+    const dataToUpdate: any = { ...validatedData };
     
     // Handle status transitions based on action
     if (submitAction === 'submit_for_qa') {
-      updatedProjectData.workflowStatus = 'With QA';
-      updatedProjectData.processing_date = new Date().toISOString().split('T')[0];
+      dataToUpdate.workflowStatus = 'With QA';
+      dataToUpdate.processing_date = new Date().toISOString().split('T')[0];
     } else if (submitAction === 'submit_qa') {
-      updatedProjectData.workflowStatus = 'Completed';
-      updatedProjectData.qa_date = new Date().toISOString().split('T')[0];
+      dataToUpdate.workflowStatus = 'Completed';
+      dataToUpdate.qa_date = new Date().toISOString().split('T')[0];
     } else if (submitAction === 'send_rework') {
-      updatedProjectData.workflowStatus = 'With Processor';
-      updatedProjectData.processing_status = 'Re-Work';
+      dataToUpdate.workflowStatus = 'With Processor';
+      dataToUpdate.processing_status = 'Re-Work';
     } else if (submitAction === 'client_submit') {
-      updatedProjectData.workflowStatus = 'With QA';
-      updatedProjectData.qa_status = 'Pending';
-      updatedProjectData.client_response_date = new Date().toISOString().split('T')[0];
+      dataToUpdate.workflowStatus = 'With QA';
+      dataToUpdate.qa_status = 'Pending';
+      dataToUpdate.client_response_date = new Date().toISOString().split('T')[0];
     }
 
-    // Do not attempt to write the 'id' or 'row_number' field back to the document
-    delete updatedProjectData.id;
-    if ('row_number' in updatedProjectData) {
-        delete updatedProjectData.row_number;
-    }
-
-    await updateDoc(projectRef, updatedProjectData);
+    // Ensure forbidden fields are never sent
+    delete dataToUpdate.id;
+    delete dataToUpdate.row_number;
+    
+    await updateDoc(projectRef, dataToUpdate);
 
     revalidatePath('/');
-    revalidatePath(`/task/${validatedData.id}`);
+    revalidatePath(`/task/${projectId}`);
     
     const updatedDoc = await getDoc(projectRef);
     const finalProject = { id: updatedDoc.id, ...updatedDoc.data() } as Project;
