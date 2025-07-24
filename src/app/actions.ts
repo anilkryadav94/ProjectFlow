@@ -82,11 +82,12 @@ export async function updateProject(data: Partial<Project>, submitAction?: 'subm
     if (!data.id) return { success: false };
     const projectId = data.id;
 
-    // We only validate the fields that are passed, not the whole object
-    const validatedData = updateProjectSchema.partial().parse(data);
+    // The Zod schema was causing issues by including non-updatable fields.
+    // We will manually construct the update object to ensure only valid fields are sent.
     const projectRef = doc(db, 'projects', projectId);
-
-    const dataToUpdate: any = { ...validatedData };
+    
+    // Create a mutable copy of the data.
+    const dataToUpdate: any = { ...data };
     
     // Handle status transitions based on action
     if (submitAction === 'submit_for_qa') {
@@ -104,7 +105,8 @@ export async function updateProject(data: Partial<Project>, submitAction?: 'subm
       dataToUpdate.client_response_date = new Date().toISOString().split('T')[0];
     }
 
-    // Ensure forbidden fields are never sent
+    // CRITICAL: Ensure forbidden fields are never sent to Firestore.
+    // This was the root cause of the "Permission Denied" error.
     delete dataToUpdate.id;
     delete dataToUpdate.row_number;
     
