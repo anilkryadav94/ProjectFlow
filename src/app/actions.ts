@@ -134,59 +134,64 @@ export async function addRows(
   }
 
   const projectsCollection = collection(db, 'projects');
-  const batch = writeBatch(db);
+  
+  try {
+    for (let i = 0; i < count; i++) {
+      const newProject: Omit<Project, 'id'> = {
+          ref_number: '',
+          application_number: null,
+          patent_number: null,
+          workflowStatus: 'With Processor',
+          processing_status: 'Pending',
+          qa_status: 'Pending',
+          processing_date: null,
+          qa_date: null,
+          rework_reason: null,
+          client_comments: null,
+          clientquery_status: null,
+          client_response_date: null,
+          entries: [],
+          subject_line: '',
+          client_name: '',
+          process: 'Patent',
+          processor: '',
+          qa: '',
+          case_manager: '',
+          received_date: new Date().toISOString().split('T')[0],
+          allocation_date: new Date().toISOString().split('T')[0],
+          sender: null,
+          country: null,
+          document_type: null,
+          action_taken: null,
+          renewal_agent: null,
+          client_query_description: null,
+          client_error_description: null,
+          qa_remark: null,
+          error: null,
+          email_renaming: null,
+          email_forwarded: null,
+          reportout_date: null,
+          manager_name: null,
+      };
 
-  for (let i = 0; i < count; i++) {
-    const newProjectRef = doc(projectsCollection); // Let Firestore generate the ID
+      fieldsToCopy.forEach(field => {
+        if (sourceProjectData.hasOwnProperty(field)) {
+          (newProject as any)[field] = sourceProjectData[field as keyof Project];
+        }
+      });
+      
+      // Use addDoc to let Firestore generate the ID and add the document
+      await addDoc(projectsCollection, newProject);
+    }
 
-    const newProject: Omit<Project, 'id'> = {
-        ref_number: '',
-        application_number: null,
-        patent_number: null,
-        workflowStatus: 'With Processor',
-        processing_status: 'Pending',
-        qa_status: 'Pending',
-        processing_date: null,
-        qa_date: null,
-        rework_reason: null,
-        client_comments: null,
-        clientquery_status: null,
-        client_response_date: null,
-        entries: [],
-        subject_line: '',
-        client_name: '',
-        process: 'Patent',
-        processor: '',
-        qa: '',
-        case_manager: '',
-        received_date: new Date().toISOString().split('T')[0],
-        allocation_date: new Date().toISOString().split('T')[0],
-        sender: null,
-        country: null,
-        document_type: null,
-        action_taken: null,
-        renewal_agent: null,
-        client_query_description: null,
-        client_error_description: null,
-        qa_remark: null,
-        error: null,
-        email_renaming: null,
-        email_forwarded: null,
-        reportout_date: null,
-        manager_name: null,
-    };
-
-    fieldsToCopy.forEach(field => {
-      if (sourceProjectData.hasOwnProperty(field)) {
-        (newProject as any)[field] = sourceProjectData[field as keyof Project];
-      }
-    });
-    
-    batch.set(newProjectRef, newProject);
+    revalidatePath('/');
+    return { success: true, addedCount: count };
+  } catch (error) {
+    console.error("Error adding documents: ", error);
+    if (error instanceof Error) {
+        return { success: false, error: `Permission denied or server error: ${error.message}` };
+    }
+    return { success: false, error: "An unknown error occurred while adding rows."}
   }
-
-  await batch.commit();
-
-  revalidatePath('/');
-  return { success: true, addedCount: count };
 }
+

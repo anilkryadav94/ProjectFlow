@@ -168,25 +168,20 @@ function Dashboard({
             try {
                 // For simplicity, we'll just add the first row's data as new rows.
                 // A real implementation would handle mapping columns.
-                const firstRow = rows[0];
-                const sourceProjectId = projects[0]?.id; // Use first project as a dummy source
-                
-                if (!sourceProjectId) {
-                     toast({ title: "Error", description: "No existing projects to use as a template.", variant: "destructive" });
-                     setIsUploading(false);
-                     return;
+                // The `addRows` function no longer needs sourceProjectData, so we pass an empty object.
+                const result = await addRows({}, [], rows.length);
+                if (result.success) {
+                    await refreshProjects();
+                    toast({
+                        title: "Bulk Add Complete",
+                        description: `${result.addedCount} projects have been added.`,
+                    });
+                } else {
+                    throw new Error(result.error || "An unknown error occurred during upload.");
                 }
 
-                await addRows(sourceProjectId, [], rows.length);
-                await refreshProjects();
-
-                toast({
-                    title: "Bulk Add Complete",
-                    description: `${rows.length} projects have been added.`,
-                });
-
             } catch(e) {
-                 toast({ title: "Upload Error", description: "Failed to add projects to database.", variant: "destructive" });
+                 toast({ title: "Upload Error", description: `Failed to add projects to database. ${e instanceof Error ? e.message : ''}`, variant: "destructive" });
             } finally {
                 setIsUploading(false);
                 setSelectedFile(null);
@@ -376,6 +371,9 @@ function Dashboard({
       handleAddRowsDialog
   );
   const selectedBulkUpdateField = bulkUpdateFields.find(f => f.value === bulkUpdateField);
+  const showManagerAccordions = isManagerOrAdmin && filteredProjects === null;
+  const showDataTable = !isManagerOrAdmin || filteredProjects !== null;
+
 
   return (
     <div className="flex flex-col h-screen bg-background w-full">
@@ -430,7 +428,7 @@ function Dashboard({
                 <UserManagementTable sessionUser={user} />
             ) : activeRole === 'Manager' ? (
               <div className="space-y-6">
-                 {filteredProjects === null ? (
+                 {showManagerAccordions && (
                     <Accordion type="single" collapsible className="w-full" defaultValue='work-status'>
                         <AccordionItem value="work-allocation" className="rounded-lg mb-4 border-0 bg-muted/30 shadow-md">
                             <AccordionTrigger className="px-4 py-3 hover:no-underline">Work Allocation / Records Addition</AccordionTrigger>
@@ -525,7 +523,8 @@ function Dashboard({
                             </AccordionContent>
                         </AccordionItem>
                     </Accordion>
-                ) : (
+                )}
+                 {showDataTable && (
                     <DataTable 
                         data={dashboardProjects}
                         columns={columns}
@@ -576,7 +575,7 @@ function Dashboard({
 
               </div>
             ) : (
-                <DataTable 
+                 showDataTable && <DataTable 
                     data={dashboardProjects}
                     columns={columns}
                     sort={sort}
