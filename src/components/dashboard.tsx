@@ -100,6 +100,8 @@ function Dashboard({
     window.location.reload();
   };
   
+  const isManagerOrAdmin = React.useMemo(() => activeRole === 'Manager' || activeRole === 'Admin', [activeRole]);
+
   React.useEffect(() => {
     const highestRole = roleHierarchy.find(role => user.roles.includes(role)) || user.roles[0];
     const urlRole = searchParams.get('role') as Role | null;
@@ -118,8 +120,6 @@ function Dashboard({
   React.useEffect(() => {
     setProjects(initialProjects);
   }, [initialProjects]);
-  
-  const isManagerOrAdmin = activeRole === 'Manager' || activeRole === 'Admin';
   
   const loadColumnLayout = (role: Role) => {
     const savedLayout = localStorage.getItem(`columnLayout-${role}`);
@@ -490,13 +490,13 @@ function Dashboard({
   const selectedBulkUpdateField = bulkUpdateFields.find(f => f.value === bulkUpdateField);
 
   // When to show the data table vs the accordions for manager
-  const showDataTable = filteredProjects !== null;
+  const showDataTable = filteredProjects !== null || search.trim() !== '';
   const showManagerAccordions = isManagerOrAdmin && !showDataTable;
 
   // When to show the sub-header with column/layout controls
   const showSubHeader = 
     (activeRole === 'Processor' || activeRole === 'QA' || activeRole === 'Case Manager') || 
-    (activeRole === 'Manager' && showDataTable);
+    (isManagerOrAdmin && showDataTable);
 
 
   return (
@@ -557,7 +557,7 @@ function Dashboard({
         {showSubHeader && (
             <div className="flex-shrink-0 border-b bg-muted">
                 <div className="flex items-center justify-end gap-2 py-1 px-4">
-                    {activeRole === 'Manager' && filteredProjects !== null && (
+                    {activeRole === 'Manager' && showDataTable && (
                       <Button variant="outline" className="h-7 px-2 text-xs" onClick={handleResetAdvancedSearch}>
                           <RotateCcw className="mr-1.5 h-3.5 w-3.5" /> Reset Search
                       </Button>
@@ -586,15 +586,13 @@ function Dashboard({
         )}
         <main className="flex flex-col flex-grow overflow-y-auto">
             {activeRole === 'Admin' ? (
-                <div>
-                    <UserManagementTable sessionUser={user} />
-                </div>
+                <UserManagementTable sessionUser={user} />
             ) : activeRole === 'Manager' ? (
               <div className="flex flex-col h-full">
                  {showManagerAccordions && (
                     <div className="p-4 md:p-6">
                         <Accordion type="single" collapsible className="w-full" defaultValue='work-status'>
-                            <AccordionItem value="work-allocation" className="border-0 bg-muted/30 shadow-md mb-4">
+                            <AccordionItem value="work-allocation" className="border-0 bg-muted/30 shadow-md mb-4 rounded-lg">
                                 <AccordionTrigger className="px-4 py-3 hover:no-underline">Work Allocation / Records Addition</AccordionTrigger>
                                 <AccordionContent className="p-4 pt-0">
                                 <Card>
@@ -625,13 +623,13 @@ function Dashboard({
                                 </Card>
                                 </AccordionContent>
                             </AccordionItem>
-                            <AccordionItem value="advanced-search" className="border-0 bg-muted/30 shadow-md mb-4">
+                            <AccordionItem value="advanced-search" className="border-0 bg-muted/30 shadow-md mb-4 rounded-lg">
                                 <AccordionTrigger className="px-4 py-3 hover:no-underline">Advanced Search</AccordionTrigger>
                                 <AccordionContent className="p-4 pt-0">
                                 <AdvancedSearchForm onSearch={handleAdvancedSearch} initialCriteria={searchCriteria} />
                                 </AccordionContent>
                             </AccordionItem>
-                            <AccordionItem value="work-status" className="border-0 bg-muted/30 shadow-md mb-4">
+                            <AccordionItem value="work-status" className="border-0 bg-muted/30 shadow-md mb-4 rounded-lg">
                                 <AccordionTrigger className="px-4 py-3 hover:no-underline">Work Status (Client Wise)</AccordionTrigger>
                                 <AccordionContent className="p-4 pt-0">
                                 <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 p-4">
@@ -693,9 +691,9 @@ function Dashboard({
                         </Accordion>
                     </div>
                 )}
-                 <div className="flex-grow flex flex-col px-4 md:px-6 pb-6">
+                 <div className="flex-grow flex flex-col">
                     {Object.keys(rowSelection).length > 0 && (
-                        <div className="flex items-center gap-4 p-4 border-b bg-muted/50">
+                        <div className="flex-shrink-0 flex items-center gap-4 p-4 border-b bg-muted/50">
                             <span className="text-sm font-semibold">{Object.keys(rowSelection).length} selected</span>
                             <div className="flex items-center gap-2">
                                 <Select value={bulkUpdateField} onValueChange={(v) => {
@@ -745,42 +743,7 @@ function Dashboard({
 
               </div>
             ) : (
-                 <div className="flex flex-col flex-grow p-4 md:p-6">
-                     {Object.keys(rowSelection).length > 0 && isManagerOrAdmin && (
-                        <div className="flex items-center gap-4 p-4 border-b bg-muted/50">
-                            <span className="text-sm font-semibold">{Object.keys(rowSelection).length} selected</span>
-                            <div className="flex items-center gap-2">
-                                <Select value={bulkUpdateField} onValueChange={(v) => {
-                                    setBulkUpdateField(v as typeof bulkUpdateField);
-                                    setBulkUpdateValue('');
-                                }}>
-                                    <SelectTrigger className="w-[180px] h-9">
-                                        <SelectValue placeholder="Select field" />
-                                    </SelectTrigger>
-                                    <SelectContent>
-                                        {bulkUpdateFields.map(f => (
-                                            <SelectItem key={f.value} value={f.value}>{f.label}</SelectItem>
-                                        ))}
-                                    </SelectContent>
-                                </Select>
-                                
-                                <Select value={bulkUpdateValue} onValueChange={setBulkUpdateValue}>
-                                    <SelectTrigger className="w-[180px] h-9">
-                                        <SelectValue placeholder="Select new value" />
-                                    </SelectTrigger>
-                                    <SelectContent>
-                                        {selectedBulkUpdateField?.options.map(opt => (
-                                            <SelectItem key={opt} value={opt}>{opt}</SelectItem>
-                                        ))}
-                                    </SelectContent>
-                                </Select>
-                            </div>
-                            <Button size="sm" onClick={handleBulkUpdate} disabled={isBulkUpdating}>
-                                {isBulkUpdating && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
-                                Apply Update
-                            </Button>
-                        </div>
-                    )}
+                 <div className="flex flex-col flex-grow">
                     <DataTable 
                         data={dashboardProjects}
                         columns={columns}
@@ -799,11 +762,5 @@ function Dashboard({
 }
 
 export default Dashboard;
-
-    
-
-    
-
-    
 
     

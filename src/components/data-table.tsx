@@ -50,8 +50,8 @@ export function DataTable({
   };
 
   return (
-    <div className={cn("h-full flex flex-col flex-grow")}>
-       <div className={cn("rounded-t-md border bg-card relative overflow-y-auto")}>
+    <div className={cn("h-full flex flex-col")}>
+       <div className={cn("flex-grow rounded-t-md border bg-card relative overflow-y-auto")}>
         <Table>
           <TableHeader className="sticky top-0 z-10 bg-primary">
             <TableRow>
@@ -95,7 +95,7 @@ export function DataTable({
         </Table>
       </div>
 
-       <div className="flex-shrink-0 rounded-b-md border border-t-0 bg-card">
+       <div className="rounded-b-md border border-t-0 bg-card">
          
          <div className="flex items-center justify-end p-2 text-sm text-card-foreground">
              {totalCount > 0 && <span>Total items: {totalCount}</span>}
@@ -104,3 +104,5 @@ export function DataTable({
     </div>
   )
 }
+
+    
