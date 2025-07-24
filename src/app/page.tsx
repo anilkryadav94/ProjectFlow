@@ -9,6 +9,7 @@ import { useRouter } from 'next/navigation';
 import { Loader2 } from 'lucide-react';
 import { getDocs, collection } from 'firebase/firestore';
 import { db } from '@/lib/firebase';
+import { seedDatabase } from '@/lib/data';
 
 async function getProjects(): Promise<Project[]> {
     const projectsCollection = collection(db, "projects");
@@ -32,6 +33,15 @@ export default function Home() {
         const sessionData = await getSession();
         if (sessionData) {
           setSession(sessionData);
+
+          // Seed database if it's empty
+          const projectsCollection = collection(db, 'projects');
+          const projectsSnapshot = await getDocs(projectsCollection);
+          if (projectsSnapshot.empty) {
+            console.log('Projects collection is empty, seeding database...');
+            await seedDatabase();
+          }
+
           const projectData = await getProjects();
           setProjects(projectData);
           setLoading(false);
