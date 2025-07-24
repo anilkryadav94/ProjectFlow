@@ -1,5 +1,4 @@
 
-
 "use client"
 
 import * as React from "react"
@@ -50,8 +49,6 @@ interface HeaderProps {
     processFilter?: string | 'all';
     setProcessFilter?: (value: string | 'all') => void;
 
-    handleDownload?: () => void;
-    isDownloadDisabled?: boolean;
     isManagerOrAdmin: boolean;
     hasSearchResults?: boolean;
     onResetSearch?: () => void;
@@ -74,8 +71,6 @@ export function Header({
   setClientNameFilter,
   processFilter,
   setProcessFilter,
-  handleDownload,
-  isDownloadDisabled,
   isManagerOrAdmin,
   hasSearchResults,
   onResetSearch,
@@ -131,7 +126,6 @@ export function Header({
 
   const dashboardName = getDashboardName();
   const dashboardLink = `/?role=${activeRole}`;
-  const showDownloadIcon = handleDownload && isManagerOrAdmin && activeRole !== 'Admin';
 
   return (
     <header className="flex items-center justify-between bg-primary text-primary-foreground p-2 px-4 shadow-md h-16 shrink-0 gap-4">
@@ -151,12 +145,6 @@ export function Header({
         <div className="flex-grow" />
 
         <div className="flex items-center gap-2 flex-shrink-0">
-            
-            {isManagerOrAdmin && hasSearchResults && onResetSearch && (
-              <Button variant="outline" size="sm" onClick={onResetSearch} className="text-foreground">
-                  <RotateCcw className="mr-2" /> Reset Search
-              </Button>
-            )}
             
             {setSearch && setSearchColumn && !isManagerOrAdmin && (
               <div className="flex items-center space-x-2">
@@ -245,13 +233,6 @@ export function Header({
             )}
 
             {children}
-
-            {showDownloadIcon && (
-                <Button variant="ghost" size="icon" onClick={handleDownload} disabled={isDownloadDisabled || !hasSearchResults} className="h-8 w-8 hover:bg-primary/80">
-                  <FileSpreadsheet className="h-5 w-5" />
-                  <span className="sr-only">Download CSV</span>
-                </Button>
-            )}
             
             <DropdownMenu>
                 <DropdownMenuTrigger asChild>
@@ -293,3 +274,5 @@ export function Header({
     </header>
   )
 }
+
+    

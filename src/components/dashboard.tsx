@@ -11,7 +11,7 @@ import { UserManagementTable } from './user-management-table';
 import { Button } from './ui/button';
 import { useToast } from '@/hooks/use-toast';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from './ui/select';
-import { FileUp, Loader2, Upload, X, Download, FileDown, Rows, Save, FileSpreadsheet } from 'lucide-react';
+import { FileUp, Loader2, Upload, X, Download, FileDown, Rows, Save, FileSpreadsheet, RotateCcw } from 'lucide-react';
 import { AdvancedSearchForm, type SearchCriteria } from './advanced-search-form';
 import { useSearchParams, useRouter } from 'next/navigation';
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from './ui/card';
@@ -512,8 +512,6 @@ function Dashboard({
             setSearch={setSearch}
             searchColumn={searchColumn}
             setSearchColumn={setSearchColumn}
-            handleDownload={handleDownload}
-            isDownloadDisabled={dashboardProjects.length === 0}
             isManagerOrAdmin={isManagerOrAdmin}
             hasSearchResults={filteredProjects !== null}
             onResetSearch={handleResetAdvancedSearch}
@@ -527,6 +525,11 @@ function Dashboard({
         {(activeRole === 'Processor' || activeRole === 'QA' || activeRole === 'Manager' || activeRole === 'Case Manager') && (
             <div className="flex-shrink-0 border-b bg-muted">
                 <div className="flex items-center justify-end gap-2 py-1 px-4">
+                    {isManagerOrAdmin && filteredProjects !== null && (
+                      <Button variant="outline" className="h-7 px-2 text-xs" onClick={handleResetAdvancedSearch}>
+                          <RotateCcw className="mr-1.5 h-3.5 w-3.5" /> Reset Search
+                      </Button>
+                    )}
                     <Button variant="outline" className="h-7 px-2 text-xs" onClick={() => setIsColumnSelectOpen(true)}>
                         <Rows className="mr-1.5 h-3.5 w-3.5" />
                         Select Columns
@@ -535,7 +538,7 @@ function Dashboard({
                         <Save className="mr-1.5 h-3.5 w-3.5" />
                         Save Layout
                     </Button>
-                    {(activeRole === 'Processor' || activeRole === 'QA') && (
+                    {(activeRole === 'Processor' || activeRole === 'QA' || (isManagerOrAdmin && showDataTable)) && (
                         <Button 
                             variant="outline" 
                             className="h-7 px-2 text-xs" 
@@ -555,7 +558,7 @@ function Dashboard({
             ) : activeRole === 'Manager' ? (
               <div className="flex flex-col h-full">
                  {showManagerAccordions && (
-                    <div className="flex-shrink-0">
+                    <div>
                         <Accordion type="single" collapsible className="w-full" defaultValue='work-status'>
                             <AccordionItem value="work-allocation" className="mb-4 border-0 bg-muted/30 shadow-md">
                                 <AccordionTrigger className="px-4 py-3 hover:no-underline">Work Allocation / Records Addition</AccordionTrigger>
@@ -597,7 +600,7 @@ function Dashboard({
                             <AccordionItem value="work-status" className="mb-4 border-0 bg-muted/30 shadow-md">
                                 <AccordionTrigger className="px-4 py-3 hover:no-underline">Work Status (Client Wise)</AccordionTrigger>
                                 <AccordionContent className="p-4 pt-0">
-                                <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+                                <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 p-4">
                                     <Card>
                                         <CardHeader>
                                             <CardTitle>Processing Status</CardTitle>
@@ -728,6 +731,8 @@ function Dashboard({
 }
 
 export default Dashboard;
+
+    
 
     
 
