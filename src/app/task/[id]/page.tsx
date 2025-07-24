@@ -68,7 +68,7 @@ export default async function TaskPage({ params }: { params: { id: string } }) {
                 processes={processes}
             />
             <main className="flex-1 h-full overflow-y-auto p-4 md:p-6">
-                <div className="animated-border">
+                <div>
                     <Card>
                         <CardHeader>
                             <div className="flex justify-between items-center">

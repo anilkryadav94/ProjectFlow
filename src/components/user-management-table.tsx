@@ -1,3 +1,4 @@
+
 "use client";
 
 import * as React from "react";
@@ -201,7 +202,7 @@ export function UserManagementTable({ sessionUser }: { sessionUser: User }) {
 
     return (
         <>
-            <div className="animated-border shadow-md">
+            <div className="shadow-md">
                 <Card>
                     <CardHeader>
                         <div className="flex items-center justify-between gap-4">
