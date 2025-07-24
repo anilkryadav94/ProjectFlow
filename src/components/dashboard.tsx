@@ -174,7 +174,7 @@ function Dashboard({
     try {
         await bulkUpdateProjects({ projectIds, field: bulkUpdateField, value: bulkUpdateValue });
         toast({ title: "Success", description: `${projectIds.length} projects have been updated.` });
-        refreshProjects();
+        window.location.reload();
         setRowSelection({});
         setBulkUpdateValue('');
     } catch(e) {
@@ -503,7 +503,7 @@ function Dashboard({
             clientNames={clientNames}
             processes={processes}
         />
-        {(!isManagerOrAdmin && activeRole !== 'Admin') && (
+        {(!isManagerOrAdmin && activeRole !== 'Admin' && activeRole !== 'Case Manager') && (
             <div className="flex-shrink-0 border-b px-4 bg-muted">
                 <div className="flex items-center justify-end gap-2 py-1">
                     <Button variant="outline" className="h-7 px-2 text-xs" onClick={() => setIsColumnSelectOpen(true)}>
@@ -690,5 +690,3 @@ function Dashboard({
 }
 
 export default Dashboard;
-
-    
