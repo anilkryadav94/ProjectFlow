@@ -1,10 +1,11 @@
+
 "use server";
 
 import { z } from "zod";
 import type { Project, Role, ClientStatus } from "@/lib/data";
 import { revalidatePath } from "next/cache";
 import { db } from "@/lib/firebase";
-import { collection, getDocs, doc, writeBatch, updateDoc, serverTimestamp, addDoc, getDoc } from "firebase/firestore";
+import { collection, getDocs, doc, writeBatch, updateDoc, serverTimestamp, addDoc, getDoc, query, orderBy, limit } from "firebase/firestore";
 
 const bulkUpdateSchema = z.object({
   projectIds: z.array(z.string()),
