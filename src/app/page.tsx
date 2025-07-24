@@ -20,10 +20,9 @@ async function getProjects(): Promise<Project[]> {
     return projectList;
 }
 
-
 export default function Home() {
   const [session, setSession] = React.useState<{ user: User } | null>(null);
-  const [initialProjects, setInitialProjects] = React.useState<Project[] | null>(null);
+  const [projects, setProjects] = React.useState<Project[] | null>(null);
   const [loading, setLoading] = React.useState(true);
   const router = useRouter();
 
@@ -33,9 +32,10 @@ export default function Home() {
         const sessionData = await getSession();
         if (sessionData) {
           setSession(sessionData);
-          const projects = await getProjects();
-          setInitialProjects(projects);
+          const projectData = await getProjects();
+          setProjects(projectData);
         } else {
+           // If session exists in auth but not firestore, log out
            setSession(null); 
            router.push('/login');
         }
@@ -49,7 +49,7 @@ export default function Home() {
     return () => unsubscribe();
   }, [router]);
 
-  if (loading || !session || !initialProjects) {
+  if (loading || !session || !projects) {
     return (
         <div className="flex h-screen w-full items-center justify-center">
             <Loader2 className="h-8 w-8 animate-spin" />
@@ -61,7 +61,7 @@ export default function Home() {
     <main>
       <DashboardWrapper 
         user={session.user} 
-        initialProjects={initialProjects} 
+        initialProjects={projects} 
       />
     </main>
   );
