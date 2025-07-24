@@ -110,7 +110,7 @@ export const getColumns = (
           <Button size="icon" variant="ghost" onClick={() => handleEditProject(project)}>
               <Edit className="h-4 w-4"/>
           </Button>
-          {(activeRole === 'Manager' || activeRole === 'Admin') && (
+          {activeRole === 'Admin' && (
             <Button size="icon" variant="ghost" onClick={() => handleAddRows(project)}>
                 <PlusCircle className="h-4 w-4"/>
             </Button>
@@ -159,7 +159,9 @@ export const getColumns = (
         />
       ),
     };
-    columns.unshift(actionColumn);
+    if (activeRole === 'Admin') {
+      columns.unshift(actionColumn);
+    }
     columns.unshift(selectionColumn);
   } else if (activeRole === 'Case Manager') {
       const clientViewColumns = [
