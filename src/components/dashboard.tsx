@@ -171,11 +171,13 @@ function Dashboard({
                     const sanitizedRow: { [key: string]: any } = {};
                     for (const key in row) {
                         if (Object.prototype.hasOwnProperty.call(row, key)) {
+                            // Convert undefined or empty strings to null for Firestore
                             sanitizedRow[key] = row[key] === undefined || row[key] === '' ? null : row[key];
                         }
                     }
                     return {
                         ...sanitizedRow,
+                        // Ensure dates are correctly formatted or defaulted
                         received_date: sanitizedRow.received_date ? new Date(sanitizedRow.received_date).toISOString().split('T')[0] : new Date().toISOString().split('T')[0],
                         allocation_date: sanitizedRow.allocation_date ? new Date(sanitizedRow.allocation_date).toISOString().split('T')[0] : new Date().toISOString().split('T')[0],
                     };
