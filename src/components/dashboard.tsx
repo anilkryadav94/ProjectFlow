@@ -11,7 +11,7 @@ import { UserManagementTable } from './user-management-table';
 import { Button } from './ui/button';
 import { useToast } from '@/hooks/use-toast';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from './ui/select';
-import { FileUp, Loader2, Upload, X, Download, FileDown, Rows, Save } from 'lucide-react';
+import { FileUp, Loader2, Upload, X, Download, FileDown, Rows, Save, FileSpreadsheet } from 'lucide-react';
 import { AdvancedSearchForm, type SearchCriteria } from './advanced-search-form';
 import { useSearchParams, useRouter } from 'next/navigation';
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from './ui/card';
@@ -504,8 +504,8 @@ function Dashboard({
             processes={processes}
         />
         {(!isManagerOrAdmin && activeRole !== 'Admin' && activeRole !== 'Case Manager') && (
-            <div className="flex-shrink-0 border-b px-4 bg-muted">
-                <div className="flex items-center justify-end gap-2 py-1">
+            <div className="flex-shrink-0 border-b bg-muted">
+                <div className="flex items-center justify-end gap-2 py-1 px-4">
                     <Button variant="outline" className="h-7 px-2 text-xs" onClick={() => setIsColumnSelectOpen(true)}>
                         <Rows className="mr-1.5 h-3.5 w-3.5" />
                         Select Columns
@@ -513,6 +513,15 @@ function Dashboard({
                     <Button variant="outline" className="h-7 px-2 text-xs" onClick={saveColumnLayout}>
                         <Save className="mr-1.5 h-3.5 w-3.5" />
                         Save Layout
+                    </Button>
+                    <Button 
+                        variant="outline" 
+                        className="h-7 px-2 text-xs" 
+                        onClick={handleDownload} 
+                        disabled={dashboardProjects.length === 0}
+                        title="Download CSV"
+                    >
+                        <FileSpreadsheet className="h-3.5 w-3.5" />
                     </Button>
                 </div>
             </div>
@@ -690,3 +699,5 @@ function Dashboard({
 }
 
 export default Dashboard;
+
+    
