@@ -28,71 +28,35 @@ export async function bulkUpdateProjects(data: z.infer<typeof bulkUpdateSchema>)
     return { success: true };
 }
 
-const projectEntrySchema = z.object({
-    id: z.string(),
-    application_number: z.string().nullable(),
-    patent_number: z.string().nullable(),
-    country: z.string().nullable(),
-    status: z.string().nullable(),
-    notes: z.string().nullable(),
-});
-
-// This schema defines ONLY the fields that are allowed to be updated.
-const updateProjectSchema = z.object({
-  ref_number: z.string().nullable().optional(),
-  client_name: z.string().optional(),
-  process: z.enum(["Patent", "TM", "IDS", "Project"]).optional(),
-  subject_line: z.string().optional(),
-  application_number: z.string().nullable().optional(),
-  patent_number: z.string().nullable().optional(),
-  received_date: z.string().optional(),
-  allocation_date: z.string().optional(),
-  processor: z.string().optional(),
-  qa: z.string().optional(),
-  case_manager: z.string().optional(),
-  processing_status: z.enum(["Pending", "On Hold", "Re-Work", "Processed", "NTP", "Client Query", "Already Processed"]).optional(),
-  qa_status: z.enum(["Pending", "Complete", "NTP", "Client Query", "Already Processed"]).optional(),
-  rework_reason: z.string().nullable().optional(),
-  client_comments: z.string().nullable().optional(),
-  clientquery_status: z.enum(["Approved", "Clarification Required"]).nullable().optional(),
-  entries: z.array(projectEntrySchema).optional(),
-  sender: z.string().nullable().optional(),
-  country: z.string().nullable().optional(),
-  document_type: z.string().nullable().optional(),
-  action_taken: z.string().nullable().optional(),
-  renewal_agent: z.string().nullable().optional(),
-  client_query_description: z.string().nullable().optional(),
-  client_error_description: z.string().nullable().optional(),
-  qa_remark: z.string().nullable().optional(),
-  error: z.string().nullable().optional(),
-  email_renaming: z.string().nullable().optional(),
-  email_forwarded: z.string().nullable().optional(),
-  reportout_date: z.string().nullable().optional(),
-  manager_name: z.string().nullable().optional(),
-  client_response_date: z.string().nullable().optional(),
-  workflowStatus: z.string().optional(),
-});
+// This is the "whitelist" of all fields that are allowed to be updated.
+// We will use this to build a safe update object.
+const updatableProjectFields = [
+  'ref_number', 'client_name', 'process', 'subject_line', 'application_number',
+  'patent_number', 'received_date', 'allocation_date', 'processor', 'qa',
+  'case_manager', 'processing_status', 'qa_status', 'rework_reason',
+  'client_comments', 'clientquery_status', 'sender', 'country', 'document_type',
+  'action_taken', 'renewal_agent', 'client_query_description', 'client_error_description',
+  'qa_remark', 'error', 'email_renaming', 'email_forwarded', 'reportout_date',
+  'manager_name', 'client_response_date', 'workflowStatus'
+] as const;
 
 
-export async function updateProject(data: Partial<Project>, submitAction?: 'submit_for_qa' | 'submit_qa' | 'send_rework' | 'save' | 'client_submit'): Promise<{success: boolean, project?: Project}> {
+export async function updateProject(clientData: Partial<Project>, submitAction?: 'submit_for_qa' | 'submit_qa' | 'send_rework' | 'save' | 'client_submit'): Promise<{success: boolean, project?: Project}> {
     
-    if (!data.id) return { success: false };
-    const projectId = data.id;
+    if (!clientData.id) return { success: false };
+    const projectId = clientData.id;
     const projectRef = doc(db, 'projects', projectId);
 
     const dataToUpdate: { [key: string]: any } = {};
     
-    // Use .partial() to allow for missing fields, preventing validation errors
-    const parsedData = updateProjectSchema.partial().parse(data);
-
-    // Iterate over the schema keys and add only defined values to the update object
-    // This creates a "whitelist" of fields to update.
-    for (const key of Object.keys(updateProjectSchema.shape)) {
-        if (Object.prototype.hasOwnProperty.call(parsedData, key)) {
-            const typedKey = key as keyof typeof parsedData;
-            // Only add the field if it's not undefined
-            if (parsedData[typedKey] !== undefined) {
-                 dataToUpdate[typedKey] = parsedData[typedKey];
+    // Safely build the update object using the whitelist.
+    // This is the core of the fix.
+    for (const key of updatableProjectFields) {
+        if (Object.prototype.hasOwnProperty.call(clientData, key)) {
+            const typedKey = key as keyof typeof clientData;
+            // Only add the field if it's not undefined in the source data
+            if (clientData[typedKey] !== undefined) {
+                 dataToUpdate[typedKey] = clientData[typedKey];
             }
         }
     }
@@ -113,16 +77,17 @@ export async function updateProject(data: Partial<Project>, submitAction?: 'subm
         dataToUpdate.processing_status = 'Re-Work';
     }
     
-    if (Object.keys(dataToUpdate).length === 0 && !submitAction) {
-        // This can happen if only 'save' is clicked with no changes
+    if (Object.keys(dataToUpdate).length === 0) {
+        // This can happen if 'save' is clicked with no changes, or no valid fields were sent.
         const existingDoc = await getDoc(projectRef);
         if (existingDoc.exists()) {
             const existingProject = { id: existingDoc.id, ...existingDoc.data() } as Project;
             return { success: true, project: existingProject };
         }
-        return { success: false };
+        return { success: false }; // Should not happen if project exists
     }
     
+    // This will now only contain whitelisted, non-undefined fields.
     await updateDoc(projectRef, dataToUpdate);
 
     revalidatePath('/');
