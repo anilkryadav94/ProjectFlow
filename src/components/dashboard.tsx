@@ -20,11 +20,12 @@ import { cn } from '@/lib/utils';
 import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from './ui/accordion';
 import { EditProjectDialog } from './edit-project-dialog';
 import { AddRowsDialog } from './add-rows-dialog';
-import { bulkUpdateProjects } from '@/app/actions';
+import { bulkUpdateProjects, updateProject } from '@/app/actions';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from './ui/table';
 import { addRows } from '@/lib/data';
 import { ColumnSelectDialog } from './column-select-dialog';
 import { differenceInBusinessDays } from 'date-fns';
+import { Label } from './ui/label';
 
 interface DashboardProps {
   user: User;
@@ -42,6 +43,96 @@ const bulkUpdateFields = [
     { value: 'processor', label: 'Processor', options: processors },
     { value: 'qa', label: 'QA', options: qas },
 ] as const;
+
+function TestUpdateForm({ onUpdate }: { onUpdate: () => void }) {
+    const [projectId, setProjectId] = React.useState('');
+    const [processor, setProcessor] = React.useState('');
+    const [qa, setQa] = React.useState('');
+    const [isSubmitting, setIsSubmitting] = React.useState(false);
+    const { toast } = useToast();
+
+    const handleSubmit = async (e: React.FormEvent) => {
+        e.preventDefault();
+        if (!projectId) {
+            toast({ title: "Error", description: "Project ID is required.", variant: "destructive" });
+            return;
+        }
+        setIsSubmitting(true);
+        try {
+            const result = await updateProject({
+                id: projectId,
+                processor,
+                qa,
+            });
+
+            if (result.success) {
+                toast({ title: "Success", description: `Project ${projectId} updated successfully.` });
+                onUpdate(); // Refresh data on dashboard
+                setProjectId('');
+                setProcessor('');
+                setQa('');
+            } else {
+                throw new Error("Update failed on server.");
+            }
+        } catch (err) {
+            toast({ title: "Error", description: `Failed to update project. ${err instanceof Error ? err.message : ''}`, variant: "destructive" });
+        } finally {
+            setIsSubmitting(false);
+        }
+    };
+
+    return (
+        <Card>
+            <CardHeader>
+                <CardTitle>Test Project Update</CardTitle>
+                <CardDescription>
+                    Enter a Project ID and the new values for Processor or QA to test the update functionality.
+                </CardDescription>
+            </CardHeader>
+            <form onSubmit={handleSubmit}>
+                <CardContent className="space-y-4">
+                    <div className="space-y-2">
+                        <Label htmlFor="test-project-id">Project ID</Label>
+                        <Input
+                            id="test-project-id"
+                            placeholder="Enter exact Project ID (e.g., proj_0001)"
+                            value={projectId}
+                            onChange={(e) => setProjectId(e.target.value)}
+                        />
+                    </div>
+                    <div className="space-y-2">
+                        <Label htmlFor="test-processor">New Processor</Label>
+                        <Select value={processor} onValueChange={setProcessor}>
+                            <SelectTrigger id="test-processor">
+                                <SelectValue placeholder="Select a processor" />
+                            </SelectTrigger>
+                            <SelectContent>
+                                {processors.map(p => <SelectItem key={p} value={p}>{p}</SelectItem>)}
+                            </SelectContent>
+                        </Select>
+                    </div>
+                    <div className="space-y-2">
+                        <Label htmlFor="test-qa">New QA</Label>
+                        <Select value={qa} onValueChange={setQa}>
+                            <SelectTrigger id="test-qa">
+                                <SelectValue placeholder="Select a QA" />
+                            </SelectTrigger>
+                            <SelectContent>
+                                {qas.map(q => <SelectItem key={q} value={q}>{q}</SelectItem>)}
+                            </SelectContent>
+                        </Select>
+                    </div>
+                </CardContent>
+                <CardFooter>
+                    <Button type="submit" disabled={isSubmitting}>
+                        {isSubmitting && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
+                        Run Test Update
+                    </Button>
+                </CardFooter>
+            </form>
+        </Card>
+    );
+}
 
 
 function Dashboard({ 
@@ -675,6 +766,12 @@ function Dashboard({
                                 </Card>
                                 </AccordionContent>
                             </AccordionItem>
+                             <AccordionItem value="quick-update-test" className="border-0 bg-muted/30 shadow-md mb-4 rounded-lg">
+                                <AccordionTrigger className="px-4 py-3 hover:no-underline">Quick Update (Testing Form)</AccordionTrigger>
+                                <AccordionContent className="p-4 pt-0">
+                                    <TestUpdateForm onUpdate={refreshProjects} />
+                                </AccordionContent>
+                            </AccordionItem>
                             <AccordionItem value="advanced-search" className="border-0 bg-muted/30 shadow-md mb-4 rounded-lg">
                                 <AccordionTrigger className="px-4 py-3 hover:no-underline">Advanced Search</AccordionTrigger>
                                 <AccordionContent className="p-4 pt-0">
@@ -816,3 +913,5 @@ function Dashboard({
 }
 
 export default Dashboard;
+
+    
