@@ -24,6 +24,7 @@ import { bulkUpdateProjects } from '@/app/actions';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from './ui/table';
 import { addRows } from '@/lib/data';
 import { ColumnSelectDialog } from './column-select-dialog';
+import { differenceInBusinessDays } from 'date-fns';
 
 interface DashboardProps {
   user: User;
@@ -353,6 +354,17 @@ function Dashboard({
 
     if (filteredProjects) {
         baseProjects = filteredProjects;
+    } else if (isManagerOrAdmin && search.trim() !== '') {
+        const lowercasedSearch = search.toLowerCase();
+        if (searchColumn === 'any') {
+            baseProjects = projects.filter(p => 
+                Object.values(p).some(val => String(val).toLowerCase().includes(lowercasedSearch))
+            );
+        } else {
+            baseProjects = projects.filter(p => 
+                (p[searchColumn] as string)?.toString().toLowerCase().includes(lowercasedSearch)
+            );
+        }
     } else {
         baseProjects = [...projects];
     }
@@ -473,6 +485,25 @@ function Dashboard({
     return Object.entries(statusByClient).map(([client, status]) => ({ client, ...status }));
   }, [projects]);
   
+  const caseManagerTatInfo = React.useMemo(() => {
+    if (activeRole !== 'Case Manager') return null;
+
+    const outsideTatCount = dashboardProjects.filter(p => {
+        if (!p.qa_date) return false;
+        // The difference in business days between the current date and the QA date.
+        const daysDiff = differenceInBusinessDays(new Date(), new Date(p.qa_date));
+        return daysDiff > 3;
+    }).length;
+
+    const greeting = new Date().getHours() < 17 ? "Good Morning" : "Good Evening";
+
+    return {
+        count: outsideTatCount,
+        greeting: `${greeting}, ${user.name}!`,
+    };
+  }, [activeRole, dashboardProjects, user.name]);
+
+
   if (!activeRole) {
     return <div className="flex h-screen w-full items-center justify-center"><Loader2 className="h-8 w-8 animate-spin" /></div>;
   }
@@ -490,7 +521,7 @@ function Dashboard({
   const selectedBulkUpdateField = bulkUpdateFields.find(f => f.value === bulkUpdateField);
 
   // When to show the data table vs the accordions for manager
-  const showDataTable = filteredProjects !== null || search.trim() !== '';
+  const showDataTable = filteredProjects !== null || (isManagerOrAdmin && search.trim() !== '');
   const showManagerAccordions = isManagerOrAdmin && !showDataTable;
 
   // When to show the sub-header with column/layout controls
@@ -557,36 +588,53 @@ function Dashboard({
         {showSubHeader && (
             <div className="flex-shrink-0 border-b bg-muted">
                 <div className="flex items-center justify-end gap-2 py-1 px-4">
-                    {activeRole === 'Manager' && showDataTable && (
-                      <Button variant="outline" className="h-7 px-2 text-xs" onClick={handleResetAdvancedSearch}>
-                          <RotateCcw className="mr-1.5 h-3.5 w-3.5" /> Reset Search
-                      </Button>
-                    )}
-                    <Button variant="outline" className="h-7 px-2 text-xs" onClick={() => setIsColumnSelectOpen(true)}>
-                        <Rows className="mr-1.5 h-3.5 w-3.5" />
-                        Select Columns
-                    </Button>
-                    <Button variant="outline" className="h-7 px-2 text-xs" onClick={saveColumnLayout}>
-                        <Save className="mr-1.5 h-3.5 w-3.5" />
-                        Save Layout
-                    </Button>
-                    {(activeRole === 'Processor' || activeRole === 'QA' || (activeRole === 'Manager' && showDataTable)) && (
-                        <Button 
-                            variant="outline" 
-                            className="h-7 px-2 text-xs" 
-                            onClick={handleDownload} 
-                            disabled={dashboardProjects.length === 0}
-                            title="Download CSV"
-                        >
-                            <FileSpreadsheet className="h-3.5 w-3.5" />
-                        </Button>
+                     {activeRole === 'Case Manager' ? (
+                        <div className="flex-grow text-center text-sm font-semibold text-primary">
+                            {dashboardProjects.length > 0 && caseManagerTatInfo && (
+                                <>
+                                    <span>{caseManagerTatInfo.greeting} </span>
+                                    {caseManagerTatInfo.count > 0 && (
+                                        <span className='text-destructive'>{`${caseManagerTatInfo.count} Emails Identified Outside TAT Threshold – Your Attention Required.`}</span>
+                                    )}
+                                </>
+                            )}
+                        </div>
+                    ) : (
+                        <>
+                            {activeRole === 'Manager' && showDataTable && (
+                                <Button variant="outline" className="h-7 px-2 text-xs" onClick={handleResetAdvancedSearch}>
+                                    <RotateCcw className="mr-1.5 h-3.5 w-3.5" /> Reset Search
+                                </Button>
+                            )}
+                            <Button variant="outline" className="h-7 px-2 text-xs" onClick={() => setIsColumnSelectOpen(true)}>
+                                <Rows className="mr-1.5 h-3.5 w-3.5" />
+                                Select Columns
+                            </Button>
+                            <Button variant="outline" className="h-7 px-2 text-xs" onClick={saveColumnLayout}>
+                                <Save className="mr-1.5 h-3.5 w-3.5" />
+                                Save Layout
+                            </Button>
+                            {(activeRole === 'Processor' || activeRole === 'QA' || (activeRole === 'Manager' && showDataTable)) && (
+                                <Button 
+                                    variant="outline" 
+                                    className="h-7 px-2 text-xs" 
+                                    onClick={handleDownload} 
+                                    disabled={dashboardProjects.length === 0}
+                                    title="Download CSV"
+                                >
+                                    <FileSpreadsheet className="h-3.5 w-3.5" />
+                                </Button>
+                            )}
+                        </>
                     )}
                 </div>
             </div>
         )}
         <main className="flex flex-col flex-grow overflow-y-auto">
-            {activeRole === 'Admin' ? (
-                <UserManagementTable sessionUser={user} />
+             {activeRole === 'Admin' ? (
+                <div className="flex-grow flex flex-col">
+                    <UserManagementTable sessionUser={user} />
+                </div>
             ) : activeRole === 'Manager' ? (
               <div className="flex flex-col h-full">
                  {showManagerAccordions && (
@@ -728,23 +776,25 @@ function Dashboard({
                         </div>
                     )}
                     {showDataTable && (
-                        <DataTable 
-                            data={dashboardProjects}
-                            columns={columns}
-                            sort={sort}
-                            setSort={setSort}
-                            rowSelection={rowSelection}
-                            setRowSelection={setRowSelection}
-                            isManagerOrAdmin={isManagerOrAdmin}
-                            totalCount={dashboardProjects.length}
-                        />
+                        <div className="flex-grow flex flex-col">
+                          <DataTable 
+                              data={dashboardProjects}
+                              columns={columns}
+                              sort={sort}
+                              setSort={setSort}
+                              rowSelection={rowSelection}
+                              setRowSelection={setRowSelection}
+                              isManagerOrAdmin={isManagerOrAdmin}
+                              totalCount={dashboardProjects.length}
+                          />
+                        </div>
                     )}
                  </div>
 
               </div>
             ) : (
                  <div className="flex flex-col flex-grow">
-                    <DataTable 
+                     <DataTable 
                         data={dashboardProjects}
                         columns={columns}
                         sort={sort}
@@ -762,5 +812,7 @@ function Dashboard({
 }
 
 export default Dashboard;
+
+    
 
     
