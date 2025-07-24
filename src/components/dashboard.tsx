@@ -559,7 +559,7 @@ function Dashboard({
             clientNames={clientNames}
             processes={processes}
         />
-        <main className="flex flex-col flex-grow overflow-y-auto p-4 md:p-6 gap-4">
+        <main className="flex flex-col flex-grow overflow-y-auto p-4 md:p-6 gap-6">
             {activeRole === 'Admin' ? (
                 <UserManagementTable sessionUser={user} />
             ) : isManagerOrAdmin ? (
@@ -659,7 +659,19 @@ function Dashboard({
                 )}
               </>
             ) : showWelcomeDashboard ? (
-                 <WelcomeDashboard projects={initialProjects} user={user} />
+                <>
+                    <WelcomeDashboard projects={initialProjects} user={user} />
+                    <DataTable 
+                        data={dashboardProjects}
+                        columns={columns}
+                        sort={sort}
+                        setSort={setSort}
+                        rowSelection={{}}
+                        setRowSelection={() => {}}
+                        isManagerOrAdmin={false}
+                        totalCount={dashboardProjects.length}
+                    />
+                </>
             ) : (
                 <DataTable 
                     data={dashboardProjects}
@@ -679,4 +691,5 @@ function Dashboard({
 
 export default Dashboard;
 
+    
     
