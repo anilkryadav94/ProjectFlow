@@ -118,17 +118,16 @@ function Dashboard({
   React.useEffect(() => {
     setProjects(initialProjects);
   }, [initialProjects]);
-
+  
+  const isManagerOrAdmin = activeRole === 'Manager' || activeRole === 'Admin';
+  
   React.useEffect(() => {
-    // This effect triggers filtering when quick search term changes
-    if (activeRole === 'Manager' && search.trim() !== '') {
+    if (search.trim() !== '' && isManagerOrAdmin) {
       handleQuickSearch();
-    } else if (activeRole === 'Manager' && search.trim() === '' && filteredProjects !== null && searchCriteria === null) {
-      // If search is cleared, reset the view
+    } else if (search.trim() === '' && filteredProjects !== null && searchCriteria === null && isManagerOrAdmin) {
       handleResetAdvancedSearch();
     }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [search, searchColumn, activeRole]);
+  }, [search, searchColumn, activeRole, isManagerOrAdmin]);
 
   const loadColumnLayout = (role: Role) => {
     const savedLayout = localStorage.getItem(`columnLayout-${role}`);
@@ -485,8 +484,6 @@ function Dashboard({
   if (!activeRole) {
     return <div className="flex h-screen w-full items-center justify-center"><Loader2 className="h-8 w-8 animate-spin" /></div>;
   }
-  
-  const isManagerOrAdmin = activeRole === 'Manager' || activeRole === 'Admin';
   
   const columns = getColumns(
       isManagerOrAdmin,
