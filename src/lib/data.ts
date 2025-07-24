@@ -95,7 +95,7 @@ export let users: Omit<User, 'id'>[] = [
     { email: 'admin@example.com', password: 'password', name: 'Admin User', roles: ['Admin', 'Manager'] },
     { email: 'manager@example.com', password: 'password', name: 'Manager User', roles: ['Manager', 'QA'] },
     { email: 'alice@example.com', password: 'password', name: 'Alice', roles: ['Processor'] },
-    { email: 'bob@example.com', password: 'password', name: 'Bob', roles: ['Processor', 'QA'] },
+    { email: 'bob@example.com', password: 'password', name: 'Bob', roles: ['Processor'] },
     { email: 'charlie@example.com', password: 'password', name: 'Charlie', roles: ['Processor'] },
     { email: 'david@example.com', password: 'password', name: 'David', roles: ['QA'] },
     { email: 'eve@example.com', password: 'password', name: 'Eve', roles: ['QA'] },
@@ -290,4 +290,3 @@ export async function seedDatabase() {
 //   }
 //   doSeed();
 // }, []);
-
