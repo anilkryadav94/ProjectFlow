@@ -5,6 +5,7 @@ import {
     signOut, 
     onAuthStateChanged as onFirebaseAuthStateChanged,
     updatePassword as updateFirebasePassword,
+    type User as FirebaseUser,
 } from 'firebase/auth';
 import { db, auth } from './firebase';
 import { doc, getDoc, setDoc, collection, getDocs, updateDoc, query, where } from 'firebase/firestore';
@@ -21,8 +22,32 @@ export function onAuthChanged(callback: (user: import('firebase/auth').User | nu
     return onFirebaseAuthStateChanged(auth, callback);
 }
 
+// This function checks for and creates a user document in Firestore if it doesn't exist.
+// This is useful for ensuring users created directly in the Auth console have a corresponding DB record.
+async function ensureUserDocument(firebaseUser: FirebaseUser): Promise<void> {
+    const userDocRef = doc(db, 'users', firebaseUser.uid);
+    const userDocSnap = await getDoc(userDocRef);
+
+    if (!userDocSnap.exists()) {
+        // User document doesn't exist, let's create it from our mock data.
+        const mockUser = mockUsers.find(u => u.email === firebaseUser.email);
+        if (mockUser) {
+            const { password, ...userDataToSave } = mockUser;
+            await setDoc(userDocRef, userDataToSave);
+            console.log(`Created Firestore document for user: ${firebaseUser.email}`);
+        } else {
+            console.warn(`No mock user data found for ${firebaseUser.email} to create Firestore document.`);
+        }
+    }
+}
+
+
 export async function login(email: string, password: string): Promise<void> {
-    await signInWithEmailAndPassword(auth, email, password);
+    const userCredential = await signInWithEmailAndPassword(auth, email, password);
+    // After successful sign-in, ensure their user document exists in Firestore.
+    if (userCredential.user) {
+        await ensureUserDocument(userCredential.user);
+    }
 }
 
 export async function logout(): Promise<void> {
