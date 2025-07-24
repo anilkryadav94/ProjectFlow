@@ -121,14 +121,6 @@ function Dashboard({
   
   const isManagerOrAdmin = activeRole === 'Manager' || activeRole === 'Admin';
   
-  React.useEffect(() => {
-    if (search.trim() !== '' && isManagerOrAdmin) {
-      handleQuickSearch();
-    } else if (search.trim() === '' && filteredProjects !== null && searchCriteria === null && isManagerOrAdmin) {
-      handleResetAdvancedSearch();
-    }
-  }, [search, searchColumn, activeRole, isManagerOrAdmin]);
-
   const loadColumnLayout = (role: Role) => {
     const savedLayout = localStorage.getItem(`columnLayout-${role}`);
     if (savedLayout) {
@@ -594,13 +586,13 @@ function Dashboard({
         )}
         <main className="flex flex-col flex-grow overflow-y-auto">
             {activeRole === 'Admin' ? (
-                <div className="flex-grow">
+                <div>
                     <UserManagementTable sessionUser={user} />
                 </div>
             ) : activeRole === 'Manager' ? (
               <div className="flex flex-col h-full">
                  {showManagerAccordions && (
-                    <div className="flex-grow">
+                    <div className="p-4 md:p-6">
                         <Accordion type="single" collapsible className="w-full" defaultValue='work-status'>
                             <AccordionItem value="work-allocation" className="border-0 bg-muted/30 shadow-md mb-4">
                                 <AccordionTrigger className="px-4 py-3 hover:no-underline">Work Allocation / Records Addition</AccordionTrigger>
@@ -701,7 +693,7 @@ function Dashboard({
                         </Accordion>
                     </div>
                 )}
-                 <div className="flex-grow flex flex-col">
+                 <div className="flex-grow flex flex-col px-4 md:px-6 pb-6">
                     {Object.keys(rowSelection).length > 0 && (
                         <div className="flex items-center gap-4 p-4 border-b bg-muted/50">
                             <span className="text-sm font-semibold">{Object.keys(rowSelection).length} selected</span>
@@ -753,7 +745,7 @@ function Dashboard({
 
               </div>
             ) : (
-                 <div className="flex flex-col flex-grow">
+                 <div className="flex flex-col flex-grow p-4 md:p-6">
                      {Object.keys(rowSelection).length > 0 && isManagerOrAdmin && (
                         <div className="flex items-center gap-4 p-4 border-b bg-muted/50">
                             <span className="text-sm font-semibold">{Object.keys(rowSelection).length} selected</span>
