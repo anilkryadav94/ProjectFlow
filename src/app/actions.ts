@@ -72,8 +72,6 @@ const updateProjectSchema = z.object({
   manager_name: z.string().nullable(),
   client_response_date: z.string().nullable(),
   workflowStatus: z.string(),
-  processing_date: z.string().nullable(),
-  qa_date: z.string().nullable(),
 });
 
 
@@ -110,11 +108,6 @@ export async function updateProject(data: Partial<Project>, submitAction?: 'subm
         dataToUpdate.workflowStatus = 'With Processor';
         dataToUpdate.processing_status = 'Re-Work';
     }
-    
-    // CRITICAL: Ensure forbidden fields are never sent to Firestore.
-    // This is a double-check, as the whitelist approach should already prevent this.
-    delete dataToUpdate.id;
-    delete dataToUpdate.row_number;
     
     await updateDoc(projectRef, dataToUpdate);
 

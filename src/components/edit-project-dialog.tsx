@@ -86,6 +86,7 @@ const fullFormSchema = z.object({
   reportout_date: z.string().nullable(),
   manager_name: z.string().nullable(),
   client_response_date: z.string().nullable(),
+  workflowStatus: z.string(),
 });
 
 
@@ -120,6 +121,7 @@ const caseManagerFormSchema = fullFormSchema.pick({
     id: true, // Need id to know which project to update
     clientquery_status: true,
     client_comments: true,
+    workflowStatus: true,
 }).extend({
     clientquery_status: z.enum(["Approved", "Clarification Required"], { errorMap: () => ({ message: "Client Status is required."}) }),
     client_comments: z.string().min(1, "Client Comments are required."),
