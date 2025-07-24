@@ -152,7 +152,7 @@ export function Header({
                     {activeRole !== 'Case Manager' ? (
                       <>
                         <Select value={searchColumn} onValueChange={(v) => setSearchColumn(v as SearchableColumn)}>
-                          <SelectTrigger className="w-[180px] rounded-r-none focus:ring-0 text-foreground h-9">
+                          <SelectTrigger className="w-[180px] rounded-r-none focus:ring-0 text-foreground h-8 text-xs">
                               <SelectValue placeholder="Select column" />
                           </SelectTrigger>
                           <SelectContent>
@@ -173,7 +173,7 @@ export function Header({
                             placeholder="Quick search..."
                             value={search}
                             onChange={(e) => setSearch(e.target.value)}
-                            className="rounded-l-none focus-visible:ring-0 h-9 w-48 text-foreground"
+                            className="rounded-l-none focus-visible:ring-0 h-8 w-48 text-foreground text-xs"
                         />
                       </>
                     ) : (
@@ -193,7 +193,7 @@ export function Header({
                 {setClientNameFilter && setProcessFilter && activeRole !== 'Case Manager' && (
                   <>
                     <Select value={clientNameFilter} onValueChange={setClientNameFilter}>
-                      <SelectTrigger className="w-[150px] text-foreground h-9">
+                      <SelectTrigger className="w-[150px] text-foreground h-8 text-xs">
                         <SelectValue placeholder="Filter by Client" />
                       </SelectTrigger>
                       <SelectContent>
@@ -205,7 +205,7 @@ export function Header({
                     </Select>
 
                     <Select value={processFilter} onValueChange={setProcessFilter}>
-                      <SelectTrigger className="w-[150px] text-foreground h-9">
+                      <SelectTrigger className="w-[150px] text-foreground h-8 text-xs">
                         <SelectValue placeholder="Filter by Process" />
                       </SelectTrigger>
                       <SelectContent>
@@ -233,6 +233,12 @@ export function Header({
             )}
 
             {children}
+
+            {isManagerOrAdmin && hasSearchResults && onResetSearch && (
+                <Button variant="outline" className="h-9 text-foreground" onClick={onResetSearch}>
+                    <RotateCcw className="mr-2" /> Reset Search
+                </Button>
+            )}
             
             <DropdownMenu>
                 <DropdownMenuTrigger asChild>
