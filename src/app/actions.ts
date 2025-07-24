@@ -110,19 +110,6 @@ export async function updateProject(data: Partial<Project>, submitAction?: 'subm
     return { success: true, project: finalProject };
 }
 
-const fieldsToCopy = z.enum([
-  'subject_line',
-  'client_name',
-  'process',
-  'processor',
-  'qa',
-  'case_manager',
-  'received_date',
-  'allocation_date',
-]);
-
-type FieldToCopyId = z.infer<typeof fieldsToCopy>;
-
 export async function addRows(
   projectDataToCopy: Partial<Project>,
   count: number
@@ -135,49 +122,56 @@ export async function addRows(
   const projectsCollection = collection(db, 'projects');
   
   try {
-    for (let i = 0; i < count; i++) {
-      const newProject: Omit<Project, 'id'> = {
-          ref_number: '',
-          application_number: null,
-          patent_number: null,
-          workflowStatus: 'With Processor',
-          processing_status: 'Pending',
-          qa_status: 'Pending',
-          processing_date: null,
-          qa_date: null,
-          rework_reason: null,
-          client_comments: null,
-          clientquery_status: null,
-          client_response_date: null,
-          entries: [],
-          subject_line: '',
-          client_name: '',
-          process: 'Patent',
-          processor: '',
-          qa: '',
-          case_manager: '',
-          received_date: new Date().toISOString().split('T')[0],
-          allocation_date: new Date().toISOString().split('T')[0],
-          sender: null,
-          country: null,
-          document_type: null,
-          action_taken: null,
-          renewal_agent: null,
-          client_query_description: null,
-          client_error_description: null,
-          qa_remark: null,
-          error: null,
-          email_renaming: null,
-          email_forwarded: null,
-          reportout_date: null,
-          manager_name: null,
-      };
+    const batch = writeBatch(db);
 
-      // Apply copied data
-      Object.assign(newProject, projectDataToCopy);
-      
-      await addDoc(projectsCollection, newProject);
+    for (let i = 0; i < count; i++) {
+        // Create a new document reference with an auto-generated ID
+        const newProjectRef = doc(projectsCollection);
+
+        const newProject: Omit<Project, 'id'> = {
+            ref_number: '',
+            application_number: null,
+            patent_number: null,
+            workflowStatus: 'With Processor',
+            processing_status: 'Pending',
+            qa_status: 'Pending',
+            processing_date: null,
+            qa_date: null,
+            rework_reason: null,
+            client_comments: null,
+            clientquery_status: null,
+            client_response_date: null,
+            entries: [],
+            subject_line: '',
+            client_name: '',
+            process: 'Patent',
+            processor: '',
+            qa: '',
+            case_manager: '',
+            received_date: new Date().toISOString().split('T')[0],
+            allocation_date: new Date().toISOString().split('T')[0],
+            sender: null,
+            country: null,
+            document_type: null,
+            action_taken: null,
+            renewal_agent: null,
+            client_query_description: null,
+            client_error_description: null,
+            qa_remark: null,
+            error: null,
+            email_renaming: null,
+            email_forwarded: null,
+            reportout_date: null,
+            manager_name: null,
+        };
+
+        // Apply copied data over the defaults
+        Object.assign(newProject, projectDataToCopy);
+        
+        batch.set(newProjectRef, newProject);
     }
+    
+    await batch.commit();
 
     revalidatePath('/');
     return { success: true, addedCount: count };
