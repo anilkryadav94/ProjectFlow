@@ -40,38 +40,38 @@ const projectEntrySchema = z.object({
 // This schema defines ONLY the fields that are allowed to be updated.
 // It does NOT include `id` or `row_number`.
 const updateProjectSchema = z.object({
-  ref_number: z.string().nullable(),
-  client_name: z.string(),
-  process: z.enum(["Patent", "TM", "IDS", "Project"]),
-  subject_line: z.string(),
-  application_number: z.string().nullable(),
-  patent_number: z.string().nullable(),
-  received_date: z.string(),
-  allocation_date: z.string(),
-  processor: z.string(),
-  qa: z.string(),
-  case_manager: z.string(),
-  processing_status: z.enum(["Pending", "On Hold", "Re-Work", "Processed", "NTP", "Client Query", "Already Processed"]),
-  qa_status: z.enum(["Pending", "Complete", "NTP", "Client Query", "Already Processed"]),
-  rework_reason: z.string().nullable(),
-  client_comments: z.string().nullable(),
-  clientquery_status: z.enum(["Approved", "Clarification Required"]).nullable(),
+  ref_number: z.string().nullable().optional(),
+  client_name: z.string().optional(),
+  process: z.enum(["Patent", "TM", "IDS", "Project"]).optional(),
+  subject_line: z.string().optional(),
+  application_number: z.string().nullable().optional(),
+  patent_number: z.string().nullable().optional(),
+  received_date: z.string().optional(),
+  allocation_date: z.string().optional(),
+  processor: z.string().optional(),
+  qa: z.string().optional(),
+  case_manager: z.string().optional(),
+  processing_status: z.enum(["Pending", "On Hold", "Re-Work", "Processed", "NTP", "Client Query", "Already Processed"]).optional(),
+  qa_status: z.enum(["Pending", "Complete", "NTP", "Client Query", "Already Processed"]).optional(),
+  rework_reason: z.string().nullable().optional(),
+  client_comments: z.string().nullable().optional(),
+  clientquery_status: z.enum(["Approved", "Clarification Required"]).nullable().optional(),
   entries: z.array(projectEntrySchema).optional(),
-  sender: z.string().nullable(),
-  country: z.string().nullable(),
-  document_type: z.string().nullable(),
-  action_taken: z.string().nullable(),
-  renewal_agent: z.string().nullable(),
-  client_query_description: z.string().nullable(),
-  client_error_description: z.string().nullable(),
-  qa_remark: z.string().nullable(),
-  error: z.string().nullable(),
-  email_renaming: z.string().nullable(),
-  email_forwarded: z.string().nullable(),
-  reportout_date: z.string().nullable(),
-  manager_name: z.string().nullable(),
-  client_response_date: z.string().nullable(),
-  workflowStatus: z.string(),
+  sender: z.string().nullable().optional(),
+  country: z.string().nullable().optional(),
+  document_type: z.string().nullable().optional(),
+  action_taken: z.string().nullable().optional(),
+  renewal_agent: z.string().nullable().optional(),
+  client_query_description: z.string().nullable().optional(),
+  client_error_description: z.string().nullable().optional(),
+  qa_remark: z.string().nullable().optional(),
+  error: z.string().nullable().optional(),
+  email_renaming: z.string().nullable().optional(),
+  email_forwarded: z.string().nullable().optional(),
+  reportout_date: z.string().nullable().optional(),
+  manager_name: z.string().nullable().optional(),
+  client_response_date: z.string().nullable().optional(),
+  workflowStatus: z.string().optional(),
 });
 
 
@@ -81,15 +81,19 @@ export async function updateProject(data: Partial<Project>, submitAction?: 'subm
     const projectId = data.id;
     const projectRef = doc(db, 'projects', projectId);
 
-    // Whitelist approach: only build an object with fields that are allowed to be updated.
-    // This is safer than deleting keys from a large object.
     const dataToUpdate: { [key: string]: any } = {};
 
-    // Copy only the allowed fields from the incoming data using the schema.
-    const allowedFields = updateProjectSchema.keyof()._def.values;
-    for (const key of allowedFields) {
-        if (data.hasOwnProperty(key)) {
-            dataToUpdate[key as keyof typeof dataToUpdate] = data[key as keyof typeof data];
+    // Validate and get only the defined fields from the schema
+    const parsedData = updateProjectSchema.parse(data);
+
+    // Copy only the fields that are present in the parsed (and validated) data.
+    // This prevents any 'undefined' values from being included in the update object.
+    for (const key in parsedData) {
+        if (Object.prototype.hasOwnProperty.call(parsedData, key)) {
+            const typedKey = key as keyof typeof parsedData;
+            if (parsedData[typedKey] !== undefined) {
+                 dataToUpdate[typedKey] = parsedData[typedKey];
+            }
         }
     }
 
@@ -108,6 +112,10 @@ export async function updateProject(data: Partial<Project>, submitAction?: 'subm
         dataToUpdate.workflowStatus = 'With Processor';
         dataToUpdate.processing_status = 'Re-Work';
     }
+    
+    // Ensure critical IDs are never part of the update payload
+    delete dataToUpdate.id;
+    delete (dataToUpdate as any).row_number;
     
     await updateDoc(projectRef, dataToUpdate);
 
