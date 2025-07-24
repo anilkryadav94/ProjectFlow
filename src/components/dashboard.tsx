@@ -205,23 +205,6 @@ function Dashboard({
     });
   }
 
-  const handleDownloadSample = () => {
-    const headers = "ref_number,client_name,process,processor,sender,subject_line,received_date,case_manager,allocation_date,country,document_type,action_taken";
-    const exampleRow = "REF-123,Client A,Patent,Alice,sender@example.com,New Invention Disclosure,2024-01-15,CM Alice,2024-01-16,USA,Disclosure,Filed";
-    const csvContent = `${headers}\n${exampleRow}`;
-    
-    const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
-    const link = document.createElement("a");
-    const url = URL.createObjectURL(blob);
-    link.setAttribute("href", url);
-    link.setAttribute("download", `sample_project_upload.csv`);
-    link.style.visibility = 'hidden';
-    document.body.appendChild(link);
-    link.click();
-    document.body.removeChild(link);
-  }
-
-
   const handleAdvancedSearch = (criteria: SearchCriteria) => {
     setSearchCriteria(criteria);
 
@@ -484,37 +467,6 @@ function Dashboard({
                                </Card>
                             </AccordionContent>
                         </AccordionItem>
-                        <AccordionItem value="bulk-upload-testing" className="rounded-lg mb-4 border-0 bg-muted/30 shadow-md">
-                            <AccordionTrigger className="px-4 py-3 hover:no-underline">Bulk Upload (Testing)</AccordionTrigger>
-                            <AccordionContent className="p-4 pt-0">
-                               <Card>
-                                <CardHeader>
-                                    <CardTitle>Bulk Upload Records (Testing)</CardTitle>
-                                    <CardDescription>Upload a CSV file to add multiple new project records at once for testing. Please ensure dates are in YYYY-MM-DD format.</CardDescription>
-                                </CardHeader>
-                                <CardContent>
-                                    <div className="flex items-center gap-4">
-                                         <Button variant="outline" onClick={() => fileInputRef.current?.click()} disabled={isUploading}>
-                                            <Upload className="mr-2" />
-                                            Choose CSV File
-                                        </Button>
-                                        {selectedFile && <span className="text-sm text-muted-foreground">{selectedFile.name}</span>}
-                                         {selectedFile && <Button size="sm" variant="ghost" onClick={() => setSelectedFile(null)}><X /></Button>}
-                                    </div>
-                                </CardContent>
-                                <CardFooter className="gap-4">
-                                    <Button onClick={handleProcessUpload} disabled={!selectedFile || isUploading}>
-                                        {isUploading ? <Loader2 className="mr-2 animate-spin" /> : <FileUp className="mr-2" />}
-                                        Process Upload
-                                    </Button>
-                                    <Button variant="secondary" onClick={handleDownloadSample}>
-                                        <Download className="mr-2" />
-                                        Download Sample CSV
-                                    </Button>
-                                </CardFooter>
-                               </Card>
-                            </AccordionContent>
-                        </AccordionItem>
                         <AccordionItem value="advanced-search" className="rounded-lg mb-4 border-0 bg-muted/30 shadow-md">
                             <AccordionTrigger className="px-4 py-3 hover:no-underline">Advanced Search</AccordionTrigger>
                             <AccordionContent className="p-4 pt-0">
@@ -650,6 +602,8 @@ function Dashboard({
 }
 
 export default Dashboard;
+
+    
 
     
 
