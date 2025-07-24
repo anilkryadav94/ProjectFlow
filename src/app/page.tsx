@@ -77,19 +77,6 @@ export default function Home() {
     return () => unsubscribe();
   }, [router]);
   
-  React.useEffect(() => {
-    if (session) {
-        const highestRole = session.user.roles.sort((a, b) => {
-            const roleOrder = ['Admin', 'Manager', 'QA', 'Case Manager', 'Processor'];
-            return roleOrder.indexOf(a) - roleOrder.indexOf(b);
-        })[0];
-      
-        if(highestRole === 'Admin' || highestRole === 'Manager') {
-            router.replace(`/?role=${highestRole}`);
-        }
-    }
-  }, [session, router]);
-
   if (loading || !session || !projects) {
     return (
         <div className="flex h-screen w-full items-center justify-center bg-background">
