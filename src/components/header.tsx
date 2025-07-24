@@ -184,7 +184,7 @@ export function Header({
                             placeholder="Quick search..."
                             value={search}
                             onChange={(e) => setSearch(e.target.value)}
-                            className="focus-visible:ring-0 h-9 w-64 text-foreground pl-9"
+                            className="focus-visible:ring-0 h-8 w-64 text-foreground pl-9"
                         />
                       </>
                     )}
@@ -280,5 +280,3 @@ export function Header({
     </header>
   )
 }
-
-    
