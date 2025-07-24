@@ -81,32 +81,36 @@ export async function updateProject(data: Partial<Project>, submitAction?: 'subm
     
     if (!data.id) return { success: false };
     const projectId = data.id;
-
-    // The Zod schema was causing issues by including non-updatable fields.
-    // We will manually construct the update object to ensure only valid fields are sent.
     const projectRef = doc(db, 'projects', projectId);
-    
-    // Create a mutable copy of the data.
-    const dataToUpdate: any = { ...data };
-    
-    // Handle status transitions based on action
-    if (submitAction === 'submit_for_qa') {
-      dataToUpdate.workflowStatus = 'With QA';
-      dataToUpdate.processing_date = new Date().toISOString().split('T')[0];
-    } else if (submitAction === 'submit_qa') {
-      dataToUpdate.workflowStatus = 'Completed';
-      dataToUpdate.qa_date = new Date().toISOString().split('T')[0];
-    } else if (submitAction === 'send_rework') {
-      dataToUpdate.workflowStatus = 'With Processor';
-      dataToUpdate.processing_status = 'Re-Work';
-    } else if (submitAction === 'client_submit') {
+
+    // Whitelist approach: only build an object with fields that are allowed to be updated.
+    let dataToUpdate: { [key: string]: any } = {};
+
+    // Handle status transitions and data based on action
+    if (submitAction === 'client_submit') {
       dataToUpdate.workflowStatus = 'With QA';
       dataToUpdate.qa_status = 'Pending';
+      dataToUpdate.clientquery_status = data.clientquery_status || null;
+      dataToUpdate.client_comments = data.client_comments || null;
       dataToUpdate.client_response_date = new Date().toISOString().split('T')[0];
+    } else {
+       // For other roles, we can copy the entire data object for now, 
+       // but critically remove the fields that should never be updated.
+       dataToUpdate = { ...data };
+
+        if (submitAction === 'submit_for_qa') {
+            dataToUpdate.workflowStatus = 'With QA';
+            dataToUpdate.processing_date = new Date().toISOString().split('T')[0];
+        } else if (submitAction === 'submit_qa') {
+            dataToUpdate.workflowStatus = 'Completed';
+            dataToUpdate.qa_date = new Date().toISOString().split('T')[0];
+        } else if (submitAction === 'send_rework') {
+            dataToUpdate.workflowStatus = 'With Processor';
+            dataToUpdate.processing_status = 'Re-Work';
+        }
     }
 
-    // CRITICAL: Ensure forbidden fields are never sent to Firestore.
-    // This was the root cause of the "Permission Denied" error.
+    // CRITICAL: Ensure forbidden fields are never sent to Firestore, regardless of action.
     delete dataToUpdate.id;
     delete dataToUpdate.row_number;
     

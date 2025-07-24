@@ -116,7 +116,11 @@ const qaFormSchema = fullFormSchema.extend({
     rework_reason: z.string().nullable(),
 });
 
-const caseManagerFormSchema = fullFormSchema.extend({
+const caseManagerFormSchema = fullFormSchema.pick({
+    id: true, // Need id to know which project to update
+    clientquery_status: true,
+    client_comments: true,
+}).extend({
     clientquery_status: z.enum(["Approved", "Clarification Required"], { errorMap: () => ({ message: "Client Status is required."}) }),
     client_comments: z.string().min(1, "Client Comments are required."),
 });
@@ -169,6 +173,9 @@ export function EditProjectDialog({
   const form = useForm<EditProjectFormValues>({
     resolver: zodResolver(getValidationSchema()),
     defaultValues: project || {},
+    // The mode needs to be `onBlur` to prevent premature validation on every keystroke,
+    // which was clearing errors before submission was attempted.
+    mode: 'onBlur',
   });
 
   React.useEffect(() => {
@@ -188,70 +195,67 @@ export function EditProjectDialog({
 
     setSubmitAction(action);
     
+    // Manually trigger validation before submitting
+    const isValid = await form.trigger();
+    if (!isValid) {
+        toast({ title: "Validation Error", description: "Please fill all required fields.", variant: "destructive"});
+        setSubmitAction(null);
+        return;
+    }
+
     if (action === 'send_rework' && !form.getValues('rework_reason')) {
         form.setError("rework_reason", { type: "manual", message: "Rework reason is required." });
         setSubmitAction(null);
         return;
     }
     
-    form.clearErrors("rework_reason");
+    // Using getValues() to get the latest form state to pass to the server action
+    const data = form.getValues();
 
-    await form.handleSubmit(async (data) => {
-        setIsSubmitting(true);
-        try {
-            const result = await updateProject(data, action);
-            if (result.success && result.project) {
-                const currentId = result.project.id;
-                onUpdateSuccess();
-                toast({
-                    title: "Success",
-                    description: `Project ${result.project.ref_number} updated.`,
-                });
-
-                // Navigate to next project in the queue
-                const currentIndex = projectQueue.findIndex(p => p.id === currentId);
-                
-                // If the project status changed and it's no longer in the queue, find the next available one
-                const newQueueAfterUpdate = projectQueue.filter(p => {
-                     const isSameProject = p.id === currentId;
-                     if(isSameProject) return false; // remove the one we just processed
-                     return true;
-                });
-                
-                let nextProject;
-
-                if (newQueueAfterUpdate.length > 0) {
-                  // try to find the project that was originally next
-                  const originalNextProject = projectQueue[currentIndex + 1];
-                  if(originalNextProject && newQueueAfterUpdate.find(p => p.id === originalNextProject.id)) {
-                      nextProject = originalNextProject;
-                  } else {
-                     // if the original next is gone, or there was no original next, just take the first of what's left
-                     nextProject = newQueueAfterUpdate[0];
-                  }
-                }
-
-
-                if (nextProject) {
-                    onNavigate(nextProject);
-                } else {
-                    toast({ title: "End of Queue", description: "You've reached the end of your project queue."});
-                    onOpenChange(false); // Close if no next project
-                }
-            } else {
-                throw new Error("Failed to update project on the server.");
-            }
-        } catch (error) {
+    setIsSubmitting(true);
+    try {
+        const result = await updateProject(data, action);
+        if (result.success && result.project) {
+            onUpdateSuccess();
             toast({
-                title: "Error",
-                description: `Failed to update project. ${error instanceof Error ? error.message : ''}`,
-                variant: "destructive",
+                title: "Success",
+                description: `Project ${result.project.ref_number || result.project.id} updated.`,
             });
-        } finally {
-            setIsSubmitting(false);
-            setSubmitAction(null);
+
+            // Navigate to next project in the queue
+            const currentIndex = projectQueue.findIndex(p => p.id === result.project!.id);
+            
+            const newQueueAfterUpdate = projectQueue.filter(p => p.id !== result.project!.id);
+            
+            let nextProject;
+
+            if (newQueueAfterUpdate.length > 0) {
+              if (currentIndex !== -1 && currentIndex < newQueueAfterUpdate.length) {
+                  nextProject = newQueueAfterUpdate[currentIndex];
+              } else {
+                  nextProject = newQueueAfterUpdate[0];
+              }
+            }
+
+            if (nextProject) {
+                onNavigate(nextProject);
+            } else {
+                toast({ title: "End of Queue", description: "You've reached the end of your project queue."});
+                onOpenChange(false); // Close if no next project
+            }
+        } else {
+            throw new Error("Failed to update project on the server.");
         }
-    })();
+    } catch (error) {
+        toast({
+            title: "Error",
+            description: `Failed to update project. ${error instanceof Error ? error.message : ''}`,
+            variant: "destructive",
+        });
+    } finally {
+        setIsSubmitting(false);
+        setSubmitAction(null);
+    }
   }
   
   const isManagerOrAdmin = userRole === 'Manager' || userRole === 'Admin';
@@ -333,7 +337,7 @@ export function EditProjectDialog({
             
              {isCaseManagerView && project && (
                 <>
-                <FormField control={form.control} name="client_query_description" render={({ field }) => (<FormItem><FormLabel>Client Query Description</FormLabel><FormControl><Textarea {...field} value={field.value ?? ""} disabled /></FormControl><FormMessage /></FormItem>)} />
+                <FormField control={form.control} name="client_query_description" render={({ field }) => (<FormItem><FormLabel>Client Query Description</FormLabel><FormControl><Textarea {...field} value={project.client_query_description ?? ""} disabled /></FormControl><FormMessage /></FormItem>)} />
                  <FormField control={form.control} name="clientquery_status" render={({ field }) => (<FormItem><FormLabel>Client Status</FormLabel><Select onValueChange={v => field.onChange(v as ClientStatus)} value={field.value ?? ""} disabled={!isCaseManagerView}><FormControl><SelectTrigger><SelectValue placeholder="Select a status" /></SelectTrigger></FormControl><SelectContent>{clientStatuses.map(s => <SelectItem key={s} value={s}>{s}</SelectItem>)}</SelectContent></Select><FormMessage /></FormItem>)} />
                 </>
             )}
@@ -343,7 +347,7 @@ export function EditProjectDialog({
             {isCaseManagerView && project && (
                  <>
                     <FormField control={form.control} name="client_comments" render={({ field }) => (<FormItem><FormLabel>Client Comments</FormLabel><FormControl><Textarea {...field} value={field.value ?? ""} disabled={!isCaseManagerView} className="h-24" /></FormControl><FormMessage /></FormItem>)} />
-                    <FormField control={form.control} name="client_error_description" render={({ field }) => (<FormItem><FormLabel>Client Feedback / Error</FormLabel><FormControl><Textarea {...field} value={field.value ?? ""} disabled={!isCaseManagerView} className="h-24" /></FormControl><FormMessage /></FormItem>)} />
+                    <FormField control={form.control} name="client_error_description" render={({ field }) => (<FormItem><FormLabel>Client Feedback / Error</FormLabel><FormControl><Textarea {...field} value={project.client_error_description ?? ""} disabled={!isCaseManagerView} className="h-24" /></FormControl><FormMessage /></FormItem>)} />
                  </>
             )}
 
@@ -465,5 +469,3 @@ export function EditProjectDialog({
     </>
   );
 }
-
-    
