@@ -410,58 +410,83 @@ function Dashboard({
         <main className="flex flex-col flex-grow overflow-y-auto p-4 md:p-6 gap-6">
             {activeRole === 'Admin' ? (
                 <UserManagementTable sessionUser={user} />
-            ) : activeRole === 'Manager' ? (
+            ) : isManagerOrAdmin ? (
               <div className="space-y-6">
-                 {filteredProjects && (
-                    <div className="space-y-4">
-                        <DataTable 
-                            data={dashboardProjects}
-                            columns={columns}
-                            sort={sort}
-                            setSort={setSort}
-                            rowSelection={rowSelection}
-                            setRowSelection={setRowSelection}
-                            isManagerOrAdmin={isManagerOrAdmin}
-                            totalCount={dashboardProjects.length}
-                        >
-                            {Object.keys(rowSelection).length > 0 && (
-                                <div className="flex items-center gap-4 p-4 border-t bg-muted/50">
-                                    <span className="text-sm font-semibold">{Object.keys(rowSelection).length} selected</span>
-                                    <div className="flex items-center gap-2">
-                                        <Select value={bulkUpdateField} onValueChange={(v) => {
-                                            setBulkUpdateField(v as typeof bulkUpdateField);
-                                            setBulkUpdateValue('');
-                                        }}>
-                                            <SelectTrigger className="w-[180px] h-9">
-                                                <SelectValue placeholder="Select field" />
-                                            </SelectTrigger>
-                                            <SelectContent>
-                                                {bulkUpdateFields.map(f => (
-                                                    <SelectItem key={f.value} value={f.value}>{f.label}</SelectItem>
-                                                ))}
-                                            </SelectContent>
-                                        </Select>
-                                        
-                                        <Select value={bulkUpdateValue} onValueChange={setBulkUpdateValue}>
-                                            <SelectTrigger className="w-[180px] h-9">
-                                                <SelectValue placeholder="Select new value" />
-                                            </SelectTrigger>
-                                            <SelectContent>
-                                                {selectedBulkUpdateField?.options.map(opt => (
-                                                    <SelectItem key={opt} value={opt}>{opt}</SelectItem>
-                                                ))}
-                                            </SelectContent>
-                                        </Select>
-                                    </div>
-                                    <Button size="sm" onClick={handleBulkUpdate} disabled={isBulkUpdating}>
-                                        {isBulkUpdating && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
-                                        Apply Update
+                 <Accordion type="single" collapsible className="w-full" defaultValue="item-1">
+                    <AccordionItem value="item-1">
+                      <AccordionTrigger>Work Allocation / Records Addition</AccordionTrigger>
+                      <AccordionContent>
+                        <Card>
+                            <CardHeader>
+                                <CardTitle>Bulk Upload Records</CardTitle>
+                                <CardDescription>Upload a CSV file to add multiple new project records at once.</CardDescription>
+                            </CardHeader>
+                            <CardContent>
+                                <div className="flex items-center gap-4">
+                                     <Button variant="outline" onClick={() => fileInputRef.current?.click()} disabled={isUploading}>
+                                        <Upload className="mr-2" />
+                                        Choose CSV File
                                     </Button>
+                                    {selectedFile && <span className="text-sm text-muted-foreground">{selectedFile.name}</span>}
+                                     {selectedFile && <Button size="sm" variant="ghost" onClick={() => setSelectedFile(null)}><X /></Button>}
                                 </div>
-                            )}
-                        </DataTable>
-                    </div>
-                 )}
+                            </CardContent>
+                            <CardFooter>
+                                <Button onClick={handleProcessUpload} disabled={!selectedFile || isUploading}>
+                                    {isUploading ? <Loader2 className="mr-2 animate-spin" /> : <FileUp className="mr-2" />}
+                                    Process Upload
+                                </Button>
+                            </CardFooter>
+                        </Card>
+                      </AccordionContent>
+                    </AccordionItem>
+                </Accordion>
+                <DataTable 
+                    data={dashboardProjects}
+                    columns={columns}
+                    sort={sort}
+                    setSort={setSort}
+                    rowSelection={rowSelection}
+                    setRowSelection={setRowSelection}
+                    isManagerOrAdmin={isManagerOrAdmin}
+                    totalCount={dashboardProjects.length}
+                >
+                    {Object.keys(rowSelection).length > 0 && (
+                        <div className="flex items-center gap-4 p-4 border-t bg-muted/50">
+                            <span className="text-sm font-semibold">{Object.keys(rowSelection).length} selected</span>
+                            <div className="flex items-center gap-2">
+                                <Select value={bulkUpdateField} onValueChange={(v) => {
+                                    setBulkUpdateField(v as typeof bulkUpdateField);
+                                    setBulkUpdateValue('');
+                                }}>
+                                    <SelectTrigger className="w-[180px] h-9">
+                                        <SelectValue placeholder="Select field" />
+                                    </SelectTrigger>
+                                    <SelectContent>
+                                        {bulkUpdateFields.map(f => (
+                                            <SelectItem key={f.value} value={f.value}>{f.label}</SelectItem>
+                                        ))}
+                                    </SelectContent>
+                                </Select>
+                                
+                                <Select value={bulkUpdateValue} onValueChange={setBulkUpdateValue}>
+                                    <SelectTrigger className="w-[180px] h-9">
+                                        <SelectValue placeholder="Select new value" />
+                                    </SelectTrigger>
+                                    <SelectContent>
+                                        {selectedBulkUpdateField?.options.map(opt => (
+                                            <SelectItem key={opt} value={opt}>{opt}</SelectItem>
+                                        ))}
+                                    </SelectContent>
+                                </Select>
+                            </div>
+                            <Button size="sm" onClick={handleBulkUpdate} disabled={isBulkUpdating}>
+                                {isBulkUpdating && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
+                                Apply Update
+                            </Button>
+                        </div>
+                    )}
+                </DataTable>
               </div>
             ) : (
                 <DataTable 
