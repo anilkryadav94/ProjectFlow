@@ -430,146 +430,150 @@ function Dashboard({
                 <UserManagementTable sessionUser={user} />
             ) : activeRole === 'Manager' ? (
               <div className="space-y-6">
-                <Accordion type="single" collapsible className="w-full" defaultValue='work-status'>
-                    <AccordionItem value="work-allocation">
-                        <AccordionTrigger>Work Allocation / Records Addition</AccordionTrigger>
-                        <AccordionContent>
-                           <Card>
-                            <CardHeader>
-                                <CardTitle>Bulk Upload Records</CardTitle>
-                                <CardDescription>Upload a CSV file to add multiple new project records at once.</CardDescription>
-                            </CardHeader>
-                            <CardContent>
-                                <div className="flex items-center gap-4">
-                                     <Button variant="outline" onClick={() => fileInputRef.current?.click()} disabled={isUploading}>
-                                        <Upload className="mr-2" />
-                                        Choose CSV File
+                 {filteredProjects === null ? (
+                    <Accordion type="single" collapsible className="w-full" defaultValue='work-status'>
+                        <AccordionItem value="work-allocation" className="rounded-lg mb-4 border-0 bg-muted/30 shadow-md">
+                            <AccordionTrigger className="px-4 py-3 hover:no-underline">Work Allocation / Records Addition</AccordionTrigger>
+                            <AccordionContent className="p-4 pt-0">
+                               <Card>
+                                <CardHeader>
+                                    <CardTitle>Bulk Upload Records</CardTitle>
+                                    <CardDescription>Upload a CSV file to add multiple new project records at once.</CardDescription>
+                                </CardHeader>
+                                <CardContent>
+                                    <div className="flex items-center gap-4">
+                                         <Button variant="outline" onClick={() => fileInputRef.current?.click()} disabled={isUploading}>
+                                            <Upload className="mr-2" />
+                                            Choose CSV File
+                                        </Button>
+                                        {selectedFile && <span className="text-sm text-muted-foreground">{selectedFile.name}</span>}
+                                         {selectedFile && <Button size="sm" variant="ghost" onClick={() => setSelectedFile(null)}><X /></Button>}
+                                    </div>
+                                </CardContent>
+                                <CardFooter>
+                                    <Button onClick={handleProcessUpload} disabled={!selectedFile || isUploading}>
+                                        {isUploading ? <Loader2 className="mr-2 animate-spin" /> : <FileUp className="mr-2" />}
+                                        Process Upload
                                     </Button>
-                                    {selectedFile && <span className="text-sm text-muted-foreground">{selectedFile.name}</span>}
-                                     {selectedFile && <Button size="sm" variant="ghost" onClick={() => setSelectedFile(null)}><X /></Button>}
+                                </CardFooter>
+                               </Card>
+                            </AccordionContent>
+                        </AccordionItem>
+                        <AccordionItem value="advanced-search" className="rounded-lg mb-4 border-0 bg-muted/30 shadow-md">
+                            <AccordionTrigger className="px-4 py-3 hover:no-underline">Advanced Search</AccordionTrigger>
+                            <AccordionContent className="p-4 pt-0">
+                               <AdvancedSearchForm onSearch={handleAdvancedSearch} initialCriteria={searchCriteria} />
+                            </AccordionContent>
+                        </AccordionItem>
+                        <AccordionItem value="work-status" className="rounded-lg mb-4 border-0 bg-muted/30 shadow-md">
+                            <AccordionTrigger className="px-4 py-3 hover:no-underline">Work Status (Client Wise)</AccordionTrigger>
+                            <AccordionContent className="p-4 pt-0">
+                              <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+                                <Card>
+                                    <CardHeader>
+                                        <CardTitle>Processing Status</CardTitle>
+                                    </CardHeader>
+                                    <CardContent>
+                                        <Table>
+                                            <TableHeader>
+                                                <TableRow>
+                                                    <TableHead>Client</TableHead>
+                                                    <TableHead>All Time Pending</TableHead>
+                                                    <TableHead>Processed (Today)</TableHead>
+                                                </TableRow>
+                                            </TableHeader>
+                                            <TableBody>
+                                                {clientWorkStatus.map(item => (
+                                                    <TableRow key={item.client}>
+                                                        <TableCell>{item.client}</TableCell>
+                                                        <TableCell>{item.pendingProcessing}</TableCell>
+                                                        <TableCell>{item.processedToday}</TableCell>
+                                                    </TableRow>
+                                                ))}
+                                            </TableBody>
+                                        </Table>
+                                    </CardContent>
+                                </Card>
+                                 <Card>
+                                    <CardHeader>
+                                        <CardTitle>QA Status</CardTitle>
+                                    </CardHeader>
+                                    <CardContent>
+                                        <Table>
+                                            <TableHeader>
+                                                <TableRow>
+                                                    <TableHead>Client</TableHead>
+                                                    <TableHead>Pending QA</TableHead>
+                                                    <TableHead>Client Query</TableHead>
+                                                    <TableHead>Completed (Today)</TableHead>
+                                                </TableRow>
+                                            </TableHeader>
+                                            <TableBody>
+                                                {clientWorkStatus.map(item => (
+                                                    <TableRow key={item.client}>
+                                                        <TableCell>{item.client}</TableCell>
+                                                        <TableCell>{item.pendingQA}</TableCell>
+                                                        <TableCell>{item.clientQuery}</TableCell>
+                                                        <TableCell>{item.completedToday}</TableCell>
+                                                    </TableRow>
+                                                ))}
+                                            </TableBody>
+                                        </Table>
+                                    </CardContent>
+                                </Card>
+                              </div>
+                            </AccordionContent>
+                        </AccordionItem>
+                    </Accordion>
+                ) : (
+                    <DataTable 
+                        data={dashboardProjects}
+                        columns={columns}
+                        sort={sort}
+                        setSort={setSort}
+                        rowSelection={rowSelection}
+                        setRowSelection={setRowSelection}
+                        isManagerOrAdmin={isManagerOrAdmin}
+                        totalCount={dashboardProjects.length}
+                    >
+                        {Object.keys(rowSelection).length > 0 && (
+                            <div className="flex items-center gap-4 p-4 border-t bg-muted/50">
+                                <span className="text-sm font-semibold">{Object.keys(rowSelection).length} selected</span>
+                                <div className="flex items-center gap-2">
+                                    <Select value={bulkUpdateField} onValueChange={(v) => {
+                                        setBulkUpdateField(v as typeof bulkUpdateField);
+                                        setBulkUpdateValue('');
+                                    }}>
+                                        <SelectTrigger className="w-[180px] h-9">
+                                            <SelectValue placeholder="Select field" />
+                                        </SelectTrigger>
+                                        <SelectContent>
+                                            {bulkUpdateFields.map(f => (
+                                                <SelectItem key={f.value} value={f.value}>{f.label}</SelectItem>
+                                            ))}
+                                        </SelectContent>
+                                    </Select>
+                                    
+                                    <Select value={bulkUpdateValue} onValueChange={setBulkUpdateValue}>
+                                        <SelectTrigger className="w-[180px] h-9">
+                                            <SelectValue placeholder="Select new value" />
+                                        </SelectTrigger>
+                                        <SelectContent>
+                                            {selectedBulkUpdateField?.options.map(opt => (
+                                                <SelectItem key={opt} value={opt}>{opt}</SelectItem>
+                                            ))}
+                                        </SelectContent>
+                                    </Select>
                                 </div>
-                            </CardContent>
-                            <CardFooter>
-                                <Button onClick={handleProcessUpload} disabled={!selectedFile || isUploading}>
-                                    {isUploading ? <Loader2 className="mr-2 animate-spin" /> : <FileUp className="mr-2" />}
-                                    Process Upload
+                                <Button size="sm" onClick={handleBulkUpdate} disabled={isBulkUpdating}>
+                                    {isBulkUpdating && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
+                                    Apply Update
                                 </Button>
-                            </CardFooter>
-                           </Card>
-                        </AccordionContent>
-                    </AccordionItem>
-                    <AccordionItem value="advanced-search">
-                        <AccordionTrigger>Advanced Search</AccordionTrigger>
-                        <AccordionContent>
-                           <AdvancedSearchForm onSearch={handleAdvancedSearch} initialCriteria={searchCriteria} />
-                        </AccordionContent>
-                    </AccordionItem>
-                    <AccordionItem value="work-status">
-                        <AccordionTrigger>Work Status (Client Wise)</AccordionTrigger>
-                        <AccordionContent>
-                          <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-                            <Card>
-                                <CardHeader>
-                                    <CardTitle>Processing Status</CardTitle>
-                                </CardHeader>
-                                <CardContent>
-                                    <Table>
-                                        <TableHeader>
-                                            <TableRow>
-                                                <TableHead>Client</TableHead>
-                                                <TableHead>All Time Pending</TableHead>
-                                                <TableHead>Processed (Today)</TableHead>
-                                            </TableRow>
-                                        </TableHeader>
-                                        <TableBody>
-                                            {clientWorkStatus.map(item => (
-                                                <TableRow key={item.client}>
-                                                    <TableCell>{item.client}</TableCell>
-                                                    <TableCell>{item.pendingProcessing}</TableCell>
-                                                    <TableCell>{item.processedToday}</TableCell>
-                                                </TableRow>
-                                            ))}
-                                        </TableBody>
-                                    </Table>
-                                </CardContent>
-                            </Card>
-                             <Card>
-                                <CardHeader>
-                                    <CardTitle>QA Status</CardTitle>
-                                </CardHeader>
-                                <CardContent>
-                                    <Table>
-                                        <TableHeader>
-                                            <TableRow>
-                                                <TableHead>Client</TableHead>
-                                                <TableHead>Pending QA</TableHead>
-                                                <TableHead>Client Query</TableHead>
-                                                <TableHead>Completed (Today)</TableHead>
-                                            </TableRow>
-                                        </TableHeader>
-                                        <TableBody>
-                                            {clientWorkStatus.map(item => (
-                                                <TableRow key={item.client}>
-                                                    <TableCell>{item.client}</TableCell>
-                                                    <TableCell>{item.pendingQA}</TableCell>
-                                                    <TableCell>{item.clientQuery}</TableCell>
-                                                    <TableCell>{item.completedToday}</TableCell>
-                                                </TableRow>
-                                            ))}
-                                        </TableBody>
-                                    </Table>
-                                </CardContent>
-                            </Card>
-                          </div>
-                        </AccordionContent>
-                    </AccordionItem>
-                </Accordion>
-                <DataTable 
-                    data={dashboardProjects}
-                    columns={columns}
-                    sort={sort}
-                    setSort={setSort}
-                    rowSelection={rowSelection}
-                    setRowSelection={setRowSelection}
-                    isManagerOrAdmin={isManagerOrAdmin}
-                    totalCount={dashboardProjects.length}
-                >
-                    {Object.keys(rowSelection).length > 0 && (
-                        <div className="flex items-center gap-4 p-4 border-t bg-muted/50">
-                            <span className="text-sm font-semibold">{Object.keys(rowSelection).length} selected</span>
-                            <div className="flex items-center gap-2">
-                                <Select value={bulkUpdateField} onValueChange={(v) => {
-                                    setBulkUpdateField(v as typeof bulkUpdateField);
-                                    setBulkUpdateValue('');
-                                }}>
-                                    <SelectTrigger className="w-[180px] h-9">
-                                        <SelectValue placeholder="Select field" />
-                                    </SelectTrigger>
-                                    <SelectContent>
-                                        {bulkUpdateFields.map(f => (
-                                            <SelectItem key={f.value} value={f.value}>{f.label}</SelectItem>
-                                        ))}
-                                    </SelectContent>
-                                </Select>
-                                
-                                <Select value={bulkUpdateValue} onValueChange={setBulkUpdateValue}>
-                                    <SelectTrigger className="w-[180px] h-9">
-                                        <SelectValue placeholder="Select new value" />
-                                    </SelectTrigger>
-                                    <SelectContent>
-                                        {selectedBulkUpdateField?.options.map(opt => (
-                                            <SelectItem key={opt} value={opt}>{opt}</SelectItem>
-                                        ))}
-                                    </SelectContent>
-                                </Select>
                             </div>
-                            <Button size="sm" onClick={handleBulkUpdate} disabled={isBulkUpdating}>
-                                {isBulkUpdating && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
-                                Apply Update
-                            </Button>
-                        </div>
-                    )}
-                </DataTable>
+                        )}
+                    </DataTable>
+                )}
+
               </div>
             ) : (
                 <DataTable 
@@ -589,3 +593,5 @@ function Dashboard({
 }
 
 export default Dashboard;
+
+    
