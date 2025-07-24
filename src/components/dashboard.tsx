@@ -21,6 +21,7 @@ import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from './
 import { EditProjectDialog } from './edit-project-dialog';
 import { AddRowsDialog } from './add-rows-dialog';
 import { addRows, bulkUpdateProjects } from '@/app/actions';
+import { WorkStatusChart } from './work-status-chart';
 
 interface DashboardProps {
   user: User;
@@ -285,7 +286,7 @@ function Dashboard({
     
     let baseProjects: Project[];
 
-    if (isManagerOrAdminView) {
+    if (isManagerOrAdminView && activeRole !== 'Admin') {
         baseProjects = filteredProjects ?? projects;
     } else {
         baseProjects = [...projects];
@@ -323,7 +324,7 @@ function Dashboard({
         filtered = filtered.filter(p => p.process === processFilter);
     }
     
-    if (sort) {
+    if (sort && filtered) {
       filtered.sort((a, b) => {
         const valA = a[sort.key];
         const valB = b[sort.key];
@@ -410,7 +411,7 @@ function Dashboard({
         <main className="flex flex-col flex-grow overflow-y-auto p-4 md:p-6 gap-6">
             {activeRole === 'Admin' ? (
                 <UserManagementTable sessionUser={user} />
-            ) : isManagerOrAdmin ? (
+            ) : activeRole === 'Manager' ? (
               <div className="space-y-6">
                  <Accordion type="single" collapsible className="w-full" defaultValue="work-allocation">
                     <AccordionItem value="work-allocation" className="border-none">
@@ -455,54 +456,71 @@ function Dashboard({
                         </div>
                     </AccordionItem>
                 </Accordion>
-                <div className="space-y-4">
-                    <DataTable 
-                        data={dashboardProjects}
-                        columns={columns}
-                        sort={sort}
-                        setSort={setSort}
-                        rowSelection={rowSelection}
-                        setRowSelection={setRowSelection}
-                        isManagerOrAdmin={isManagerOrAdmin}
-                        totalCount={dashboardProjects.length}
-                    >
-                        {Object.keys(rowSelection).length > 0 && (
-                            <div className="flex items-center gap-4 p-4 border-t bg-muted/50">
-                                <span className="text-sm font-semibold">{Object.keys(rowSelection).length} selected</span>
-                                <div className="flex items-center gap-2">
-                                    <Select value={bulkUpdateField} onValueChange={(v) => {
-                                        setBulkUpdateField(v as typeof bulkUpdateField);
-                                        setBulkUpdateValue('');
-                                    }}>
-                                        <SelectTrigger className="w-[180px] h-9">
-                                            <SelectValue placeholder="Select field" />
-                                        </SelectTrigger>
-                                        <SelectContent>
-                                            {bulkUpdateFields.map(f => (
-                                                <SelectItem key={f.value} value={f.value}>{f.label}</SelectItem>
-                                            ))}
-                                        </SelectContent>
-                                    </Select>
-                                    
-                                    <Select value={bulkUpdateValue} onValueChange={setBulkUpdateValue}>
-                                        <SelectTrigger className="w-[180px] h-9">
-                                            <SelectValue placeholder="Select new value" />
-                                        </SelectTrigger>
-                                        <SelectContent>
-                                            {selectedBulkUpdateField?.options.map(opt => (
-                                                <SelectItem key={opt} value={opt}>{opt}</SelectItem>
-                                            ))}
-                                        </SelectContent>
-                                    </Select>
+                 <Accordion type="single" collapsible className="w-full">
+                    <AccordionItem value="work-status" className="border-none">
+                        <div className="animated-border">
+                        <AccordionTrigger className="p-3 bg-card rounded-md text-base font-semibold hover:no-underline">Work Status (Client Wise)</AccordionTrigger>
+                        <AccordionContent className="bg-card rounded-b-md">
+                            <Card className="border-0 shadow-none">
+                                <CardContent className="pt-4">
+                                    <WorkStatusChart projects={projects} />
+                                </CardContent>
+                            </Card>
+                        </AccordionContent>
+                        </div>
+                    </AccordionItem>
+                </Accordion>
+
+                {filteredProjects && (
+                    <div className="space-y-4">
+                        <DataTable 
+                            data={dashboardProjects}
+                            columns={columns}
+                            sort={sort}
+                            setSort={setSort}
+                            rowSelection={rowSelection}
+                            setRowSelection={setRowSelection}
+                            isManagerOrAdmin={isManagerOrAdmin}
+                            totalCount={dashboardProjects.length}
+                        >
+                            {Object.keys(rowSelection).length > 0 && (
+                                <div className="flex items-center gap-4 p-4 border-t bg-muted/50">
+                                    <span className="text-sm font-semibold">{Object.keys(rowSelection).length} selected</span>
+                                    <div className="flex items-center gap-2">
+                                        <Select value={bulkUpdateField} onValueChange={(v) => {
+                                            setBulkUpdateField(v as typeof bulkUpdateField);
+                                            setBulkUpdateValue('');
+                                        }}>
+                                            <SelectTrigger className="w-[180px] h-9">
+                                                <SelectValue placeholder="Select field" />
+                                            </SelectTrigger>
+                                            <SelectContent>
+                                                {bulkUpdateFields.map(f => (
+                                                    <SelectItem key={f.value} value={f.value}>{f.label}</SelectItem>
+                                                ))}
+                                            </SelectContent>
+                                        </Select>
+                                        
+                                        <Select value={bulkUpdateValue} onValueChange={setBulkUpdateValue}>
+                                            <SelectTrigger className="w-[180px] h-9">
+                                                <SelectValue placeholder="Select new value" />
+                                            </SelectTrigger>
+                                            <SelectContent>
+                                                {selectedBulkUpdateField?.options.map(opt => (
+                                                    <SelectItem key={opt} value={opt}>{opt}</SelectItem>
+                                                ))}
+                                            </SelectContent>
+                                        </Select>
+                                    </div>
+                                    <Button size="sm" onClick={handleBulkUpdate} disabled={isBulkUpdating}>
+                                        {isBulkUpdating && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
+                                        Apply Update
+                                    </Button>
                                 </div>
-                                <Button size="sm" onClick={handleBulkUpdate} disabled={isBulkUpdating}>
-                                    {isBulkUpdating && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
-                                    Apply Update
-                                </Button>
-                            </div>
-                        )}
-                    </DataTable>
-                </div>
+                            )}
+                        </DataTable>
+                    </div>
+                )}
               </div>
             ) : (
                 <DataTable 
@@ -523,5 +541,4 @@ function Dashboard({
 
 export default Dashboard;
 
-    
     
