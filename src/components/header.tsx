@@ -131,6 +131,7 @@ export function Header({
 
   const dashboardName = getDashboardName();
   const dashboardLink = `/?role=${activeRole}`;
+  const showDownloadIcon = handleDownload && isManagerOrAdmin && activeRole !== 'Admin';
 
   return (
     <header className="flex items-center justify-between bg-primary text-primary-foreground p-2 px-4 shadow-md h-16 shrink-0 gap-4">
@@ -245,7 +246,7 @@ export function Header({
 
             {children}
 
-            {handleDownload && (isManagerOrAdmin) && (
+            {showDownloadIcon && (
                 <Button variant="ghost" size="icon" onClick={handleDownload} disabled={isDownloadDisabled || !hasSearchResults} className="h-8 w-8 hover:bg-primary/80">
                   <FileSpreadsheet className="h-5 w-5" />
                   <span className="sr-only">Download CSV</span>
@@ -292,5 +293,3 @@ export function Header({
     </header>
   )
 }
-
-    

@@ -549,7 +549,7 @@ function Dashboard({
         )}
         <main className="flex flex-col flex-grow overflow-y-auto">
             {activeRole === 'Admin' ? (
-                <div className="p-4 md:p-6"><UserManagementTable sessionUser={user} /></div>
+                <div><UserManagementTable sessionUser={user} /></div>
             ) : activeRole === 'Manager' ? (
               <div className="flex flex-col h-full">
                  {showManagerAccordions && (
