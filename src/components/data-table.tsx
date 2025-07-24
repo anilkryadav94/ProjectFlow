@@ -54,10 +54,10 @@ export function DataTable({
     <div className={cn("animated-border shadow-xl h-full flex flex-col")}>
       <div className={cn("rounded-t-md border bg-card overflow-y-auto relative flex-grow")}>
         <Table>
-          <TableHeader className="sticky top-0 z-10 bg-primary/70 backdrop-blur-sm">
+          <TableHeader className="sticky top-0 z-10 bg-muted backdrop-blur-sm">
             <TableRow>
               {columns.map((column) => (
-                <TableHead key={column.key} className="text-primary-foreground/90">
+                <TableHead key={column.key} className="text-primary">
                     <div
                       className={cn("flex items-center gap-2", column.key !== 'select' && "cursor-pointer")}
                       onClick={() => handleSort(column.key)}
