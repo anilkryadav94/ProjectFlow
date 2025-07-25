@@ -7,21 +7,7 @@ import type { User, Project } from '@/lib/data';
 import { onAuthChanged, getSession, logout } from '@/lib/auth';
 import { useRouter } from 'next/navigation';
 import { Loader2 } from 'lucide-react';
-import { getDocs, collection, query, where, Timestamp, getDoc, doc } from 'firebase/firestore';
-import { db } from '@/lib/firebase';
-import { seedDatabase } from '@/lib/data';
 import { getProjectsForUser } from '@/app/actions';
-
-function convertTimestampsToDates(project: any): Project {
-    const newProject: { [key: string]: any } = { ...project };
-    for (const key in newProject) {
-        if (newProject[key] instanceof Timestamp) {
-            newProject[key] = newProject[key].toDate().toISOString().split('T')[0];
-        }
-    }
-    return newProject as Project;
-}
-
 
 export default function Home() {
   const [session, setSession] = React.useState<{ user: User } | null>(null);

@@ -2,7 +2,7 @@
 "use server";
 
 import { z } from "zod";
-import type { Project, Role, ClientStatus } from "@/lib/data";
+import type { Project, Role } from "@/lib/data";
 import { revalidatePath } from "next/cache";
 import { db } from "@/lib/firebase";
 import { collection, getDocs, doc, writeBatch, updateDoc, serverTimestamp, addDoc, getDoc, query, orderBy, limit, Timestamp, where } from "firebase/firestore";
