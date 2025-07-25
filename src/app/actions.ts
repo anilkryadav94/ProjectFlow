@@ -82,7 +82,7 @@ const updatableProjectFields = [
   'qa_remark', 'client_query_description', 'client_comments', 'client_error_description', 
   'email_renaming', 'email_forwarded',
   // Date fields are also allowed
-  'received_date', 'allocation_date', 'client_response_date', 'processing_date', 'qa_date', 'reportout_date'
+  'received_date', 'allocation_date', 'processing_date', 'qa_date', 'reportout_date', 'client_response_date'
 ] as const;
 
 
