@@ -67,12 +67,23 @@ function Dashboard({
   
   const [rowSelection, setRowSelection] = React.useState<Record<string, boolean>>({});
 
-  const bulkUpdateFields = [
-    { value: 'processor', label: 'Processor', options: processors },
-    { value: 'qa', label: 'QA', options: qas },
-  ] as const;
+  const bulkUpdateFields: {
+    value: keyof Project;
+    label: string;
+    options: readonly string[] | string[];
+    type: 'select';
+  }[] = [
+    { value: 'processor', label: 'Processor', options: processors, type: 'select' },
+    { value: 'qa', label: 'QA', options: qas, type: 'select' },
+    { value: 'case_manager', label: 'Case Manager', options: caseManagers, type: 'select' },
+    { value: 'client_name', label: 'Client Name', options: clientNames, type: 'select' },
+    { value: 'process', label: 'Process', options: processes, type: 'select' },
+    { value: 'workflowStatus', label: 'Workflow Status', options: workflowStatuses, type: 'select' },
+    { value: 'processing_status', label: 'Processing Status', options: allProcessorStatuses, type: 'select' },
+    { value: 'qa_status', label: 'QA Status', options: allQaStatuses, type: 'select' },
+  ];
 
-  const [bulkUpdateField, setBulkUpdateField] = React.useState<(typeof bulkUpdateFields)[number]['value']>('processor');
+  const [bulkUpdateField, setBulkUpdateField] = React.useState<keyof Project>('processor');
   const [bulkUpdateValue, setBulkUpdateValue] = React.useState('');
   const [isBulkUpdating, setIsBulkUpdating] = React.useState(false);
 
@@ -777,7 +788,7 @@ function Dashboard({
                             <span className="text-sm font-semibold">{Object.keys(rowSelection).length} selected</span>
                             <div className="flex items-center gap-2">
                                 <Select value={bulkUpdateField} onValueChange={(v) => {
-                                    setBulkUpdateField(v as typeof bulkUpdateField);
+                                    setBulkUpdateField(v as keyof Project);
                                     setBulkUpdateValue('');
                                 }}>
                                     <SelectTrigger className="w-[180px] h-9">
