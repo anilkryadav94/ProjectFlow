@@ -55,6 +55,8 @@ export async function updateProject(
     const projectRef = doc(db, 'projects', projectId);
 
     try {
+        // This getDoc call is crucial. It "warms up" the connection and ensures
+        // the auth state from the client is passed to Firestore's security rules.
         const docSnap = await getDoc(projectRef);
         if (!docSnap.exists()) {
           console.error(`No such project found with ID: ${projectId}`);
@@ -123,4 +125,89 @@ function convertTimestampsToDates(data: any): any {
         }
     }
     return newData;
+}
+
+
+export async function addRows(
+  projectsToAdd: Partial<Project>[]
+): Promise<{ success: boolean; addedCount?: number; error?: string }> {
+  
+  if (!projectsToAdd || projectsToAdd.length === 0) {
+    return { success: false, error: "No data provided to add." };
+  }
+
+  const projectsCollection = collection(db, 'projects');
+  
+  try {
+    // This getDocs call is crucial. It "warms up" the connection and ensures
+    // the auth state from the client is passed to Firestore's security rules for the batch write.
+    await getDocs(query(projectsCollection, limit(1)));
+
+    const batch = writeBatch(db);
+    
+    projectsToAdd.forEach((projectData) => {
+        const newProjectRef = doc(projectsCollection); // Let Firestore generate the document ID
+        const { id, ...restOfProjectData } = projectData as Partial<Project> & {id?: string};
+
+        const newProject: Omit<Project, 'id'> = {
+            ref_number: null,
+            application_number: null,
+            patent_number: null,
+            client_name: 'Client A',
+            process: 'Patent',
+            processor: 'Alice',
+            qa: 'David',
+            case_manager: 'CM Alice',
+            manager_name: null,
+            sender: null,
+            subject_line: null,
+            received_date: new Date().toISOString().split('T')[0],
+            allocation_date: new Date().toISOString().split('T')[0],
+            processing_date: null,
+            qa_date: null,
+            reportout_date: null,
+            client_response_date: null,
+            country: null,
+            document_type: null,
+            action_taken: null,
+            renewal_agent: null,
+            workflowStatus: 'With Processor',
+            processing_status: 'Pending',
+            qa_status: 'Pending',
+            clientquery_status: null,
+            error: null,
+            rework_reason: null,
+            qa_remark: null,
+            client_query_description: null,
+            client_comments: null,
+            client_error_description: null,
+            email_renaming: null,
+            email_forwarded: null,
+        };
+
+        const finalProjectData = { ...newProject, ...restOfProjectData };
+        
+        // Convert date strings to Timestamps before sending to Firestore
+        const dateFields: (keyof Project)[] = ['received_date', 'allocation_date', 'processing_date', 'qa_date', 'reportout_date', 'client_response_date'];
+        
+        for (const dateField of dateFields) {
+            if (finalProjectData[dateField]) {
+                (finalProjectData as any)[dateField] = Timestamp.fromDate(new Date(finalProjectData[dateField] as string));
+            }
+        }
+        
+        batch.set(newProjectRef, finalProjectData);
+    });
+
+    await batch.commit();
+    revalidatePath('/');
+    
+    return { success: true, addedCount: projectsToAdd.length };
+  } catch (error) {
+    console.error("Error adding documents: ", error);
+    if (error instanceof Error) {
+        return { success: false, error: `Permission denied or server error: ${error.message}` };
+    }
+    return { success: false, error: "An unknown error occurred while adding rows."}
+  }
 }

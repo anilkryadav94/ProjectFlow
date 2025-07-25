@@ -25,7 +25,8 @@ import {
 } from "@/components/ui/form";
 import { Input } from "@/components/ui/input";
 import { Checkbox } from "@/components/ui/checkbox";
-import { type Project, addRows } from "@/lib/data";
+import { type Project } from "@/lib/data";
+import { addRows } from "@/app/actions";
 import { useToast } from "@/hooks/use-toast";
 import { Loader2 } from "lucide-react";
 
