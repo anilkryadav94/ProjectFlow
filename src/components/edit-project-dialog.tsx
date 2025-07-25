@@ -213,7 +213,7 @@ export function EditProjectDialog({
 
     setIsSubmitting(true);
     try {
-        const result = await updateProject(data, action);
+        const result = await updateProject(project.id, data, action);
         if (result.success && result.project) {
             onUpdateSuccess();
             toast({

@@ -41,16 +41,18 @@ const updatableProjectFields = [
 ] as const;
 
 
-export async function updateProject(clientData: Partial<Project>, submitAction?: 'submit_for_qa' | 'submit_qa' | 'send_rework' | 'save' | 'client_submit'): Promise<{success: boolean, project?: Project}> {
+export async function updateProject(
+    projectId: string, 
+    clientData: Partial<Project>, 
+    submitAction?: 'submit_for_qa' | 'submit_qa' | 'send_rework' | 'save' | 'client_submit'
+): Promise<{success: boolean, project?: Project}> {
     
-    if (!clientData.id) return { success: false };
-    const projectId = clientData.id;
+    if (!projectId) return { success: false };
     const projectRef = doc(db, 'projects', projectId);
 
     const dataToUpdate: { [key: string]: any } = {};
     
     // Safely build the update object using the whitelist.
-    // This is the core of the fix.
     for (const key of updatableProjectFields) {
         if (Object.prototype.hasOwnProperty.call(clientData, key)) {
             const typedKey = key as keyof typeof clientData;
@@ -77,7 +79,7 @@ export async function updateProject(clientData: Partial<Project>, submitAction?:
         dataToUpdate.processing_status = 'Re-Work';
     }
     
-    if (Object.keys(dataToUpdate).length === 0) {
+    if (Object.keys(dataToUpdate).length === 0 && submitAction === 'save') {
         // This can happen if 'save' is clicked with no changes, or no valid fields were sent.
         const existingDoc = await getDoc(projectRef);
         if (existingDoc.exists()) {
@@ -85,6 +87,8 @@ export async function updateProject(clientData: Partial<Project>, submitAction?:
             return { success: true, project: existingProject };
         }
         return { success: false }; // Should not happen if project exists
+    } else if (Object.keys(dataToUpdate).length === 0) {
+        return { success: false };
     }
     
     // This will now only contain whitelisted, non-undefined fields.

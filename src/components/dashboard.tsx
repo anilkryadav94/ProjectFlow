@@ -59,10 +59,10 @@ function TestUpdateForm({ onUpdate }: { onUpdate: () => void }) {
         }
         setIsSubmitting(true);
         try {
-            const result = await updateProject({
-                id: projectId,
-                processor,
-                qa,
+            // Pass projectId separately from the data object
+            const result = await updateProject(projectId, {
+                processor: processor || undefined,
+                qa: qa || undefined,
             });
 
             if (result.success) {
@@ -913,5 +913,3 @@ function Dashboard({
 }
 
 export default Dashboard;
-
-    
