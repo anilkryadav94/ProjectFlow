@@ -5,7 +5,7 @@ import { z } from "zod";
 import type { Project, Role, ClientStatus } from "@/lib/data";
 import { revalidatePath } from "next/cache";
 import { db } from "@/lib/firebase";
-import { collection, getDocs, doc, writeBatch, updateDoc, serverTimestamp, addDoc, getDoc, query, orderBy, limit } from "firebase/firestore";
+import { collection, getDocs, doc, writeBatch, updateDoc, serverTimestamp, addDoc, getDoc, query, orderBy, limit, Timestamp } from "firebase/firestore";
 
 const bulkUpdateSchema = z.object({
   projectIds: z.array(z.string()),
@@ -35,7 +35,9 @@ const updatableProjectFields = [
   'case_manager', 'manager_name', 'sender', 'subject_line', 'country', 'document_type', 'action_taken', 
   'renewal_agent', 'processing_status', 'qa_status', 'clientquery_status', 'error', 'rework_reason', 
   'qa_remark', 'client_query_description', 'client_comments', 'client_error_description', 
-  'email_renaming', 'email_forwarded'
+  'email_renaming', 'email_forwarded',
+  // Date fields are also allowed
+  'received_date', 'allocation_date', 'client_response_date'
 ] as const;
 
 
@@ -66,32 +68,22 @@ export async function updateProject(
             if (Object.prototype.hasOwnProperty.call(clientData, key)) {
                 const typedKey = key as keyof typeof clientData;
                 if (clientData[typedKey] !== undefined) {
-                     // CRITICAL FIX: Convert empty strings to null to match Firestore types
                      dataToUpdate[typedKey] = clientData[typedKey] === "" ? null : clientData[typedKey];
                 }
             }
         }
 
-        // Handle date fields separately to ensure they are valid or null
-        const dateFields: (keyof Project)[] = ['received_date', 'allocation_date'];
-        for (const key of dateFields) {
-            if (Object.prototype.hasOwnProperty.call(clientData, key)) {
-                dataToUpdate[key] = clientData[key] || null;
-            }
-        }
-
-
         // Handle status transitions and automatic date stamping based on action
         if (submitAction === 'client_submit') {
           dataToUpdate.workflowStatus = 'With QA';
           dataToUpdate.qa_status = 'Pending';
-          dataToUpdate.client_response_date = new Date().toISOString().split('T')[0];
+          dataToUpdate.client_response_date = Timestamp.fromDate(new Date());
         } else if (submitAction === 'submit_for_qa') {
             dataToUpdate.workflowStatus = 'With QA';
-            dataToUpdate.processing_date = new Date().toISOString().split('T')[0];
+            dataToUpdate.processing_date = Timestamp.fromDate(new Date());
         } else if (submitAction === 'submit_qa') {
             dataToUpdate.workflowStatus = 'Completed';
-            dataToUpdate.qa_date = new Date().toISOString().split('T')[0];
+            dataToUpdate.qa_date = Timestamp.fromDate(new Date());
         } else if (submitAction === 'send_rework') {
             dataToUpdate.workflowStatus = 'With Processor';
             dataToUpdate.processing_status = 'Re-Work';
@@ -99,7 +91,7 @@ export async function updateProject(
         
         if (Object.keys(dataToUpdate).length === 0) {
             console.log("No valid fields to update for project:", projectId);
-            const existingProject = { id: docSnap.id, ...docSnap.data() } as Project;
+            const existingProject = { id: docSnap.id, ...convertTimestampsToDates(docSnap.data()) } as Project;
             return { success: true, project: existingProject };
         }
         
@@ -112,7 +104,7 @@ export async function updateProject(
         revalidatePath(`/task/${projectId}`);
         
         const updatedDoc = await getDoc(projectRef);
-        const finalProject = { id: updatedDoc.id, ...updatedDoc.data() } as Project;
+        const finalProject = { id: updatedDoc.id, ...convertTimestampsToDates(updatedDoc.data()) } as Project;
 
         console.log("Update successful for project:", projectId);
         return { success: true, project: finalProject };
@@ -121,4 +113,14 @@ export async function updateProject(
         console.error(`Project update error for ID ${projectId}:`, error);
         return { success: false, error: error.message || "An unknown Firestore error occurred." };
     }
+}
+
+function convertTimestampsToDates(data: any): any {
+    const newData: { [key: string]: any } = { ...data };
+    for (const key in newData) {
+        if (newData[key] instanceof Timestamp) {
+            newData[key] = newData[key].toDate().toISOString().split('T')[0];
+        }
+    }
+    return newData;
 }

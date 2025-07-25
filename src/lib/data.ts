@@ -1,5 +1,5 @@
 
-import { collection, writeBatch, doc, getDocs, query, orderBy, limit } from 'firebase/firestore';
+import { collection, writeBatch, doc, getDocs, query, orderBy, limit, Timestamp } from 'firebase/firestore';
 import { db } from './firebase';
 
 export type Role = 'Admin' | 'Manager' | 'Processor' | 'QA' | 'Case Manager';
@@ -48,12 +48,12 @@ export type Project = {
     manager_name: string | null;
     sender: string | null;
     subject_line: string | null;
-    received_date: string | null;
-    allocation_date: string | null;
-    processing_date: string | null;
-    qa_date: string | null;
-    reportout_date: string | null;
-    client_response_date: string | null;
+    received_date: string | null; // Stored as YYYY-MM-DD string
+    allocation_date: string | null; // Stored as YYYY-MM-DD string
+    processing_date: string | null; // Stored as YYYY-MM-DD string
+    qa_date: string | null; // Stored as YYYY-MM-DD string
+    reportout_date: string | null; // Stored as YYYY-MM-DD string
+    client_response_date: string | null; // Stored as YYYY-MM-DD string
     country: string | null;
     document_type: string | null;
     action_taken: string | null;
@@ -157,6 +157,10 @@ export async function addRows(
 
         const finalProjectData = { ...newProject, ...restOfProjectData };
         
+        // Convert date strings to Timestamps before sending to Firestore
+        if (finalProjectData.received_date) finalProjectData.received_date = Timestamp.fromDate(new Date(finalProjectData.received_date)) as any;
+        if (finalProjectData.allocation_date) finalProjectData.allocation_date = Timestamp.fromDate(new Date(finalProjectData.allocation_date)) as any;
+
         batch.set(newProjectRef, finalProjectData);
     });
 
