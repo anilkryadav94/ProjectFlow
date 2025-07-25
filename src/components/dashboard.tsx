@@ -25,6 +25,7 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '.
 import { ColumnSelectDialog } from './column-select-dialog';
 import { differenceInBusinessDays } from 'date-fns';
 import { Label } from './ui/label';
+import { ProjectInsights } from './project-insights';
 
 interface DashboardProps {
   user: User;
@@ -720,6 +721,12 @@ function Dashboard({
                                         </Button>
                                     </CardFooter>
                                 </Card>
+                                </AccordionContent>
+                            </AccordionItem>
+                             <AccordionItem value="ai-insights" className="border-0 bg-muted/30 shadow-md mb-4 rounded-lg">
+                                <AccordionTrigger className="px-4 py-3 hover:no-underline">AI Project Insights</AccordionTrigger>
+                                <AccordionContent className="p-4 pt-0">
+                                   <ProjectInsights />
                                 </AccordionContent>
                             </AccordionItem>
                             <AccordionItem value="advanced-search" className="border-0 bg-muted/30 shadow-md mb-4 rounded-lg">
