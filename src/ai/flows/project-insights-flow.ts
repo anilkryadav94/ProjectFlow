@@ -11,6 +11,8 @@ import { ai } from '@/ai/genkit';
 import { z } from 'zod';
 import { getAllProjects } from '@/services/project-service';
 import { googleAI } from '@genkit-ai/googleai';
+import { type GenerateResponse } from 'genkit';
+
 
 // Define the schema inline as it cannot be exported from a 'use server' file.
 const InsightResponseSchema = z.object({
@@ -57,11 +59,31 @@ const projectInsightsFlow = ai.defineFlow(
   },
   async (query) => {
     const llmResponse = await insightsPrompt(query);
+    
+    // The final response from a tool-using prompt can be in one of two places.
+    // 1. Directly in `llmResponse.output` if no tool was called.
+    // 2. In the `message.content` of the output if a tool was called.
     const response = llmResponse.output;
+
     if (!response) {
       throw new Error('The AI failed to generate a response.');
     }
-    return response;
+    
+    // Check if the output is the final message content after a tool call
+    if (response.message && response.message.content) {
+      const finalContent = response.message.content.find(part => part.output);
+      if (finalContent && finalContent.output) {
+        return finalContent.output as InsightResponse;
+      }
+    }
+
+    // If no tool was called, the output might be directly available
+    // and might be a plain object that needs parsing.
+    if (typeof response === 'object' && 'responseType' in response && 'data' in response) {
+        return response as InsightResponse;
+    }
+
+    throw new Error('The AI returned an unexpected response format.');
   }
 );
 
