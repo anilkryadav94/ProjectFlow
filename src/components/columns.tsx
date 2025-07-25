@@ -30,7 +30,6 @@ const statusColors: Record<string, string> = {
 
 
 export const allColumns: { key: keyof Project | 'actions' | 'select', header: string, render?: (p: Project) => React.ReactNode }[] = [
-    { key: "row_number", header: "Row Number" },
     { key: "ref_number", header: "Ref Number", render: (p: Project) => <div className="font-medium">{p.ref_number}</div> },
     { key: "client_name", header: "Client Name" },
     { key: "process", header: "Process" },

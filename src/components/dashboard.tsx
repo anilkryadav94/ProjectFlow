@@ -72,7 +72,7 @@ function TestUpdateForm({ onUpdate }: { onUpdate: () => void }) {
                 setProcessor('');
                 setQa('');
             } else {
-                throw new Error("Update failed on server.");
+                throw new Error(result.error || "Update failed on server.");
             }
         } catch (err) {
             toast({ title: "Error", description: `Failed to update project. ${err instanceof Error ? err.message : ''}`, variant: "destructive" });
@@ -173,15 +173,15 @@ function Dashboard({
   const [isColumnSelectOpen, setIsColumnSelectOpen] = React.useState(false);
 
   const defaultProcessorQAColumns = [
-    'actions', 'row_number', 'ref_number', 'client_name', 'process', 'processor', 'sender', 'subject_line', 'received_date', 'case_manager', 'allocation_date', 'processing_date', 'processing_status', 'qa_status', 'workflowStatus'
+    'actions', 'ref_number', 'client_name', 'process', 'processor', 'sender', 'subject_line', 'received_date', 'case_manager', 'allocation_date', 'processing_date', 'processing_status', 'qa_status', 'workflowStatus'
   ];
   
   const defaultCaseManagerColumns = [
-      'actions', 'row_number', 'ref_number', 'application_number', 'country', 'patent_number', 'sender', 'subject_line', 'client_query_description', 'client_comments', 'clientquery_status', 'client_error_description', 'case_manager', 'qa_date', 'client_response_date'
+      'actions', 'ref_number', 'application_number', 'country', 'patent_number', 'sender', 'subject_line', 'client_query_description', 'client_comments', 'clientquery_status', 'client_error_description', 'case_manager', 'qa_date', 'client_response_date'
   ];
 
   const defaultManagerAdminColumns = [
-      'select', 'actions', 'row_number', 'ref_number', 'client_name', 'process', 'processor', 'qa', 'case_manager', 'workflowStatus', 'processing_status', 'qa_status', 'received_date', 'allocation_date', 'processing_date', 'qa_date'
+      'select', 'actions', 'ref_number', 'client_name', 'process', 'processor', 'qa', 'case_manager', 'workflowStatus', 'processing_status', 'qa_status', 'received_date', 'allocation_date', 'processing_date', 'qa_date'
   ];
 
   const [visibleColumnKeys, setVisibleColumnKeys] = React.useState<string[]>(defaultProcessorQAColumns);
@@ -310,8 +310,8 @@ function Dashboard({
                     const sanitizedRow: { [key: string]: any } = {};
                     for (const key in row) {
                         if (Object.prototype.hasOwnProperty.call(row, key)) {
-                            // Ensure row_number is not copied from CSV
-                            if (key === 'row_number' || key === 'id') continue;
+                            // Ensure id is not copied from CSV
+                            if (key === 'id') continue;
                             sanitizedRow[key] = row[key] === undefined || row[key] === '' ? null : row[key];
                         }
                     }
