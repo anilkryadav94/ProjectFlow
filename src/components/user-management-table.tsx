@@ -338,5 +338,4 @@ export function UserManagementTable({ sessionUser }: { sessionUser: User }) {
         </>
     )
 }
-
     

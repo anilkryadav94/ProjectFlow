@@ -8,7 +8,7 @@ import {
     type User as FirebaseUser,
 } from 'firebase/auth';
 import { db, auth } from './firebase';
-import { doc, getDoc, setDoc, collection, getDocs, updateDoc, query, where } from 'firebase/firestore';
+import { doc, getDoc, setDoc, collection, getDocs, updateDoc, query, where, writeBatch } from 'firebase/firestore';
 import type { User, Role } from './data';
 
 // --- Core Auth Functions ---
@@ -91,70 +91,46 @@ export async function getUsers(): Promise<User[]> {
     return userList;
 }
 
-export async function addUser(email: string, password: string, name: string, roles: Role[]): Promise<{ success: boolean; user?: User }> {
-    try {
-        // IMPORTANT: In a real app, creating users should be done from a secure backend (e.g., Cloud Functions)
-        // to avoid exposing credentials or needing a separate authenticated context.
-        // The approach here is simplified for this tool's context.
-        
-        // This creates user in Firebase Authentication
-        // This is a temporary auth instance for user creation, as you can't create users from the client SDK directly without this workaround
-        // which is not recommended for production.
-        
-        // A better approach would be a Cloud Function triggered by an admin action.
-        // For now, we will simulate this by adding to firestore and assuming an admin can create users in Firebase console.
-        
-        // We can't create auth user directly from client, so we will just create the firestore record.
-        // Admin has to create user in Firebase Auth console manually.
-        const usersRef = collection(db, "users");
-        
-        // Check if email already exists
-        const q = query(usersRef, where("email", "==", email));
-        const querySnapshot = await getDocs(q);
-        if (!querySnapshot.empty) {
-            throw new Error(`User with email ${email} already exists.`);
-        }
-
-        // We can't get the UID without creating the user, which we can't do from client.
-        // So we will use email as a temporary ID and ask admin to fix it.
-        // In a real app with a backend, we'd get a proper UID.
-        const tempId = `temp_${email.replace(/@.*/, '')}_${Date.now()}`;
-        const newUserDocRef = doc(db, 'users', tempId);
-
-        const newUser: Omit<User, 'id' | 'password'> = {
-            email,
-            name,
-            roles,
-        };
-        await setDoc(newUserDocRef, newUser);
-        
-        console.warn(`Firestore user record created for ${email} with temporary ID ${tempId}. Please create a corresponding user in Firebase Authentication console and update the document ID to the new UID.`);
-
-        return { success: true, user: { id: tempId, ...newUser } };
-    } catch (error) {
-        console.error("Error adding user:", error);
-        throw error;
+export async function addUser(email: string, password: string, name: string, roles: Role[]): Promise<void> {
+    // NOTE: This function does NOT create a Firebase Auth user. That must be done manually in the Firebase Console.
+    // This function only creates the user's data document in Firestore.
+    const usersRef = collection(db, "users");
+    const q = query(usersRef, where("email", "==", email));
+    const querySnapshot = await getDocs(q);
+    if (!querySnapshot.empty) {
+        throw new Error(`A user with email ${email} already has a data document in Firestore.`);
     }
+
+    // Since we cannot create an Auth user from the client, we cannot know the UID in advance.
+    // We will create a document with a temporary ID.
+    // The correct approach is for an admin to create the user in the Firebase Auth console,
+    // get the UID, and then create a document in the 'users' collection with that UID as the document ID.
+    const tempId = `NEEDS_UID__${email.replace(/@.*/, "")}`;
+    const newUserDocRef = doc(db, 'users', tempId);
+
+    const newUser: Omit<User, 'id' | 'password'> = {
+        email,
+        name,
+        roles,
+    };
+    await setDoc(newUserDocRef, newUser);
+    console.warn(`Firestore user document created for ${email}. Please create a user in Firebase Auth and update this document's ID to the new UID.`);
 }
 
 
 export async function updateUser(userId: string, data: { name?: string, roles?: Role[], password?: string }): Promise<{ success: boolean }> {
     const userDocRef = doc(db, 'users', userId);
     
+    // The password cannot be updated from here. This requires the user to be logged in
+    // or for an admin to do it via the Admin SDK on a backend.
     const { password, ...firestoreData } = data;
     
     if (Object.keys(firestoreData).length > 0) {
         await updateDoc(userDocRef, firestoreData);
     }
     
-    // Password update is tricky from client-side admin panel.
-    // The current user can only update their own password easily.
-    // Updating other users' passwords requires admin privileges on a backend.
-    // For this mock, we will log that the password should be changed.
     if (password) {
-        console.warn(`Password change requested for user ${userId}. In a real app, this requires a secure backend process. The current user is not authorized to change other users' passwords.`);
-        // If you were to implement this with a backend:
-        // await admin.auth().updateUser(userId, { password: password });
+        console.warn(`Password change was requested for user ${userId} but was ignored. This must be done by the user themselves or via a backend with admin privileges.`);
     }
     
     return { success: true };
@@ -162,19 +138,28 @@ export async function updateUser(userId: string, data: { name?: string, roles?: 
 
 
 export async function addBulkUsers(newUsers: (Omit<User, 'id'|'password'> & { password?: string })[]): Promise<{ addedCount: number, errors: any[] }> {
-    console.warn("Bulk user add is a complex and insecure operation from the client. It is being mocked by adding users to Firestore only. Please create Auth users manually in the Firebase Console.");
+    console.warn("Bulk user add only creates Firestore documents. Corresponding Firebase Auth users must be created manually.");
     
     let addedCount = 0;
     const errors: any[] = [];
-    
+    const batch = writeBatch(db);
+    const usersRef = collection(db, "users");
+
     for (const user of newUsers) {
-        try {
-            await addUser(user.email, user.password || 'password123', user.name, user.roles);
+       // We can't check for existence within a batch write, so this is a 'fire and forget' addition.
+       // Duplicates might be created if not handled carefully. A backend function is better for this.
+       try {
+            const tempId = `NEEDS_UID__${user.email.replace(/@.*/, "")}_${Date.now()}`;
+            const newUserDocRef = doc(db, 'users', tempId);
+            const { password, ...firestoreData } = user;
+            batch.set(newUserDocRef, firestoreData);
             addedCount++;
-        } catch (error) {
+       } catch (error) {
             errors.push({ email: user.email, error });
-        }
+       }
     }
     
+    await batch.commit();
+
     return { addedCount, errors };
 }
