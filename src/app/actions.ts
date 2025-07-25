@@ -221,11 +221,11 @@ export async function addRows(
             ref_number: null,
             application_number: null,
             patent_number: null,
-            client_name: 'Client A', // Will be overwritten by restOfProjectData if present
-            process: 'Patent', // Will be overwritten by restOfProjectData if present
-            processor: 'Alice', // Will be overwritten by restOfProjectData if present
-            qa: 'David', // Will be overwritten by restOfProjectData if present
-            case_manager: 'CM Alice', // Will be overwritten by restOfProjectData if present
+            client_name: null,
+            process: null,
+            processor: null,
+            qa: null,
+            case_manager: null,
             manager_name: null,
             sender: null,
             subject_line: null,
