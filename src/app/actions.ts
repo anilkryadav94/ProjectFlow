@@ -173,6 +173,32 @@ export async function updateProject(
     }
 }
 
+async function getNextRefNumber(): Promise<string> {
+    const projectsCollection = collection(db, 'projects');
+    const yearPrefix = `PF${new Date().getFullYear().toString().slice(-2)}`;
+    
+    // Query for the last document with the same year prefix
+    const q = query(
+        projectsCollection, 
+        where('ref_number', '>=', yearPrefix),
+        where('ref_number', '<', `${yearPrefix}Z`), // Lexicographical upper bound
+        orderBy('ref_number', 'desc'), 
+        limit(1)
+    );
+
+    const querySnapshot = await getDocs(q);
+    
+    if (querySnapshot.empty) {
+        // First document of the year
+        return `${yearPrefix}00001`;
+    } else {
+        const lastRefNumber = querySnapshot.docs[0].data().ref_number as string;
+        const lastSequence = parseInt(lastRefNumber.slice(6), 10);
+        const nextSequence = lastSequence + 1;
+        return `${yearPrefix}${nextSequence.toString().padStart(5, '0')}`;
+    }
+}
+
 
 export async function addRows(
   projectsToAdd: Partial<Project>[]
@@ -185,13 +211,14 @@ export async function addRows(
   
   try {
     const batch = writeBatch(db);
+    let currentRefNumber = await getNextRefNumber();
     
-    projectsToAdd.forEach((projectData) => {
+    for (const projectData of projectsToAdd) {
         const newProjectRef = doc(projectsCollection); // Let Firestore generate the document ID
         const { id, ...restOfProjectData } = projectData as Partial<Project> & {id?: string};
 
         const newProject: Omit<Project, 'id'> = {
-            ref_number: null,
+            ref_number: currentRefNumber,
             application_number: null,
             patent_number: null,
             client_name: 'Client A',
@@ -228,6 +255,11 @@ export async function addRows(
 
         const finalProjectData = { ...newProject, ...restOfProjectData };
         
+        // Increment the ref number for the next iteration
+        const yearPrefix = currentRefNumber.slice(0, 6);
+        const sequence = parseInt(currentRefNumber.slice(6), 10) + 1;
+        currentRefNumber = `${yearPrefix}${sequence.toString().padStart(5, '0')}`;
+
         // Convert date strings to Timestamps before sending to Firestore
         const dateFields: (keyof Project)[] = ['received_date', 'allocation_date', 'processing_date', 'qa_date', 'reportout_date', 'client_response_date'];
         
@@ -243,7 +275,7 @@ export async function addRows(
         }
         
         batch.set(newProjectRef, finalProjectData);
-    });
+    }
 
     await batch.commit();
     revalidatePath('/');

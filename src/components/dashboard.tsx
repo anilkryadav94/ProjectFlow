@@ -220,7 +220,7 @@ function Dashboard({
                     for (const key in row) {
                         if (Object.prototype.hasOwnProperty.call(row, key)) {
                             // Ensure id is not copied from CSV
-                            if (key === 'id') continue;
+                            if (key === 'id' || key === 'ref_number') continue;
                             sanitizedRow[key] = row[key] === undefined || row[key] === '' ? null : row[key];
                         }
                     }
