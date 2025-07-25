@@ -42,22 +42,30 @@ export default function Home() {
   React.useEffect(() => {
     const unsubscribe = onAuthChanged(async (user) => {
       if (user) {
-        setLoading(true);
+        // Only set loading to true if we don't have a session yet.
+        // This prevents the loader from flashing on hot-reloads.
+        if (!session) {
+            setLoading(true);
+        }
         try {
+            // First, get the user's data from Firestore. This also forces
+            // the auth state to be synchronized for subsequent requests.
             const sessionData = await getSessionData(user);
+            
             if (sessionData) {
               setSession(sessionData);
               // Now that we have confirmed the session and user doc, fetch projects.
               const projectData = await getProjectsForUser(sessionData.user.name, sessionData.user.roles);
               setProjects(projectData);
             } else {
+              // This can happen if a user is in Firebase Auth but not in the 'users' collection.
               console.error("User is authenticated but no user document found in Firestore. Logging out.");
-              await logout();
+              await logout(); // Ensure logout completes
               router.push('/login');
             }
         } catch (error) {
             console.error("Error fetching session or project data:", error);
-            await logout();
+            await logout(); // Ensure logout completes
             router.push('/login');
         } finally {
              setLoading(false);
@@ -69,8 +77,9 @@ export default function Home() {
       }
     });
 
+    // Cleanup the subscription on component unmount
     return () => unsubscribe();
-  }, [router]);
+  }, [router, session]); // Add session to dependency array
   
   if (loading || !session || !projects) {
     return (
