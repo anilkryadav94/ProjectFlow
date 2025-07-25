@@ -20,7 +20,7 @@ import { cn } from '@/lib/utils';
 import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from './ui/accordion';
 import { EditProjectDialog } from './edit-project-dialog';
 import { AddRowsDialog } from './add-rows-dialog';
-import { getProjectsForUser } from '@/app/actions';
+import { getProjectsForUser, bulkUpdateProjects, addRows } from '@/app/actions';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from './ui/table';
 import { ColumnSelectDialog } from './column-select-dialog';
 import { differenceInBusinessDays } from 'date-fns';
@@ -34,6 +34,7 @@ interface DashboardProps {
   qas: string[];
   caseManagers: string[];
   processes: ProcessType[];
+  onSwitchRole: (role: Role) => void;
   error: string | null;
 }
 
@@ -52,7 +53,8 @@ function Dashboard({
   processors,
   qas,
   caseManagers,
-  processes
+  processes,
+  onSwitchRole
 }: DashboardProps) {
   const searchParams = useSearchParams();
   const router = useRouter();
@@ -209,13 +211,17 @@ function Dashboard({
     
     setIsBulkUpdating(true);
     try {
-        await bulkUpdateProjects({ projectIds, field: bulkUpdateField, value: bulkUpdateValue });
-        toast({ title: "Success", description: `${projectIds.length} projects have been updated.` });
-        await refreshProjects();
-        setRowSelection({});
-        setBulkUpdateValue('');
+        const result = await bulkUpdateProjects({ projectIds, field: bulkUpdateField, value: bulkUpdateValue });
+        if (result.success) {
+            toast({ title: "Success", description: `${projectIds.length} projects have been updated.` });
+            await refreshProjects();
+            setRowSelection({});
+            setBulkUpdateValue('');
+        } else {
+            throw new Error(result.error || "An unknown error occurred.");
+        }
     } catch(e) {
-        toast({ title: "Error", description: "Failed to update projects.", variant: "destructive"});
+        toast({ title: "Error", description: `Failed to update projects. ${e instanceof Error ? e.message : ''}`, variant: "destructive"});
     } finally {
         setIsBulkUpdating(false);
     }
@@ -609,7 +615,7 @@ function Dashboard({
         <Header 
             user={user}
             activeRole={activeRole}
-            setActiveRole={setActiveRole}
+            setActiveRole={(role) => onSwitchRole(role)}
             search={search}
             setSearch={setSearch}
             searchColumn={searchColumn}

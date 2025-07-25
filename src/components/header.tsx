@@ -91,11 +91,9 @@ export function Header({
   };
 
   const handleRoleChange = (role: Role) => {
-    const targetUrl = `/?role=${role}`;
     if (setActiveRole) {
       setActiveRole(role);
     }
-    router.push(targetUrl, { scroll: false });
   }
   
   const handlePagination = (id: string | null) => {

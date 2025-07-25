@@ -40,6 +40,8 @@ export default function Home() {
   const [session, setSession] = React.useState<{ user: User } | null>(null);
   const [dashboardData, setDashboardData] = React.useState<DashboardData | null>(null);
   const [loading, setLoading] = React.useState(true);
+  const [isSwitching, setIsSwitching] = React.useState(false);
+  const [switchingToRole, setSwitchingToRole] = React.useState<Role | null>(null);
   const [error, setError] = React.useState<string | null>(null);
   const router = useRouter();
 
@@ -80,6 +82,28 @@ export default function Home() {
     return () => unsubscribe();
   }, [router]);
   
+  const handleRoleSwitch = async (role: Role) => {
+    if (!session?.user) return;
+    
+    setIsSwitching(true);
+    setSwitchingToRole(role);
+
+    try {
+        const data = await getDashboardData(session.user.name, session.user.roles);
+        setDashboardData(data);
+        const url = `/?role=${role}`;
+        router.push(url, { scroll: false });
+    } catch (err: any) {
+        console.error("Error fetching dashboard data for role switch:", err);
+        setError("Could not load data for the selected role.");
+    } finally {
+        setTimeout(() => {
+            setIsSwitching(false);
+            setSwitchingToRole(null);
+        }, 500); // A small delay for smoother perceived transition
+    }
+};
+
   if (loading || !dashboardData) {
     return (
         <div className="flex h-screen w-full items-center justify-center bg-background">
@@ -87,6 +111,19 @@ export default function Home() {
                 <Loader2 className="h-12 w-12 animate-spin text-primary" />
                 <p className="text-lg text-muted-foreground">Authenticating & Loading Data...</p>
                  {error && <p className="text-sm text-destructive">{error}</p>}
+            </div>
+        </div>
+    );
+  }
+  
+  if (isSwitching) {
+    return (
+        <div className="flex h-screen w-full items-center justify-center bg-background">
+            <div className="flex flex-col items-center gap-4">
+                <Loader2 className="h-12 w-12 animate-spin text-primary" />
+                <p className="text-lg text-muted-foreground">
+                    Opening {switchingToRole} Dashboard...
+                </p>
             </div>
         </div>
     );
@@ -113,6 +150,7 @@ export default function Home() {
         qas={dashboardData.qas}
         caseManagers={dashboardData.caseManagers}
         processes={dashboardData.processes}
+        onSwitchRole={handleRoleSwitch}
         error={error}
       />
     </main>
