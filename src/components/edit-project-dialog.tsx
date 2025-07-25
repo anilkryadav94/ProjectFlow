@@ -156,12 +156,12 @@ export function EditProjectDialog({
   
   const getValidationSchema = () => {
     if (!project) return z.object({}); // No validation if no project
-    const processEnums = processes as [string, ...string[]];
+    const processEnums = processes.length > 0 ? z.enum(processes as [string, ...string[]]) : z.string();
     
-    if (isProcessorView) return processorFormSchema.extend({ process: z.enum(processEnums) });
-    if (isQaView) return qaFormSchema.extend({ process: z.enum(processEnums) });
+    if (isProcessorView) return processorFormSchema.extend({ process: processEnums });
+    if (isQaView) return qaFormSchema.extend({ process: processEnums });
     if (isCaseManagerView) return caseManagerFormSchema;
-    return baseFormSchema.extend({ process: z.enum(processEnums) });
+    return baseFormSchema.extend({ process: processEnums });
   }
 
   const form = useForm<EditProjectFormValues>({
@@ -446,3 +446,5 @@ export function EditProjectDialog({
     </>
   );
 }
+
+    
