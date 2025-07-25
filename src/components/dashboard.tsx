@@ -20,7 +20,7 @@ import { cn } from '@/lib/utils';
 import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from './ui/accordion';
 import { EditProjectDialog } from './edit-project-dialog';
 import { AddRowsDialog } from './add-rows-dialog';
-import { bulkUpdateProjects, updateProject, addRows, getProjectsForUser } from '@/app/actions';
+import { getProjectsForUser } from '@/app/actions';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from './ui/table';
 import { ColumnSelectDialog } from './column-select-dialog';
 import { differenceInBusinessDays } from 'date-fns';
@@ -673,7 +673,7 @@ function Dashboard({
                 </div>
             </div>
         )}
-        <main className="flex flex-col flex-grow overflow-y-auto">
+        <main className="flex flex-col flex-grow overflow-y-auto transition-opacity duration-300">
              {activeRole === 'Admin' ? (
                 <div className="flex-grow flex flex-col">
                     <UserManagementTable sessionUser={user} />
@@ -855,3 +855,5 @@ function Dashboard({
 }
 
 export default Dashboard;
+
+    
