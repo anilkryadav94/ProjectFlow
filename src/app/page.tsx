@@ -10,7 +10,6 @@ import { useRouter } from 'next/navigation';
 import { Loader2 } from 'lucide-react';
 import { getDocs, collection, query, where, Timestamp } from 'firebase/firestore';
 import { db } from '@/lib/firebase';
-import { seedDatabase } from '@/lib/data';
 
 function convertTimestampsToDates(project: any): Project {
     const newProject: { [key: string]: any } = { ...project };
@@ -68,10 +67,6 @@ export default function Home() {
         const sessionData = await getSession();
         if (sessionData) {
           setSession(sessionData);
-
-          // Seeding logic is removed as per user request.
-          // The application will now rely on manually uploaded data.
-
           const projectData = await getProjectsForUser(sessionData.user);
           setProjects(projectData);
           setLoading(false);
