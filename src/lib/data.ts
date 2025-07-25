@@ -38,39 +38,38 @@ export type ProcessType = 'Patent' | 'TM' | 'IDS' | 'Project';
 export type Project = {
     id: string;
     ref_number: string | null;
+    application_number: string | null;
+    patent_number: string | null;
     client_name: string;
     process: ProcessType;
     processor: string;
-    sender: string | null;
-    subject_line: string;
-    received_date: string;
+    qa: string;
     case_manager: string;
-    allocation_date: string;
+    manager_name: string | null;
+    sender: string | null;
+    subject_line: string | null;
+    received_date: string | null;
+    allocation_date: string | null;
     processing_date: string | null;
-    processing_status: ProcessorStatus;
-    application_number: string | null;
-    patent_number: string | null;
+    qa_date: string | null;
+    reportout_date: string | null;
+    client_response_date: string | null;
     country: string | null;
     document_type: string | null;
     action_taken: string | null;
     renewal_agent: string | null;
+    workflowStatus: WorkflowStatus;
+    processing_status: ProcessorStatus;
+    qa_status: QAStatus;
+    clientquery_status: ClientStatus | null;
+    error: 'Yes' | 'No' | null;
+    rework_reason: string | null;
+    qa_remark: string | null;
     client_query_description: string | null;
     client_comments: string | null;
     client_error_description: string | null;
-    qa: string;
-    qa_date: string | null;
-    qa_status: QAStatus;
-    qa_remark: string | null;
-    error: string | null;
-    rework_reason: string | null;
     email_renaming: string | null;
-    email_forwarded: string | null;
-    reportout_date: string | null;
-    manager_name: string | null;
-    clientquery_status: ClientStatus | null;
-    client_response_date: string | null;
-    workflowStatus: WorkflowStatus;
-    isOutOfTat?: boolean;
+    email_forwarded: 'Yes' | 'No' | null;
 };
 
 
@@ -81,6 +80,11 @@ export const processes: ProcessType[] = ['Patent', 'TM', 'IDS', 'Project'];
 export const projectStatuses: any[] = ["Pending", "Completed", "On Hold"];
 export const countries = ['USA', 'India', 'Canada', 'UK', 'Germany'];
 export const caseManagers = ['CM Alice', 'CM Bob', 'Rahul'];
+export const managerNames = ['Manager User'];
+export const renewalAgents = ['Agent X', 'Agent Y'];
+export const documentTypes = ['Disclosure', 'Application', 'Office Action Response', 'Correspondence'];
+export const errorOptions: ('Yes' | 'No')[] = ['Yes', 'No'];
+export const emailForwardedOptions: ('Yes' | 'No')[] = ['Yes', 'No'];
 
 
 export let users: Omit<User, 'id'>[] = [
@@ -98,156 +102,6 @@ export let users: Omit<User, 'id'>[] = [
     { email: 'cm.bob@example.com', password: 'password', name: 'CM Bob', roles: ['Case Manager'] },
 ];
 
-let initialProjects: Omit<Project, 'id'>[] = [
-  {
-    ref_number: 'REF-001',
-    client_name: 'Client A',
-    process: 'Patent',
-    application_number: 'US16/123,456',
-    patent_number: '10,123,456',
-    received_date: '2023-10-01',
-    allocation_date: '2023-10-02',
-    processor: 'Rahul',
-    qa: 'Rahul',
-    case_manager: 'CM Alice',
-    workflowStatus: 'Completed',
-    processing_status: 'Processed',
-    qa_status: 'Complete',
-    processing_date: '2023-10-05',
-    qa_date: '2023-10-07',
-    rework_reason: null,
-    subject_line: 'Invention Disclosure - AI in Healthcare',
-    client_comments: null,
-    clientquery_status: null,
-    client_response_date: null,
-    sender: 'client@clienta.com',
-    country: 'USA',
-    document_type: 'Disclosure',
-    action_taken: 'Filed',
-    renewal_agent: null,
-    client_query_description: null,
-    client_error_description: null,
-    qa_remark: 'Looks good.',
-    error: null,
-    email_renaming: 'REF001_Disclosure.eml',
-    email_forwarded: 'attorney@lawfirm.com',
-    reportout_date: '2023-10-08',
-    manager_name: 'Manager User'
-  },
-  {
-    ref_number: 'REF-002',
-    client_name: 'Client B',
-    process: 'Patent',
-    application_number: 'US16/234,567',
-    patent_number: '10,234,567',
-    received_date: '2023-10-03',
-    allocation_date: '2023-10-04',
-    processor: 'Rahul',
-    qa: 'Rahul',
-    case_manager: 'CM Bob',
-    workflowStatus: 'With QA',
-    processing_status: 'Processed',
-    qa_status: 'Pending',
-    processing_date: '2023-10-08',
-    qa_date: null,
-    rework_reason: null,
-    subject_line: 'New Patent Application Filing',
-    client_comments: null,
-    clientquery_status: null,
-    client_response_date: null,
-    sender: 'contact@clientb.com',
-    country: 'USA',
-    document_type: 'Application',
-    action_taken: 'Pending Filing',
-    renewal_agent: null,
-    client_query_description: null,
-    client_error_description: null,
-    qa_remark: null,
-    error: null,
-    email_renaming: 'REF002_NewApp.eml',
-    email_forwarded: 'attorney@lawfirm.com',
-    reportout_date: null,
-    manager_name: 'Manager User'
-  },
-  {
-    ref_number: '',
-    client_name: 'Client C',
-    process: 'TM',
-    application_number: null,
-    patent_number: null,
-    received_date: '2023-10-10',
-    allocation_date: '2023-10-11',
-    processor: 'Rahul',
-    qa: 'Rahul',
-    case_manager: 'CM Alice',
-    workflowStatus: 'With Processor',
-    processing_status: 'Pending',
-    qa_status: 'Pending',
-    processing_date: null,
-    qa_date: null,
-    rework_reason: null,
-    subject_line: 'Follow-up on Application XYZ',
-    client_comments: null,
-    clientquery_status: null,
-    client_response_date: null,
-    sender: 'legal@clientc.com',
-    country: 'Canada',
-    document_type: 'Correspondence',
-    action_taken: null,
-    renewal_agent: null,
-    client_query_description: null,
-    client_error_description: null,
-    qa_remark: null,
-    error: null,
-    email_renaming: null,
-    email_forwarded: null,
-    reportout_date: null,
-    manager_name: 'Manager User'
-  },
-   {
-    ref_number: 'REF-005',
-    client_name: 'Client B',
-    process: 'Patent',
-    application_number: null,
-    patent_number: null,
-    received_date: '2023-10-18',
-    allocation_date: '2023-10-19',
-    processor: 'Rahul',
-    qa: 'Rahul',
-    case_manager: 'Rahul',
-    workflowStatus: 'With QA',
-    processing_status: 'Processed',
-    qa_status: 'Client Query',
-    processing_date: '2023-10-22',
-    qa_date: '2023-10-23',
-    rework_reason: 'Need clarification on figure 3.',
-    subject_line: 'Response to office action',
-    client_comments: null,
-    clientquery_status: null,
-    client_response_date: null,
-    sender: 'contact@clientb.com',
-    country: 'USA',
-    document_type: 'Office Action Response',
-    action_taken: 'Submitted to USPTO',
-    renewal_agent: null,
-    client_query_description: 'Client needs to confirm if Figure 3A or 3B is the correct one to use.',
-    client_error_description: null,
-    qa_remark: 'Sent to case manager for client clarification.',
-    error: null,
-    email_renaming: 'REF005_OA_Response.eml',
-    email_forwarded: 'attorney@lawfirm.com',
-    reportout_date: null,
-    manager_name: 'Manager User'
-  },
-];
-
-
-export const projects: Project[] = initialProjects.map((p, index) => ({
-  ...p,
-  id: `proj_${String(index + 1).padStart(4, '0')}`,
-}));
-
-
 export async function addRows(
   projectsToAdd: Partial<Project>[]
 ): Promise<{ success: boolean; addedCount?: number; error?: string }> {
@@ -263,44 +117,42 @@ export async function addRows(
     
     projectsToAdd.forEach((projectData) => {
         const newProjectRef = doc(projectsCollection); // Let Firestore generate the document ID
-
-        // Make sure id is not copied from the source project
         const { id, ...restOfProjectData } = projectData as Partial<Project> & {id?: string};
 
         const newProject: Omit<Project, 'id'> = {
-            ref_number: '',
+            ref_number: null,
             application_number: null,
             patent_number: null,
-            workflowStatus: 'With Processor',
-            processing_status: 'Pending',
-            qa_status: 'Pending',
-            processing_date: null,
-            qa_date: null,
-            rework_reason: null,
-            client_comments: null,
-            clientquery_status: null,
-            client_response_date: null,
-            subject_line: '',
-            client_name: '',
+            client_name: 'Client A',
             process: 'Patent',
-            processor: '',
-            qa: '',
-            case_manager: '',
+            processor: 'Alice',
+            qa: 'David',
+            case_manager: 'CM Alice',
+            manager_name: null,
+            sender: null,
+            subject_line: null,
             received_date: new Date().toISOString().split('T')[0],
             allocation_date: new Date().toISOString().split('T')[0],
-            sender: null,
+            processing_date: null,
+            qa_date: null,
+            reportout_date: null,
+            client_response_date: null,
             country: null,
             document_type: null,
             action_taken: null,
             renewal_agent: null,
-            client_query_description: null,
-            client_error_description: null,
-            qa_remark: null,
+            workflowStatus: 'With Processor',
+            processing_status: 'Pending',
+            qa_status: 'Pending',
+            clientquery_status: null,
             error: null,
+            rework_reason: null,
+            qa_remark: null,
+            client_query_description: null,
+            client_comments: null,
+            client_error_description: null,
             email_renaming: null,
             email_forwarded: null,
-            reportout_date: null,
-            manager_name: null,
         };
 
         const finalProjectData = { ...newProject, ...restOfProjectData };
@@ -325,16 +177,22 @@ export async function addRows(
 // It is now disabled from being called automatically as per user request.
 export async function seedDatabase() {
   /*
+  const initialProjects: Omit<Project, 'id'>[] = [
+    // Sample data can be re-added here if needed in the future
+  ];
   try {
     const projectsCollection = collection(db, 'projects');
-    const batch = writeBatch(db);
-    projects.forEach(project => {
-      const { id, ...projectData } = project;
-      const docRef = doc(projectsCollection, id);
-      batch.set(docRef, projectData);
-    });
-    await batch.commit();
-    console.log('Database has been seeded with initial project data.');
+    const projectDocs = await getDocs(query(projectsCollection, limit(1)));
+    if (projectDocs.empty) {
+        console.log('Projects collection is empty. Seeding database...');
+        const batch = writeBatch(db);
+        initialProjects.forEach(project => {
+          const docRef = doc(projectsCollection); // Auto-generate ID
+          batch.set(docRef, project);
+        });
+        await batch.commit();
+        console.log('Database has been seeded with initial project data.');
+    }
   } catch (error) {
     console.error('Error seeding database:', error);
   }

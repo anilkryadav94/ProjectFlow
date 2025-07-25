@@ -85,7 +85,7 @@ export function AddRowsDialog({
             if(sourceProject.hasOwnProperty(field)) {
                 // Ensure id is never copied
                 if (field !== 'id') {
-                    projectDataToCopy[field] = sourceProject[field as keyof Project];
+                    projectDataToCopy[field as keyof Project] = sourceProject[field as keyof Project] as any;
                 }
             }
         });

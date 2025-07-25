@@ -29,15 +29,13 @@ export async function bulkUpdateProjects(data: z.infer<typeof bulkUpdateSchema>)
 }
 
 // This is the "whitelist" of all fields that are allowed to be updated by a user.
-// We will use this to build a safe update object.
+// We use this to build a safe update object.
 const updatableProjectFields = [
-  'ref_number', 'client_name', 'process', 'subject_line', 'application_number',
-  'patent_number', 'received_date', 'allocation_date', 'processor', 'qa',
-  'case_manager', 'processing_status', 'qa_status', 'rework_reason',
-  'client_comments', 'clientquery_status', 'sender', 'country', 'document_type',
-  'action_taken', 'renewal_agent', 'client_query_description', 'client_error_description',
-  'qa_remark', 'error', 'email_renaming', 'email_forwarded',
-  'manager_name'
+  'ref_number', 'application_number', 'patent_number', 'client_name', 'process', 'processor', 'qa', 
+  'case_manager', 'manager_name', 'sender', 'subject_line', 'country', 'document_type', 'action_taken', 
+  'renewal_agent', 'processing_status', 'qa_status', 'clientquery_status', 'error', 'rework_reason', 
+  'qa_remark', 'client_query_description', 'client_comments', 'client_error_description', 
+  'email_renaming', 'email_forwarded'
 ] as const;
 
 
@@ -73,6 +71,15 @@ export async function updateProject(
                 }
             }
         }
+
+        // Handle date fields separately to ensure they are valid or null
+        const dateFields: (keyof Project)[] = ['received_date', 'allocation_date'];
+        for (const key of dateFields) {
+            if (Object.prototype.hasOwnProperty.call(clientData, key)) {
+                dataToUpdate[key] = clientData[key] || null;
+            }
+        }
+
 
         // Handle status transitions and automatic date stamping based on action
         if (submitAction === 'client_submit') {

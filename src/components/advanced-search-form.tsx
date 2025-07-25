@@ -101,7 +101,7 @@ export function AdvancedSearchForm({ onSearch, initialCriteria }: AdvancedSearch
                     return (
                     <div key={item.id} className="flex items-center gap-2">
                         <Select
-                            value={watch(`criteria.${index}.field`)}
+                            value={watch(`criteria.${index}.field`) || ""}
                             onValueChange={(value) => {
                                 setValue(`criteria.${index}.field`, value as SearchField);
                                 setValue(`criteria.${index}.operator`, '');
@@ -117,7 +117,7 @@ export function AdvancedSearchForm({ onSearch, initialCriteria }: AdvancedSearch
                         </Select>
 
                         <Select
-                            value={operatorValue}
+                            value={operatorValue || ""}
                             onValueChange={(value) => setValue(`criteria.${index}.operator`, value as Operator)}
                             disabled={!selectedField}
                         >
@@ -157,7 +157,7 @@ export function AdvancedSearchForm({ onSearch, initialCriteria }: AdvancedSearch
                             </Popover>
                         ) : isSelect ? (
                                 <Select
-                                value={watch(`criteria.${index}.value`)}
+                                value={watch(`criteria.${index}.value`) || ""}
                                 onValueChange={(value) => setValue(`criteria.${index}.value`, value)}
                                 disabled={!fieldConfig || operatorValue === 'blank'}
                             >
