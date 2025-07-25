@@ -216,7 +216,6 @@ export async function addRows(
     for (const projectData of projectsToAdd) {
         const newProjectRef = doc(projectsCollection); // Let Firestore generate the document ID
         
-        // This is the clean base object with only non-nullable status fields.
         const newProject: Partial<Project> = {
             ref_number: null,
             application_number: null,
@@ -253,21 +252,22 @@ export async function addRows(
             email_forwarded: null,
         };
 
-        // Combine the clean base, the user-provided data, and the auto-generated row number
-        const finalProjectData = { ...newProject, ...projectData, row_number: currentRowNumber };
+        const finalProjectData = {
+          ...newProject,
+          ...projectData,
+          row_number: currentRowNumber,
+        };
         
-        // Increment the ref number for the next iteration
         const yearPrefix = currentRowNumber.slice(0, 4);
         const sequence = parseInt(currentRowNumber.slice(4), 10) + 1;
         currentRowNumber = `${yearPrefix}${sequence.toString().padStart(5, '0')}`;
 
-        // Convert date strings to Timestamps before sending to Firestore
         const dateFields: (keyof Project)[] = ['received_date', 'allocation_date', 'processing_date', 'qa_date', 'reportout_date', 'client_response_date'];
         
         for (const dateField of dateFields) {
             if (finalProjectData[dateField] && typeof finalProjectData[dateField] === 'string') {
                 const date = new Date(finalProjectData[dateField] as string);
-                if (!isNaN(date.getTime())) { // Check if the date is valid
+                if (!isNaN(date.getTime())) {
                    (finalProjectData as any)[dateField] = Timestamp.fromDate(date);
                 } else {
                    (finalProjectData as any)[dateField] = null;
@@ -290,5 +290,3 @@ export async function addRows(
     return { success: false, error: "An unknown error occurred while adding rows."}
   }
 }
-
-    
