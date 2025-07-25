@@ -188,11 +188,11 @@ export function EditProjectDialog({
     try {
         const result = await updateProject(project.id, data, action);
         if (result.success && result.project) {
-            onUpdateSuccess();
             toast({
                 title: "Success",
                 description: `Project ${result.project.ref_number || result.project.id} updated.`,
             });
+            onUpdateSuccess(); // This will refresh the project list in the dashboard
 
             const currentIndex = projectQueue.findIndex(p => p.id === result.project!.id);
             const newQueueAfterUpdate = projectQueue.filter(p => p.id !== result.project!.id);

@@ -20,7 +20,7 @@ import { cn } from '@/lib/utils';
 import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from './ui/accordion';
 import { EditProjectDialog } from './edit-project-dialog';
 import { AddRowsDialog } from './add-rows-dialog';
-import { bulkUpdateProjects, updateProject, addRows } from '@/app/actions';
+import { bulkUpdateProjects, updateProject, addRows, getProjectsForUser } from '@/app/actions';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from './ui/table';
 import { ColumnSelectDialog } from './column-select-dialog';
 import { differenceInBusinessDays } from 'date-fns';
@@ -109,8 +109,19 @@ function Dashboard({
   
   const { toast } = useToast();
   
-  const refreshProjects = () => {
-    window.location.reload();
+  const refreshProjects = async () => {
+    if (!activeRole) return;
+    try {
+        const updatedProjects = await getProjectsForUser(user.name, user.roles);
+        setProjects(updatedProjects);
+    } catch (error) {
+        console.error("Failed to refresh projects:", error);
+        toast({
+            title: "Error",
+            description: "Could not refresh project data.",
+            variant: "destructive"
+        });
+    }
   };
   
   const isManagerOrAdmin = React.useMemo(() => activeRole === 'Manager' || activeRole === 'Admin', [activeRole]);
@@ -189,7 +200,7 @@ function Dashboard({
     try {
         await bulkUpdateProjects({ projectIds, field: bulkUpdateField, value: bulkUpdateValue });
         toast({ title: "Success", description: `${projectIds.length} projects have been updated.` });
-        window.location.reload();
+        await refreshProjects();
         setRowSelection({});
         setBulkUpdateValue('');
     } catch(e) {
@@ -246,7 +257,7 @@ function Dashboard({
                         title: "Bulk Add Complete",
                         description: `${result.addedCount} projects have been added.`,
                     });
-                    window.location.reload();
+                    await refreshProjects();
                 } else {
                     throw new Error(result.error || "An unknown error occurred during upload.");
                 }
