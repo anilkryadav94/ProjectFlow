@@ -76,7 +76,7 @@ export default function Home() {
           setProjects(projectData);
           setLoading(false);
         } else {
-           console.error("User authenticated but no session data found. Logging out.");
+           console.error("Auth state changed, but no server session found. Logging out.");
            await logout();
            router.push('/login');
         }

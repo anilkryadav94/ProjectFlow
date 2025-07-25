@@ -38,11 +38,12 @@ export function LoginForm() {
       await login(email, password);
       const user = getAuth().currentUser;
       if (user) {
+        // CRITICAL FIX: Await the session creation before redirecting
         await createSession(user.uid);
       }
       // On successful login, redirect to the dashboard.
+      // The router.push will trigger a refresh of the page component.
       router.push('/');
-      router.refresh(); // Refresh to ensure new session is picked up
     } catch (err: any) {
       setError(err.message || 'Failed to login.');
     } finally {
