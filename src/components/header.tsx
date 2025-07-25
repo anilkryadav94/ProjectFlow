@@ -16,7 +16,7 @@ import {
   DropdownMenuRadioGroup,
   DropdownMenuRadioItem,
 } from "@/components/ui/dropdown-menu"
-import { logout } from "@/lib/auth"
+import { logout } from "@/lib/auth-actions"
 import { useRouter } from "next/navigation"
 import { ThemeToggle } from "./theme-toggle";
 import { Separator } from "./ui/separator";
@@ -25,6 +25,9 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from ".
 import { Input } from "./ui/input";
 import type { SearchableColumn } from "./dashboard"
 import Link from "next/link"
+import { signOut } from "firebase/auth"
+import { auth } from "@/lib/firebase"
+
 
 interface TaskPagination {
     currentIndex: number;
@@ -84,7 +87,8 @@ export function Header({
   const router = useRouter();
 
   const handleLogout = async () => {
-    await logout();
+    await signOut(auth); // Sign out from client-side Firebase
+    await logout(); // Server action to clear the cookie
     router.push('/login');
   };
 

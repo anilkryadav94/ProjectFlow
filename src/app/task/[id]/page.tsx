@@ -2,7 +2,7 @@ import * as React from 'react';
 import type { Project } from '@/lib/data';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
-import { getSession } from '@/lib/auth';
+import { getSession } from '@/lib/auth-actions';
 import { Header } from '@/components/header';
 import { clientNames, processes } from '@/lib/data';
 import { doc, getDoc, collection, getDocs } from 'firebase/firestore';

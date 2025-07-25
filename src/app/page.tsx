@@ -4,7 +4,8 @@
 import * as React from 'react';
 import { DashboardWrapper } from '@/components/dashboard';
 import type { User, Project } from '@/lib/data';
-import { onAuthChanged, getSession, logout } from '@/lib/auth';
+import { onAuthChanged } from '@/lib/auth';
+import { getSession, logout } from '@/lib/auth-actions';
 import { useRouter } from 'next/navigation';
 import { Loader2 } from 'lucide-react';
 import { getDocs, collection, query, where, Timestamp } from 'firebase/firestore';
@@ -75,7 +76,7 @@ export default function Home() {
           setProjects(projectData);
           setLoading(false);
         } else {
-           console.error("User authenticated but no session data found in Firestore. Logging out.");
+           console.error("User authenticated but no session data found. Logging out.");
            await logout();
            router.push('/login');
         }

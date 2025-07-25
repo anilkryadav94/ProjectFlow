@@ -3,12 +3,14 @@
 
 import * as React from "react";
 import { login } from "@/lib/auth";
+import { createSession } from "@/lib/auth-actions";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Loader2, Workflow } from "lucide-react";
 import { useRouter } from "next/navigation";
+import { getAuth } from "firebase/auth";
 
 export function LoginForm() {
   const [error, setError] = React.useState<string | undefined>(undefined);
@@ -34,6 +36,10 @@ export function LoginForm() {
 
     try {
       await login(email, password);
+      const user = getAuth().currentUser;
+      if (user) {
+        await createSession(user.uid);
+      }
       // On successful login, redirect to the dashboard.
       router.push('/');
       router.refresh(); // Refresh to ensure new session is picked up

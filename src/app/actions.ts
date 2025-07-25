@@ -6,6 +6,7 @@ import type { Project, Role, ClientStatus } from "@/lib/data";
 import { revalidatePath } from "next/cache";
 import { db } from "@/lib/firebase";
 import { collection, getDocs, doc, writeBatch, updateDoc, serverTimestamp, addDoc, getDoc, query, orderBy, limit, Timestamp } from "firebase/firestore";
+import { getSession } from "@/lib/auth-actions";
 
 const bulkUpdateSchema = z.object({
   projectIds: z.array(z.string()),
@@ -14,6 +15,11 @@ const bulkUpdateSchema = z.object({
 });
 
 export async function bulkUpdateProjects(data: z.infer<typeof bulkUpdateSchema>): Promise<{ success: boolean; updatedProjects?: Project[] }> {
+    const session = await getSession();
+    if (!session) {
+      return { success: false };
+    }
+    
     const validatedData = bulkUpdateSchema.parse(data);
     const batch = writeBatch(db);
 
@@ -46,6 +52,11 @@ export async function updateProject(
     clientData: Partial<Project>, 
     submitAction?: 'submit_for_qa' | 'submit_qa' | 'send_rework' | 'save' | 'client_submit'
 ): Promise<{success: boolean, project?: Project, error?: string}> {
+    const session = await getSession();
+    if (!session) {
+      console.error("Update failed: User not authenticated.");
+      return { success: false, error: "User not authenticated." };
+    }
     
     if (!projectId) {
         console.error("Update failed: No project ID provided.");
@@ -131,6 +142,10 @@ function convertTimestampsToDates(data: any): any {
 export async function addRows(
   projectsToAdd: Partial<Project>[]
 ): Promise<{ success: boolean; addedCount?: number; error?: string }> {
+  const session = await getSession();
+  if (!session) {
+    return { success: false, error: "User not authenticated." };
+  }
   
   if (!projectsToAdd || projectsToAdd.length === 0) {
     return { success: false, error: "No data provided to add." };
