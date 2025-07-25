@@ -42,10 +42,12 @@ export default function Home() {
   React.useEffect(() => {
     const unsubscribe = onAuthChanged(async (user) => {
       if (user) {
+        setLoading(true);
         try {
             const sessionData = await getSessionData(user);
             if (sessionData) {
               setSession(sessionData);
+              // Now that we have confirmed the session and user doc, fetch projects.
               const projectData = await getProjectsForUser(sessionData.user.name, sessionData.user.roles);
               setProjects(projectData);
             } else {
