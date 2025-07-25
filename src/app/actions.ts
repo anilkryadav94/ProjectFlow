@@ -30,7 +30,6 @@ export async function bulkUpdateProjects(data: z.infer<typeof bulkUpdateSchema>)
 
 // This is the "whitelist" of all fields that are allowed to be updated by a user.
 // We will use this to build a safe update object.
-// CRITICAL FIX: Removed id, row_number, and server-set date fields.
 const updatableProjectFields = [
   'ref_number', 'client_name', 'process', 'subject_line', 'application_number',
   'patent_number', 'received_date', 'allocation_date', 'processor', 'qa',
