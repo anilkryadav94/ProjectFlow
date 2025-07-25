@@ -159,10 +159,10 @@ export const getColumns = (
   
   const allPossibleColumns = [...allColumns];
   if (isManagerOrAdmin) {
-    allPossibleColumns.unshift(actionColumn, selectionColumn);
-  } else {
-    allPossibleColumns.unshift(actionColumn);
+    allPossibleColumns.unshift(selectionColumn);
   }
+  allPossibleColumns.unshift(actionColumn);
+  
 
   // Filter and order columns based on visibleColumnKeys
   const visibleColumns = visibleColumnKeys
