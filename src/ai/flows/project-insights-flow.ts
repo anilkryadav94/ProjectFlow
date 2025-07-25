@@ -69,23 +69,21 @@ const projectInsightsFlow = ai.defineFlow(
     }
 
     // Case 2: A tool was used, and the response is nested.
-    if (response.message && response.message.content) {
-      const toolResponsePart = response.message.content.find(part => part.toolResponse);
-      const textResponsePart = response.message.content.find(part => part.text);
-
-      // Check if the AI provided its final answer in a structured output part.
-      // This is the new expected format for tool-using flows with output schemas.
+    // The final structured output is in a part with the 'output' key.
+    if (response.message && Array.isArray(response.message.content)) {
       const outputPart = response.message.content.find(part => part.output);
-      if(outputPart && outputPart.output) {
+      if (outputPart && outputPart.output) {
+        // This is the most reliable way to get the structured output.
         return outputPart.output as InsightResponse;
       }
       
-      // Fallback: If not found in a structured output, try to parse from a text part.
+      // Fallback: If no structured output part, check if the AI sent a text response.
+      const textResponsePart = response.message.content.find(part => part.text);
       if (textResponsePart && textResponsePart.text) {
           try {
               // Sometimes the AI might return the JSON as a string inside the text part.
               const parsedText = JSON.parse(textResponsePart.text);
-              if(parsedText.responseType && parsedText.data) {
+              if (parsedText.responseType && parsedText.data) {
                 return parsedText as InsightResponse;
               }
           } catch (e) {
@@ -98,7 +96,9 @@ const projectInsightsFlow = ai.defineFlow(
       }
     }
     
-    throw new Error('The AI returned an unexpected response format.');
+    // If we've reached here, the response format is unexpected.
+    console.error("Unexpected AI response format:", JSON.stringify(response, null, 2));
+    throw new Error('The AI returned an unexpected response format. Please check the logs.');
   }
 );
 
