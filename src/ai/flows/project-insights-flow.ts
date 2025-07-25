@@ -35,7 +35,7 @@ const getProjectsTool = ai.defineTool(
 
 const insightsPrompt = ai.definePrompt({
   name: 'projectInsightsPrompt',
-  model: googleAI.model('gemini-1.5-flash-latest'),
+  model: googleAI.model('gemini-1.5-pro-latest'), // Switched to a more capable model
   input: { schema: z.string() },
   output: { schema: InsightResponseSchema },
   tools: [getProjectsTool],
