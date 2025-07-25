@@ -11,7 +11,7 @@ import { getProjectsForUser } from '@/app/actions';
 
 export default function Home() {
   const [session, setSession] = React.useState<{ user: User } | null>(null);
-  const [projects, setProjects] = React.useState<Project[] | null>(null);
+  const [projects, setProjects] = React.useState<Project[]>([]);
   const [loading, setLoading] = React.useState(true);
   const [error, setError] = React.useState<string | null>(null);
   const router = useRouter();
@@ -19,33 +19,40 @@ export default function Home() {
   React.useEffect(() => {
     const unsubscribe = onAuthChanged(async (user) => {
       if (user) {
-        try {
-            // Attempt to get session data, with a retry mechanism to handle race conditions
-            let sessionData = await getSession();
-            
-            // If session data is not immediately available, wait a bit and try again.
-            if (!sessionData) {
-                console.log("Initial session fetch failed, retrying in 1s...");
-                await new Promise(resolve => setTimeout(resolve, 1000));
-                sessionData = await getSession();
-            }
+        // Step 1: Get user session data. Retry once if it fails initially.
+        let sessionData = await getSession();
+        if (!sessionData) {
+            console.log("Initial session fetch failed, retrying in 1s...");
+            await new Promise(resolve => setTimeout(resolve, 1000));
+            sessionData = await getSession();
+        }
 
-            if (sessionData) {
-              setSession(sessionData);
-              const projectData = await getProjectsForUser(sessionData.user.name, sessionData.user.roles);
-              setProjects(projectData);
-            } else {
-               throw new Error("User authenticated but no session data found in Firestore after retry.");
+        if (sessionData) {
+            // Successfully got session, set it.
+            setSession(sessionData);
+
+            // Step 2: Try to fetch project data, but don't fail the whole page if it errors.
+            try {
+                const projectData = await getProjectsForUser(sessionData.user.name, sessionData.user.roles);
+                setProjects(projectData);
+            } catch (err: any) {
+                console.error("Error fetching projects:", err);
+                // Set an error message to be displayed on the dashboard, but don't log the user out.
+                setError("Could not load project data due to insufficient permissions or a network error.");
+                setProjects([]); // Ensure projects is an empty array on error
+            } finally {
+                // We have a session, so stop the main loading spinner.
+                setLoading(false);
             }
-        } catch (err: any) {
-            console.error("Error during data fetching after auth change:", err);
-            setError(err.message || "An error occurred. Logging out.");
-            await logout();
-            router.push('/login');
-        } finally {
-            setLoading(false);
+        } else {
+           // If session is not found after retry, then it's a real issue.
+           console.error("User authenticated but no session data found in Firestore after retry. Logging out.");
+           setError("Your user profile is not configured correctly. Please contact an admin.");
+           await logout();
+           router.push('/login');
         }
       } else {
+        // No user is signed in.
         setLoading(false);
         router.push('/login');
       }
@@ -54,12 +61,26 @@ export default function Home() {
     return () => unsubscribe();
   }, [router]);
   
-  if (loading || !session || !projects) {
+  if (loading) {
     return (
         <div className="flex h-screen w-full items-center justify-center bg-background">
             <div className="flex flex-col items-center gap-4">
                 <Loader2 className="h-12 w-12 animate-spin text-primary" />
-                <p className="text-lg text-muted-foreground">Loading Dashboard...</p>
+                <p className="text-lg text-muted-foreground">Authenticating...</p>
+            </div>
+        </div>
+    );
+  }
+
+  // User is authenticated, but there might be an error fetching data.
+  // The DashboardWrapper is designed to handle this.
+  if (!session) {
+      // This case should ideally not be hit if the logic above is correct, but as a fallback:
+      return (
+        <div className="flex h-screen w-full items-center justify-center bg-background">
+            <div className="flex flex-col items-center gap-4">
+                <Loader2 className="h-12 w-12 animate-spin text-primary" />
+                <p className="text-lg text-muted-foreground">Finalizing session...</p>
                  {error && <p className="text-sm text-destructive">{error}</p>}
             </div>
         </div>
