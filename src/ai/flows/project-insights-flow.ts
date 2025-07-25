@@ -56,49 +56,22 @@ const projectInsightsFlow = ai.defineFlow(
     outputSchema: InsightResponseSchema,
   },
   async (query) => {
-    const llmResponse = await insightsPrompt(query);
-    const response = llmResponse.output;
+    // By accessing .output directly on the prompt call, Genkit handles extracting
+    // the final structured output, even after tool use. This is the most reliable way.
+    const response = await insightsPrompt(query);
+    const structuredOutput = response.output;
 
-    if (!response) {
-      throw new Error('The AI failed to generate a response.');
+    if (!structuredOutput) {
+       // This can happen if the model fails to follow instructions or if there's an issue.
+       // We can check the raw response for clues.
+       const rawTextResponse = response.text;
+       if (rawTextResponse) {
+          return { responseType: 'text', data: `The AI returned an unexpected response. Raw text: ${rawTextResponse}` };
+       }
+      throw new Error('The AI failed to generate a valid structured response. Please try rephrasing your question.');
     }
 
-    // Case 1: The response is already in the final format (no tool used).
-    if (response.responseType && response.data) {
-        return response;
-    }
-
-    // Case 2: A tool was used, and the response is nested.
-    // The final structured output is in a part with the 'output' key.
-    if (response.message && Array.isArray(response.message.content)) {
-      const outputPart = response.message.content.find(part => part.output);
-      if (outputPart && outputPart.output) {
-        // This is the most reliable way to get the structured output.
-        return outputPart.output as InsightResponse;
-      }
-      
-      // Fallback: If no structured output part, check if the AI sent a text response.
-      const textResponsePart = response.message.content.find(part => part.text);
-      if (textResponsePart && textResponsePart.text) {
-          try {
-              // Sometimes the AI might return the JSON as a string inside the text part.
-              const parsedText = JSON.parse(textResponsePart.text);
-              if (parsedText.responseType && parsedText.data) {
-                return parsedText as InsightResponse;
-              }
-          } catch (e) {
-              // It's not a JSON string, so treat it as a simple text response.
-               return {
-                  responseType: 'text',
-                  data: textResponsePart.text,
-               };
-          }
-      }
-    }
-    
-    // If we've reached here, the response format is unexpected.
-    console.error("Unexpected AI response format:", JSON.stringify(response, null, 2));
-    throw new Error('The AI returned an unexpected response format. Please check the logs.');
+    return structuredOutput;
   }
 );
 
