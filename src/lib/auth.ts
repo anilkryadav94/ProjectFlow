@@ -1,4 +1,3 @@
-
 import { 
     getAuth, 
     signInWithEmailAndPassword, 
@@ -49,6 +48,10 @@ export async function login(email: string, password: string): Promise<void> {
     if (userCredential.user) {
         await ensureUserDocument(userCredential.user);
     }
+}
+
+export async function logout(): Promise<void> {
+    await signOut(auth);
 }
 
 // --- User Management for Admin Panel ---

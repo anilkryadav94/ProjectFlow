@@ -4,7 +4,7 @@
 import * as React from 'react';
 import { DashboardWrapper } from '@/components/dashboard';
 import type { User, Project } from '@/lib/data';
-import { onAuthChanged } from '@/lib/auth';
+import { onAuthChanged, logout } from '@/lib/auth';
 import { getProjectsForUser } from '@/app/actions';
 import { useRouter } from 'next/navigation';
 import { Loader2 } from 'lucide-react';
@@ -43,26 +43,26 @@ export default function Home() {
     const unsubscribe = onAuthChanged(async (user) => {
       if (user) {
         try {
-            // First, get user data which also primes the auth state for Firestore
             const sessionData = await getSessionData(user);
             if (sessionData) {
               setSession(sessionData);
-              // NOW it's safe to call server actions that interact with Firestore
               const projectData = await getProjectsForUser(sessionData.user.name, sessionData.user.roles);
               setProjects(projectData);
             } else {
-              console.error("User document not found in Firestore, cannot fetch projects.");
-              // Handle case where user is in Auth but not Firestore DB
+              console.error("User is authenticated but no user document found in Firestore. Logging out.");
+              await logout();
               router.push('/login');
             }
         } catch (error) {
             console.error("Error fetching session or project data:", error);
-            // Potentially a permissions error, redirect to login
+            await logout();
             router.push('/login');
         } finally {
              setLoading(false);
         }
       } else {
+        // User is not signed in
+        setLoading(false);
         router.push('/login');
       }
     });
