@@ -44,7 +44,7 @@ import { ScrollArea } from "./ui/scroll-area";
 // Base schema covering all fields, mostly optional for admin/manager view
 const baseFormSchema = z.object({
   id: z.string(),
-  row_number: z.string(),
+  row_number: z.string().optional(),
   ref_number: z.string().nullable(),
   application_number: z.string().nullable(),
   patent_number: z.string().nullable(),
@@ -448,3 +448,5 @@ export function EditProjectDialog({
     </>
   );
 }
+
+    
