@@ -217,21 +217,20 @@ export async function addRows(
         const newProjectRef = doc(projectsCollection); // Let Firestore generate the document ID
         const { id, ...restOfProjectData } = projectData as Partial<Project> & {id?: string};
 
-        const newProject: Omit<Project, 'id'> = {
-            row_number: currentRowNumber,
+        const newProject: Omit<Project, 'id' | 'row_number'> = {
             ref_number: null,
             application_number: null,
             patent_number: null,
-            client_name: 'Client A',
-            process: 'Patent',
-            processor: 'Alice',
-            qa: 'David',
-            case_manager: 'CM Alice',
+            client_name: 'Client A', // Will be overwritten by restOfProjectData if present
+            process: 'Patent', // Will be overwritten by restOfProjectData if present
+            processor: 'Alice', // Will be overwritten by restOfProjectData if present
+            qa: 'David', // Will be overwritten by restOfProjectData if present
+            case_manager: 'CM Alice', // Will be overwritten by restOfProjectData if present
             manager_name: null,
             sender: null,
             subject_line: null,
-            received_date: new Date().toISOString().split('T')[0],
-            allocation_date: new Date().toISOString().split('T')[0],
+            received_date: null,
+            allocation_date: null,
             processing_date: null,
             qa_date: null,
             reportout_date: null,
@@ -254,7 +253,7 @@ export async function addRows(
             email_forwarded: null,
         };
 
-        const finalProjectData = { ...newProject, ...restOfProjectData };
+        const finalProjectData = { ...newProject, ...restOfProjectData, row_number: currentRowNumber };
         
         // Increment the ref number for the next iteration
         const yearPrefix = currentRowNumber.slice(0, 4);
