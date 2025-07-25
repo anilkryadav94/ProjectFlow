@@ -34,18 +34,22 @@ export default function Home() {
     const unsubscribe = onAuthChanged(async (user) => {
       if (user) {
         try {
-            // CRITICAL FIX: Force auth state synchronization by reading the user's own doc first.
-            // This small read ensures that by the time we call getSession() and getProjectsForUser(),
-            // the authentication context is fully established with Firestore.
-            await getDoc(doc(db, 'users', user.uid));
-        
-            const sessionData = await getSession();
+            // Attempt to get session data, with a retry mechanism to handle race conditions
+            let sessionData = await getSession();
+            
+            // If session data is not immediately available, wait a bit and try again.
+            if (!sessionData) {
+                console.log("Initial session fetch failed, retrying in 1s...");
+                await new Promise(resolve => setTimeout(resolve, 1000));
+                sessionData = await getSession();
+            }
+
             if (sessionData) {
               setSession(sessionData);
               const projectData = await getProjectsForUser(sessionData.user.name, sessionData.user.roles);
               setProjects(projectData);
             } else {
-               throw new Error("User authenticated but no session data found in Firestore.");
+               throw new Error("User authenticated but no session data found in Firestore after retry.");
             }
         } catch (err: any) {
             console.error("Error during data fetching after auth change:", err);
