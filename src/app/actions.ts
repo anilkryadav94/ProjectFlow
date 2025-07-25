@@ -215,9 +215,9 @@ export async function addRows(
     
     for (const projectData of projectsToAdd) {
         const newProjectRef = doc(projectsCollection); // Let Firestore generate the document ID
-        const { id, row_number, ...restOfProjectData } = projectData as Partial<Project> & {id?: string, row_number?: string};
-
-        const newProject: Omit<Project, 'id' | 'row_number'> = {
+        
+        // This is the clean base object with only non-nullable status fields.
+        const newProject: Partial<Project> = {
             ref_number: null,
             application_number: null,
             patent_number: null,
@@ -253,7 +253,8 @@ export async function addRows(
             email_forwarded: null,
         };
 
-        const finalProjectData = { ...newProject, ...restOfProjectData, row_number: currentRowNumber };
+        // Combine the clean base, the user-provided data, and the auto-generated row number
+        const finalProjectData = { ...newProject, ...projectData, row_number: currentRowNumber };
         
         // Increment the ref number for the next iteration
         const yearPrefix = currentRowNumber.slice(0, 4);
@@ -289,3 +290,5 @@ export async function addRows(
     return { success: false, error: "An unknown error occurred while adding rows."}
   }
 }
+
+    
