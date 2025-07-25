@@ -10,6 +10,7 @@
 import { ai } from '@/ai/genkit';
 import { z } from 'zod';
 import { getAllProjects } from '@/services/project-service';
+import { googleAI } from '@genkit-ai/googleai';
 
 // Define the schema inline as it cannot be exported from a 'use server' file.
 const InsightResponseSchema = z.object({
@@ -18,7 +19,7 @@ const InsightResponseSchema = z.object({
 });
 
 // Define the type for use within this file.
-export type InsightResponse = z.infer<typeof InsightResponseSchema>;
+type InsightResponse = z.infer<typeof InsightResponseSchema>;
 
 const getProjectsTool = ai.defineTool(
   {
@@ -34,6 +35,7 @@ const getProjectsTool = ai.defineTool(
 
 const insightsPrompt = ai.definePrompt({
   name: 'projectInsightsPrompt',
+  model: googleAI.model('gemini-1.5-flash-latest'),
   input: { schema: z.string() },
   output: { schema: InsightResponseSchema },
   tools: [getProjectsTool],
