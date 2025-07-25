@@ -212,8 +212,8 @@ export async function addRows(
             document_type: null,
             action_taken: null,
             renewal_agent: null,
-            workflowStatus: 'With Processor', // FIX: Set correct initial workflow status
-            processing_status: 'Pending',      // FIX: Set correct initial processing status
+            workflowStatus: 'With Processor',
+            processing_status: 'Pending',
             qa_status: 'Pending',
             clientquery_status: null,
             error: null,
