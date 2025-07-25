@@ -147,7 +147,7 @@ export async function updateProject(
             dataToUpdate.processing_status = 'Re-Work';
         }
         
-        if (Object.keys(dataToUpdate).length === 0) {
+        if (Object.keys(dataToUpdate).length === 0 && !submitAction) {
             console.log("No valid fields to update for project:", projectId);
             const existingProject = { id: docSnap.id, ...convertTimestampsToDates(docSnap.data()) } as Project;
             return { success: true, project: existingProject };
