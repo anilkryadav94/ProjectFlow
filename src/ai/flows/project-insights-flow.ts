@@ -56,8 +56,6 @@ const projectInsightsFlow = ai.defineFlow(
     outputSchema: InsightResponseSchema,
   },
   async (query) => {
-    // By accessing .output directly on the prompt call, Genkit handles extracting
-    // the final structured output, even after tool use. This is the most reliable way.
     const response = await insightsPrompt(query);
     const structuredOutput = response.output;
 
