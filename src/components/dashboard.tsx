@@ -567,8 +567,10 @@ function Dashboard({
 
   // When to show the sub-header with column/layout controls
   const showSubHeader = 
-    (activeRole === 'Processor' || activeRole === 'QA' || activeRole === 'Case Manager') || 
-    (isManagerOrAdmin && showDataTable);
+    (
+      (activeRole === 'Processor' || activeRole === 'QA' || activeRole === 'Case Manager') || 
+      (isManagerOrAdmin && showDataTable)
+    ) && dashboardProjects.length > 0;
 
 
   return (
