@@ -42,15 +42,6 @@ import { format } from "date-fns";
 import { cn } from "@/lib/utils";
 import { ScrollArea } from "./ui/scroll-area";
 
-const projectEntrySchema = z.object({
-    id: z.string(),
-    application_number: z.string().nullable(),
-    patent_number: z.string().nullable(),
-    country: z.string().nullable(),
-    status: z.string().nullable(),
-    notes: z.string().nullable(),
-});
-
 // Default schema for Admin/Manager
 const fullFormSchema = z.object({
   id: z.string(),
@@ -70,7 +61,6 @@ const fullFormSchema = z.object({
   rework_reason: z.string().nullable(),
   client_comments: z.string().nullable(),
   clientquery_status: z.enum(["Approved", "Clarification Required"]).nullable(),
-  entries: z.array(projectEntrySchema).optional(),
    // Adding all new fields to be safe
   sender: z.string().nullable(),
   country: z.string().nullable(),
@@ -181,7 +171,6 @@ export function EditProjectDialog({
         ref_number: project.ref_number ?? "",
         received_date: project.received_date,
         allocation_date: project.allocation_date,
-        entries: project.entries ?? [],
       });
     }
   }, [project, form, isOpen]);

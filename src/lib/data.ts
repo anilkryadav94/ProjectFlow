@@ -35,15 +35,6 @@ export const clientStatuses: ClientStatus[] = ['Approved', 'Clarification Requir
 
 export type ProcessType = 'Patent' | 'TM' | 'IDS' | 'Project';
 
-export type ProjectEntry = {
-    id: string;
-    application_number: string | null;
-    patent_number: string | null;
-    country: string | null;
-    status: string | null;
-    notes: string | null;
-};
-
 export type Project = {
     id: string;
     ref_number: string | null;
@@ -79,7 +70,6 @@ export type Project = {
     clientquery_status: ClientStatus | null;
     client_response_date: string | null;
     workflowStatus: WorkflowStatus;
-    entries?: ProjectEntry[];
     isOutOfTat?: boolean;
 };
 
@@ -130,9 +120,6 @@ let initialProjects: Omit<Project, 'id'>[] = [
     client_comments: null,
     clientquery_status: null,
     client_response_date: null,
-    entries: [
-        { id: 'entry1', application_number: 'US16/123,456', patent_number: '10,123,456', country: 'USA', status: 'Filed', notes: 'Initial notes' }
-    ],
     sender: 'client@clienta.com',
     country: 'USA',
     document_type: 'Disclosure',
@@ -168,7 +155,6 @@ let initialProjects: Omit<Project, 'id'>[] = [
     client_comments: null,
     clientquery_status: null,
     client_response_date: null,
-    entries: [],
     sender: 'contact@clientb.com',
     country: 'USA',
     document_type: 'Application',
@@ -204,7 +190,6 @@ let initialProjects: Omit<Project, 'id'>[] = [
     client_comments: null,
     clientquery_status: null,
     client_response_date: null,
-    entries: [],
     sender: 'legal@clientc.com',
     country: 'Canada',
     document_type: 'Correspondence',
@@ -240,7 +225,6 @@ let initialProjects: Omit<Project, 'id'>[] = [
     client_comments: null,
     clientquery_status: null,
     client_response_date: null,
-    entries: [],
     sender: 'contact@clientb.com',
     country: 'USA',
     document_type: 'Office Action Response',
@@ -296,7 +280,6 @@ export async function addRows(
             client_comments: null,
             clientquery_status: null,
             client_response_date: null,
-            entries: [],
             subject_line: '',
             client_name: '',
             process: 'Patent',
