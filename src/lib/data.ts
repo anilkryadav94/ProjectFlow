@@ -73,18 +73,15 @@ export type Project = {
 };
 
 
-export const processors = ['Alice', 'Bob', 'Charlie', 'Rahul'];
-export const qas = ['David', 'Eve', 'Anil', 'Ankit', 'Rahul', 'Bob', 'Manager User'];
-export const clientNames = ['Client A', 'Client B', 'Client C'];
-export const processes: ProcessType[] = ['Patent', 'TM', 'IDS', 'Project'];
+// Static lists are now used as fallbacks or for specific UI elements that might need a predefined list.
+// Most dropdowns are now populated dynamically from the database.
 export const projectStatuses: any[] = ["Pending", "Completed", "On Hold"];
 export const countries = ['USA', 'India', 'Canada', 'UK', 'Germany'];
-export const caseManagers = ['CM Alice', 'CM Bob', 'Rahul'];
-export const managerNames = ['Manager User'];
 export const renewalAgents = ['Agent X', 'Agent Y'];
 export const documentTypes = ['Disclosure', 'Application', 'Office Action Response', 'Correspondence'];
 export const errorOptions: ('Yes' | 'No')[] = ['Yes', 'No'];
 export const emailForwardedOptions: ('Yes' | 'No')[] = ['Yes', 'No'];
+export const managerNames = ['Manager User']; // This might remain static if managers are predefined
 
 
 export let users: Omit<User, 'id'>[] = [

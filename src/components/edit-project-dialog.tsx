@@ -32,7 +32,7 @@ import {
 import { Textarea } from "@/components/ui/textarea";
 import { Input } from "@/components/ui/input";
 import { Loader2, CalendarIcon } from "lucide-react";
-import { type Project, type Role, processors, qas, processorSubmissionStatuses, qaSubmissionStatuses, processorStatuses, qaStatuses, clientNames, processes, caseManagers, clientStatuses, type ClientStatus, managerNames, renewalAgents, documentTypes, errorOptions, emailForwardedOptions, countries } from "@/lib/data";
+import { type Project, type Role, processorSubmissionStatuses, qaSubmissionStatuses, processorStatuses, qaStatuses, clientStatuses, type ClientStatus, managerNames, renewalAgents, documentTypes, errorOptions, emailForwardedOptions, countries, ProcessType } from "@/lib/data";
 import { useToast } from "@/hooks/use-toast";
 import { updateProject } from "@/app/actions";
 import { Popover, PopoverTrigger, PopoverContent } from "./ui/popover";
@@ -48,7 +48,7 @@ const baseFormSchema = z.object({
   application_number: z.string().nullable(),
   patent_number: z.string().nullable(),
   client_name: z.string(),
-  process: z.enum(processes),
+  process: z.string(),
   processor: z.string(),
   qa: z.string(),
   case_manager: z.string(),
@@ -123,6 +123,11 @@ interface EditProjectDialogProps {
   children?: React.ReactNode;
   title?: string;
   description?: string;
+  clientNames: string[];
+  processors: string[];
+  qas: string[];
+  caseManagers: string[];
+  processes: ProcessType[];
 }
 
 export function EditProjectDialog({
@@ -136,6 +141,11 @@ export function EditProjectDialog({
   children,
   title,
   description,
+  clientNames,
+  processors,
+  qas,
+  caseManagers,
+  processes,
 }: EditProjectDialogProps) {
   const [isSubmitting, setIsSubmitting] = React.useState(false);
   const { toast } = useToast();
@@ -146,10 +156,12 @@ export function EditProjectDialog({
   
   const getValidationSchema = () => {
     if (!project) return z.object({}); // No validation if no project
-    if (isProcessorView) return processorFormSchema;
-    if (isQaView) return qaFormSchema;
+    const processEnums = processes as [string, ...string[]];
+    
+    if (isProcessorView) return processorFormSchema.extend({ process: z.enum(processEnums) });
+    if (isQaView) return qaFormSchema.extend({ process: z.enum(processEnums) });
     if (isCaseManagerView) return caseManagerFormSchema;
-    return baseFormSchema;
+    return baseFormSchema.extend({ process: z.enum(processEnums) });
   }
 
   const form = useForm<EditProjectFormValues>({

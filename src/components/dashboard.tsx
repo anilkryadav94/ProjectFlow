@@ -3,7 +3,7 @@
 
 import * as React from 'react';
 import Papa from "papaparse";
-import { type Project, type Role, type User, roleHierarchy, processors, qas, projectStatuses, clientNames, processes, processorActionableStatuses, processorSubmissionStatuses, qaSubmissionStatuses, workflowStatuses, allProcessorStatuses, allQaStatuses } from '@/lib/data';
+import { type Project, type Role, type User, roleHierarchy, projectStatuses, processorActionableStatuses, processorSubmissionStatuses, qaSubmissionStatuses, workflowStatuses, allProcessorStatuses, allQaStatuses, ProcessType } from '@/lib/data';
 import { DataTable } from '@/components/data-table';
 import { getColumns, allColumns } from '@/components/columns';
 import { Header } from '@/components/header';
@@ -29,6 +29,12 @@ import { Label } from './ui/label';
 interface DashboardProps {
   user: User;
   initialProjects: Project[];
+  clientNames: string[];
+  processors: string[];
+  qas: string[];
+  caseManagers: string[];
+  processes: ProcessType[];
+  error: string | null;
 }
 
 export function DashboardWrapper(props: DashboardProps) {
@@ -38,15 +44,15 @@ export function DashboardWrapper(props: DashboardProps) {
 
 export type SearchableColumn = 'any' | 'ref_number' | 'application_number' | 'patent_number' | 'subject_line' | 'processing_status' | 'qa_status' | 'workflowStatus' | 'allocation_date' | 'received_date';
 
-const bulkUpdateFields = [
-    { value: 'processor', label: 'Processor', options: processors },
-    { value: 'qa', label: 'QA', options: qas },
-] as const;
-
 
 function Dashboard({ 
   user, 
   initialProjects,
+  clientNames,
+  processors,
+  qas,
+  caseManagers,
+  processes
 }: DashboardProps) {
   const searchParams = useSearchParams();
   const router = useRouter();
@@ -60,6 +66,12 @@ function Dashboard({
   const [sort, setSort] = React.useState<{ key: keyof Project; direction: 'asc' | 'desc' } | null>({ key: 'id', direction: 'asc' });
   
   const [rowSelection, setRowSelection] = React.useState<Record<string, boolean>>({});
+
+  const bulkUpdateFields = [
+    { value: 'processor', label: 'Processor', options: processors },
+    { value: 'qa', label: 'QA', options: qas },
+  ] as const;
+
   const [bulkUpdateField, setBulkUpdateField] = React.useState<(typeof bulkUpdateFields)[number]['value']>('processor');
   const [bulkUpdateValue, setBulkUpdateValue] = React.useState('');
   const [isBulkUpdating, setIsBulkUpdating] = React.useState(false);
@@ -483,7 +495,7 @@ function Dashboard({
     }
 
     return Object.entries(statusByClient).map(([client, status]) => ({ client, ...status }));
-  }, [projects]);
+  }, [projects, clientNames]);
   
   const caseManagerTatInfo = React.useMemo(() => {
     if (activeRole !== 'Case Manager') return null;
@@ -549,6 +561,11 @@ function Dashboard({
                 userRole={activeRole}
                 projectQueue={dashboardProjects}
                 onNavigate={setEditingProject}
+                clientNames={clientNames}
+                processors={processors}
+                qas={qas}
+                caseManagers={caseManagers}
+                processes={processes}
             />
         )}
         {sourceProject && (
@@ -678,7 +695,7 @@ function Dashboard({
                             <AccordionItem value="advanced-search" className="border-0 bg-muted/30 shadow-md mb-4 rounded-lg">
                                 <AccordionTrigger className="px-4 py-3 hover:no-underline">Advanced Search</AccordionTrigger>
                                 <AccordionContent className="p-4 pt-0">
-                                <AdvancedSearchForm onSearch={handleAdvancedSearch} initialCriteria={searchCriteria} />
+                                <AdvancedSearchForm onSearch={handleAdvancedSearch} initialCriteria={searchCriteria} processors={processors} qas={qas} clientNames={clientNames} processes={processes} />
                                 </AccordionContent>
                             </AccordionItem>
                             <AccordionItem value="work-status" className="border-0 bg-muted/30 shadow-md mb-4 rounded-lg">
@@ -816,5 +833,3 @@ function Dashboard({
 }
 
 export default Dashboard;
-
-    

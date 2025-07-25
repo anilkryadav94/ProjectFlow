@@ -10,7 +10,7 @@ import { Card, CardContent } from '@/components/ui/card';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import { Calendar } from '@/components/ui/calendar';
 import { PlusCircle, Trash2, CalendarIcon, Search } from 'lucide-react';
-import { processors, qas, clientNames, processes, projectStatuses, countries } from '@/lib/data';
+import { projectStatuses, countries, type ProcessType } from '@/lib/data';
 import { format } from 'date-fns';
 import type { Project } from '@/lib/data';
 import { cn } from '@/lib/utils';
@@ -43,28 +43,34 @@ const dateOperators: { value: DateOperator, label: string }[] = [
     { value: 'dateEquals', label: 'on' },
 ];
 
-const searchFields: { value: SearchField, label: string, type: 'text' | 'date' | 'select', options?: string[] }[] = [
-    { value: 'ref_number', label: 'Ref Number', type: 'text' },
-    { value: 'processor', label: 'Processor', type: 'select', options: processors },
-    { value: 'qa', label: 'QA', type: 'select', options: qas },
-    { value: 'application_number', label: 'Application No.', type: 'text' },
-    { value: 'patent_number', label: 'Patent No.', type: 'text' },
-    { value: 'country', label: 'Country', type: 'select', options: countries },
-    { value: 'client_name', label: 'Client Name', type: 'select', options: clientNames },
-    { value: 'process', label: 'Process', type: 'select', options: processes },
-    { value: 'processing_status', label: 'Status', type: 'select', options: projectStatuses },
-    { value: 'received_date', label: 'Email Date', type: 'date' },
-    { value: 'allocation_date', label: 'Allocation Date', type: 'date' },
-    { value: 'processing_date', label: 'Processing Date', type: 'date' },
-    { value: 'qa_date', label: 'QA Date', type: 'date' },
-];
 
 interface AdvancedSearchFormProps {
   onSearch: (criteria: SearchCriteria) => void;
   initialCriteria: SearchCriteria | null;
+  processors: string[];
+  qas: string[];
+  clientNames: string[];
+  processes: ProcessType[];
 }
 
-export function AdvancedSearchForm({ onSearch, initialCriteria }: AdvancedSearchFormProps) {
+export function AdvancedSearchForm({ onSearch, initialCriteria, processors, qas, clientNames, processes }: AdvancedSearchFormProps) {
+    const searchFields: { value: SearchField, label: string, type: 'text' | 'date' | 'select', options?: string[] }[] = [
+        { value: 'ref_number', label: 'Ref Number', type: 'text' },
+        { value: 'processor', label: 'Processor', type: 'select', options: processors },
+        { value: 'qa', label: 'QA', type: 'select', options: qas },
+        { value: 'application_number', label: 'Application No.', type: 'text' },
+        { value: 'patent_number', label: 'Patent No.', type: 'text' },
+        { value: 'country', label: 'Country', type: 'select', options: countries },
+        { value: 'client_name', label: 'Client Name', type: 'select', options: clientNames },
+        { value: 'process', label: 'Process', type: 'select', options: processes },
+        { value: 'processing_status', label: 'Status', type: 'select', options: projectStatuses },
+        { value: 'received_date', label: 'Email Date', type: 'date' },
+        { value: 'allocation_date', label: 'Allocation Date', type: 'date' },
+        { value: 'processing_date', label: 'Processing Date', type: 'date' },
+        { value: 'qa_date', label: 'QA Date', type: 'date' },
+    ];
+
+
   const { register, control, handleSubmit, watch, setValue, reset } = useForm<{ criteria: SearchCriteria }>({
     defaultValues: {
       criteria: initialCriteria || [{ field: '', operator: '', value: '' }],

@@ -3,15 +3,37 @@
 
 import * as React from 'react';
 import { DashboardWrapper } from '@/components/dashboard';
-import type { User, Project } from '@/lib/data';
+import type { User, Project, Role, ProcessType } from '@/lib/data';
 import { onAuthChanged, getSession, logout } from '@/lib/auth';
 import { useRouter } from 'next/navigation';
 import { Loader2 } from 'lucide-react';
 import { getProjectsForUser } from '@/app/actions';
 
+interface DashboardData {
+    projects: Project[];
+    clientNames: string[];
+    processors: string[];
+    qas: string[];
+    caseManagers: string[];
+    processes: ProcessType[];
+}
+
+async function getDashboardData(userName: string, roles: Role[]): Promise<DashboardData> {
+    const projects = await getProjectsForUser(userName, roles);
+
+    const clientNames = [...new Set(projects.map(p => p.client_name).filter(Boolean))].sort();
+    const processors = [...new Set(projects.map(p => p.processor).filter(Boolean))].sort();
+    const qas = [...new Set(projects.map(p => p.qa).filter(Boolean))].sort();
+    const caseManagers = [...new Set(projects.map(p => p.case_manager).filter(Boolean))].sort();
+    const processes = [...new Set(projects.map(p => p.process).filter(Boolean))].sort() as ProcessType[];
+
+    return { projects, clientNames, processors, qas, caseManagers, processes };
+}
+
+
 export default function Home() {
   const [session, setSession] = React.useState<{ user: User } | null>(null);
-  const [projects, setProjects] = React.useState<Project[]>([]);
+  const [dashboardData, setDashboardData] = React.useState<DashboardData | null>(null);
   const [loading, setLoading] = React.useState(true);
   const [error, setError] = React.useState<string | null>(null);
   const router = useRouter();
@@ -19,7 +41,6 @@ export default function Home() {
   React.useEffect(() => {
     const unsubscribe = onAuthChanged(async (user) => {
       if (user) {
-        // Step 1: Get user session data. Retry once if it fails initially.
         let sessionData = await getSession();
         if (!sessionData) {
             console.log("Initial session fetch failed, retrying in 1s...");
@@ -28,31 +49,24 @@ export default function Home() {
         }
 
         if (sessionData) {
-            // Successfully got session, set it.
             setSession(sessionData);
-
-            // Step 2: Try to fetch project data, but don't fail the whole page if it errors.
             try {
-                const projectData = await getProjectsForUser(sessionData.user.name, sessionData.user.roles);
-                setProjects(projectData);
+                const data = await getDashboardData(sessionData.user.name, sessionData.user.roles);
+                setDashboardData(data);
             } catch (err: any) {
-                console.error("Error fetching projects:", err);
-                // Set an error message to be displayed on the dashboard, but don't log the user out.
+                console.error("Error fetching dashboard data:", err);
                 setError("Could not load project data due to insufficient permissions or a network error.");
-                setProjects([]); // Ensure projects is an empty array on error
+                setDashboardData({ projects: [], clientNames: [], processors: [], qas: [], caseManagers: [], processes: [] });
             } finally {
-                // We have a session, so stop the main loading spinner.
                 setLoading(false);
             }
         } else {
-           // If session is not found after retry, then it's a real issue.
            console.error("User authenticated but no session data found in Firestore after retry. Logging out.");
            setError("Your user profile is not configured correctly. Please contact an admin.");
            await logout();
            router.push('/login');
         }
       } else {
-        // No user is signed in.
         setLoading(false);
         router.push('/login');
       }
@@ -61,27 +75,24 @@ export default function Home() {
     return () => unsubscribe();
   }, [router]);
   
-  if (loading) {
+  if (loading || !dashboardData) {
     return (
         <div className="flex h-screen w-full items-center justify-center bg-background">
             <div className="flex flex-col items-center gap-4">
                 <Loader2 className="h-12 w-12 animate-spin text-primary" />
-                <p className="text-lg text-muted-foreground">Authenticating...</p>
+                <p className="text-lg text-muted-foreground">Authenticating & Loading Data...</p>
+                 {error && <p className="text-sm text-destructive">{error}</p>}
             </div>
         </div>
     );
   }
 
-  // User is authenticated, but there might be an error fetching data.
-  // The DashboardWrapper is designed to handle this.
   if (!session) {
-      // This case should ideally not be hit if the logic above is correct, but as a fallback:
       return (
         <div className="flex h-screen w-full items-center justify-center bg-background">
             <div className="flex flex-col items-center gap-4">
                 <Loader2 className="h-12 w-12 animate-spin text-primary" />
                 <p className="text-lg text-muted-foreground">Finalizing session...</p>
-                 {error && <p className="text-sm text-destructive">{error}</p>}
             </div>
         </div>
     );
@@ -91,7 +102,13 @@ export default function Home() {
     <main>
       <DashboardWrapper 
         user={session.user} 
-        initialProjects={projects} 
+        initialProjects={dashboardData.projects}
+        clientNames={dashboardData.clientNames}
+        processors={dashboardData.processors}
+        qas={dashboardData.qas}
+        caseManagers={dashboardData.caseManagers}
+        processes={dashboardData.processes}
+        error={error}
       />
     </main>
   );
