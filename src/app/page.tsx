@@ -6,54 +6,10 @@ import { DashboardWrapper } from '@/components/dashboard';
 import type { User, Project } from '@/lib/data';
 import { onAuthChanged } from '@/lib/auth';
 import { getSession, logout } from '@/lib/auth-actions';
+import { getProjectsForUser } from '@/app/actions';
 import { useRouter } from 'next/navigation';
 import { Loader2 } from 'lucide-react';
-import { getDocs, collection, query, where, Timestamp } from 'firebase/firestore';
-import { db } from '@/lib/firebase';
-
-function convertTimestampsToDates(project: any): Project {
-    const newProject: { [key: string]: any } = { ...project };
-    for (const key in newProject) {
-        if (newProject[key] instanceof Timestamp) {
-            newProject[key] = newProject[key].toDate().toISOString().split('T')[0];
-        }
-    }
-    return newProject as Project;
-}
-
-
-async function getProjectsForUser(user: User): Promise<Project[]> {
-    const projectsCollection = collection(db, "projects");
-    let projectsQuery;
-
-    const highestRole = user.roles.sort((a, b) => {
-        const roleOrder = ['Admin', 'Manager', 'QA', 'Case Manager', 'Processor'];
-        return roleOrder.indexOf(a) - roleOrder.indexOf(b);
-    })[0];
-
-    if (highestRole === 'Admin' || highestRole === 'Manager') {
-        projectsQuery = query(projectsCollection); // Admins/Managers get all projects
-    } else if (highestRole === 'Processor') {
-        projectsQuery = query(projectsCollection, where("processor", "==", user.name));
-    } else if (highestRole === 'QA') {
-        projectsQuery = query(projectsCollection, where("qa", "==", user.name));
-    } else if (highestRole === 'Case Manager') {
-        projectsQuery = query(projectsCollection, where("case_manager", "==", user.name));
-    } else {
-        projectsQuery = query(projectsCollection, where("id", "==", "null")); // No access
-    }
-
-    const projectSnapshot = await getDocs(projectsQuery);
-    const projectList = projectSnapshot.docs.map(doc => {
-        const data = doc.data();
-        const projectWithConvertedDates = convertTimestampsToDates(data);
-        return {
-            id: doc.id,
-            ...projectWithConvertedDates
-        } as Project;
-    });
-    return projectList;
-}
+import { Timestamp } from 'firebase/firestore';
 
 export default function Home() {
   const [session, setSession] = React.useState<{ user: User } | null>(null);
@@ -64,14 +20,16 @@ export default function Home() {
   React.useEffect(() => {
     const unsubscribe = onAuthChanged(async (user) => {
       if (user) {
+        // First, verify the server-side session from the cookie
         const sessionData = await getSession();
         if (sessionData) {
           setSession(sessionData);
-          const projectData = await getProjectsForUser(sessionData.user);
+          // Now, fetch projects using the server action, which runs with auth context
+          const projectData = await getProjectsForUser();
           setProjects(projectData);
           setLoading(false);
         } else {
-           console.error("Auth state changed, but no server session found. Logging out.");
+           console.error("Auth state changed, but no server session found. This can happen in a race condition. Logging out.");
            await logout();
            router.push('/login');
         }

@@ -5,8 +5,60 @@ import { z } from "zod";
 import type { Project, Role, ClientStatus } from "@/lib/data";
 import { revalidatePath } from "next/cache";
 import { db } from "@/lib/firebase";
-import { collection, getDocs, doc, writeBatch, updateDoc, serverTimestamp, addDoc, getDoc, query, orderBy, limit, Timestamp } from "firebase/firestore";
+import { collection, getDocs, doc, writeBatch, updateDoc, serverTimestamp, addDoc, getDoc, query, orderBy, limit, Timestamp, where } from "firebase/firestore";
 import { getSession } from "@/lib/auth-actions";
+
+function convertTimestampsToDates(data: any): any {
+    const newData: { [key: string]: any } = { ...data };
+    for (const key in newData) {
+        if (newData[key] instanceof Timestamp) {
+            newData[key] = newData[key].toDate().toISOString().split('T')[0];
+        }
+    }
+    return newData;
+}
+
+
+export async function getProjectsForUser(): Promise<Project[]> {
+    const session = await getSession();
+    if (!session) {
+      console.error("getProjectsForUser failed: User not authenticated.");
+      return []; // Return empty array if no session
+    }
+    const user = session.user;
+    
+    const projectsCollection = collection(db, "projects");
+    let projectsQuery;
+
+    const highestRole = user.roles.sort((a, b) => {
+        const roleOrder = ['Admin', 'Manager', 'QA', 'Case Manager', 'Processor'];
+        return roleOrder.indexOf(a) - roleOrder.indexOf(b);
+    })[0];
+
+    if (highestRole === 'Admin' || highestRole === 'Manager') {
+        projectsQuery = query(projectsCollection); // Admins/Managers get all projects
+    } else if (highestRole === 'Processor') {
+        projectsQuery = query(projectsCollection, where("processor", "==", user.name));
+    } else if (highestRole === 'QA') {
+        projectsQuery = query(projectsCollection, where("qa", "==", user.name));
+    } else if (highestRole === 'Case Manager') {
+        projectsQuery = query(projectsCollection, where("case_manager", "==", user.name));
+    } else {
+        projectsQuery = query(projectsCollection, where("id", "==", "null")); // No access
+    }
+
+    const projectSnapshot = await getDocs(projectsQuery);
+    const projectList = projectSnapshot.docs.map(doc => {
+        const data = doc.data();
+        const projectWithConvertedDates = convertTimestampsToDates(data);
+        return {
+            id: doc.id,
+            ...projectWithConvertedDates
+        } as Project;
+    });
+    return projectList;
+}
+
 
 const bulkUpdateSchema = z.object({
   projectIds: z.array(z.string()),
@@ -43,7 +95,7 @@ const updatableProjectFields = [
   'qa_remark', 'client_query_description', 'client_comments', 'client_error_description', 
   'email_renaming', 'email_forwarded',
   // Date fields are also allowed
-  'received_date', 'allocation_date', 'client_response_date'
+  'received_date', 'allocation_date', 'client_response_date', 'processing_date', 'qa_date', 'reportout_date'
 ] as const;
 
 
@@ -66,8 +118,6 @@ export async function updateProject(
     const projectRef = doc(db, 'projects', projectId);
 
     try {
-        // This getDoc call is crucial. It "warms up" the connection and ensures
-        // the auth state from the client is passed to Firestore's security rules.
         const docSnap = await getDoc(projectRef);
         if (!docSnap.exists()) {
           console.error(`No such project found with ID: ${projectId}`);
@@ -80,9 +130,18 @@ export async function updateProject(
         for (const key of updatableProjectFields) {
             if (Object.prototype.hasOwnProperty.call(clientData, key)) {
                 const typedKey = key as keyof typeof clientData;
-                if (clientData[typedKey] !== undefined) {
-                     dataToUpdate[typedKey] = clientData[typedKey] === "" ? null : clientData[typedKey];
-                }
+                const value = clientData[typedKey];
+                
+                // Convert empty strings to null, otherwise use the value
+                dataToUpdate[typedKey] = value === "" ? null : value;
+            }
+        }
+        
+        // Convert date strings back to Timestamps for Firestore
+        const dateFields: (keyof Project)[] = ['received_date', 'allocation_date', 'processing_date', 'qa_date', 'reportout_date', 'client_response_date'];
+        for (const dateField of dateFields) {
+            if (dataToUpdate[dateField] && typeof dataToUpdate[dateField] === 'string') {
+                dataToUpdate[dateField] = Timestamp.fromDate(new Date(dataToUpdate[dateField]));
             }
         }
 
@@ -128,16 +187,6 @@ export async function updateProject(
     }
 }
 
-function convertTimestampsToDates(data: any): any {
-    const newData: { [key: string]: any } = { ...data };
-    for (const key in newData) {
-        if (newData[key] instanceof Timestamp) {
-            newData[key] = newData[key].toDate().toISOString().split('T')[0];
-        }
-    }
-    return newData;
-}
-
 
 export async function addRows(
   projectsToAdd: Partial<Project>[]
@@ -154,10 +203,6 @@ export async function addRows(
   const projectsCollection = collection(db, 'projects');
   
   try {
-    // This getDocs call is crucial. It "warms up" the connection and ensures
-    // the auth state from the client is passed to Firestore's security rules for the batch write.
-    await getDocs(query(projectsCollection, limit(1)));
-
     const batch = writeBatch(db);
     
     projectsToAdd.forEach((projectData) => {
@@ -206,7 +251,7 @@ export async function addRows(
         const dateFields: (keyof Project)[] = ['received_date', 'allocation_date', 'processing_date', 'qa_date', 'reportout_date', 'client_response_date'];
         
         for (const dateField of dateFields) {
-            if (finalProjectData[dateField]) {
+            if (finalProjectData[dateField] && typeof finalProjectData[dateField] === 'string') {
                 (finalProjectData as any)[dateField] = Timestamp.fromDate(new Date(finalProjectData[dateField] as string));
             }
         }
