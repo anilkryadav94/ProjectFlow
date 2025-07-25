@@ -161,6 +161,7 @@ export function Header({
                           </SelectTrigger>
                           <SelectContent>
                               <SelectItem value="any">Any Text/Number</SelectItem>
+                              <SelectItem value="row_number">Row Number</SelectItem>
                               <SelectItem value="ref_number">Ref Number</SelectItem>
                               <SelectItem value="application_number">Application No.</SelectItem>
                               <SelectItem value="patent_number">Patent No.</SelectItem>
@@ -234,6 +235,7 @@ export function Header({
                         </SelectTrigger>
                         <SelectContent>
                             <SelectItem value="any">Any Text/Number</SelectItem>
+                            <SelectItem value="row_number">Row Number</SelectItem>
                             <SelectItem value="ref_number">Ref Number</SelectItem>
                             <SelectItem value="application_number">Application No.</SelectItem>
                             <SelectItem value="patent_number">Patent No.</SelectItem>

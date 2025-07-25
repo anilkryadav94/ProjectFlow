@@ -1,4 +1,3 @@
-
 import { collection, writeBatch, doc, getDocs, query, orderBy, limit, Timestamp } from 'firebase/firestore';
 import { db } from './firebase';
 
@@ -37,7 +36,8 @@ export type ProcessType = 'Patent' | 'TM' | 'IDS' | 'Project';
 
 export type Project = {
     id: string;
-    ref_number: string | null;
+    row_number: string; // New auto-generated field
+    ref_number: string | null; // User-editable field
     application_number: string | null;
     patent_number: string | null;
     client_name: string;

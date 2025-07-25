@@ -84,8 +84,8 @@ export function AddRowsDialog({
         const projectDataToCopy: Partial<Project> = {};
         (data.fields as FieldToCopyId[]).forEach(field => {
             if(sourceProject.hasOwnProperty(field)) {
-                // Ensure id is never copied
-                if (field !== 'id') {
+                // Ensure id and row_number are never copied
+                if (field !== 'id' && field !== 'row_number') {
                     projectDataToCopy[field as keyof Project] = sourceProject[field as keyof Project] as any;
                 }
             }
@@ -129,7 +129,7 @@ export function AddRowsDialog({
             <DialogHeader>
               <DialogTitle>Add New Rows</DialogTitle>
               <DialogDescription>
-                Create multiple new rows by copying data from Ref: {sourceProject.ref_number}.
+                Create multiple new rows by copying data from Row: {sourceProject.row_number}.
               </DialogDescription>
             </DialogHeader>
 

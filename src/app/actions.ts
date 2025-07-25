@@ -173,16 +173,16 @@ export async function updateProject(
     }
 }
 
-async function getNextRefNumber(): Promise<string> {
+async function getNextRowNumber(): Promise<string> {
     const projectsCollection = collection(db, 'projects');
     const yearPrefix = `PF${new Date().getFullYear().toString().slice(-2)}`;
     
     // Query for the last document with the same year prefix
     const q = query(
         projectsCollection, 
-        where('ref_number', '>=', yearPrefix),
-        where('ref_number', '<', `${yearPrefix}Z`), // Lexicographical upper bound
-        orderBy('ref_number', 'desc'), 
+        where('row_number', '>=', yearPrefix),
+        where('row_number', '<', `${yearPrefix}Z`), // Lexicographical upper bound
+        orderBy('row_number', 'desc'), 
         limit(1)
     );
 
@@ -192,8 +192,8 @@ async function getNextRefNumber(): Promise<string> {
         // First document of the year
         return `${yearPrefix}00001`;
     } else {
-        const lastRefNumber = querySnapshot.docs[0].data().ref_number as string;
-        const lastSequence = parseInt(lastRefNumber.slice(4), 10); // PF2400001 -> 2400001
+        const lastRowNumber = querySnapshot.docs[0].data().row_number as string;
+        const lastSequence = parseInt(lastRowNumber.slice(4), 10);
         const nextSequence = lastSequence + 1;
         return `${yearPrefix}${nextSequence.toString().padStart(5, '0')}`;
     }
@@ -211,14 +211,15 @@ export async function addRows(
   
   try {
     const batch = writeBatch(db);
-    let currentRefNumber = await getNextRefNumber();
+    let currentRowNumber = await getNextRowNumber();
     
     for (const projectData of projectsToAdd) {
         const newProjectRef = doc(projectsCollection); // Let Firestore generate the document ID
         const { id, ...restOfProjectData } = projectData as Partial<Project> & {id?: string};
 
         const newProject: Omit<Project, 'id'> = {
-            ref_number: currentRefNumber,
+            row_number: currentRowNumber,
+            ref_number: null,
             application_number: null,
             patent_number: null,
             client_name: 'Client A',
@@ -256,9 +257,9 @@ export async function addRows(
         const finalProjectData = { ...newProject, ...restOfProjectData };
         
         // Increment the ref number for the next iteration
-        const yearPrefix = currentRefNumber.slice(0, 4);
-        const sequence = parseInt(currentRefNumber.slice(4), 10) + 1;
-        currentRefNumber = `${yearPrefix}${sequence.toString().padStart(5, '0')}`;
+        const yearPrefix = currentRowNumber.slice(0, 4);
+        const sequence = parseInt(currentRowNumber.slice(4), 10) + 1;
+        currentRowNumber = `${yearPrefix}${sequence.toString().padStart(5, '0')}`;
 
         // Convert date strings to Timestamps before sending to Firestore
         const dateFields: (keyof Project)[] = ['received_date', 'allocation_date', 'processing_date', 'qa_date', 'reportout_date', 'client_response_date'];
