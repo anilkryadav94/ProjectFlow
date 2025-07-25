@@ -4,7 +4,7 @@
 import * as React from 'react';
 import { DashboardWrapper } from '@/components/dashboard';
 import type { User, Project, Role, ProcessType } from '@/lib/data';
-import { onAuthChanged, getSession, logout } from '@/lib/auth';
+import { onAuthChanged, getSession, logout, getUsers } from '@/lib/auth';
 import { useRouter } from 'next/navigation';
 import { Loader2 } from 'lucide-react';
 import { getProjectsForUser } from '@/app/actions';
@@ -19,13 +19,18 @@ interface DashboardData {
 }
 
 async function getDashboardData(userName: string, roles: Role[]): Promise<DashboardData> {
-    const projects = await getProjectsForUser(userName, roles);
+    const [projects, allUsers] = await Promise.all([
+        getProjectsForUser(userName, roles),
+        getUsers()
+    ]);
 
     const clientNames = [...new Set(projects.map(p => p.client_name).filter(Boolean))].sort();
-    const processors = [...new Set(projects.map(p => p.processor).filter(Boolean))].sort();
-    const qas = [...new Set(projects.map(p => p.qa).filter(Boolean))].sort();
-    const caseManagers = [...new Set(projects.map(p => p.case_manager).filter(Boolean))].sort();
     const processes = [...new Set(projects.map(p => p.process).filter(Boolean))].sort() as ProcessType[];
+
+    // Filter users by role for dropdowns
+    const processors = allUsers.filter(u => u.roles.includes('Processor')).map(u => u.name).sort();
+    const qas = allUsers.filter(u => u.roles.includes('QA')).map(u => u.name).sort();
+    const caseManagers = allUsers.filter(u => u.roles.includes('Case Manager')).map(u => u.name).sort();
 
     return { projects, clientNames, processors, qas, caseManagers, processes };
 }
