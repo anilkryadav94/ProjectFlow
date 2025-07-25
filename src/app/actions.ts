@@ -215,7 +215,7 @@ export async function addRows(
     
     for (const projectData of projectsToAdd) {
         const newProjectRef = doc(projectsCollection); // Let Firestore generate the document ID
-        const { id, ...restOfProjectData } = projectData as Partial<Project> & {id?: string};
+        const { id, row_number, ...restOfProjectData } = projectData as Partial<Project> & {id?: string, row_number?: string};
 
         const newProject: Omit<Project, 'id' | 'row_number'> = {
             ref_number: null,
