@@ -5,11 +5,29 @@ import * as React from 'react';
 import { DashboardWrapper } from '@/components/dashboard';
 import type { User, Project } from '@/lib/data';
 import { onAuthChanged } from '@/lib/auth';
-import { getSession, logout } from '@/lib/auth-actions';
 import { getProjectsForUser } from '@/app/actions';
 import { useRouter } from 'next/navigation';
 import { Loader2 } from 'lucide-react';
-import { Timestamp } from 'firebase/firestore';
+import { doc, getDoc } from 'firebase/firestore';
+import { db } from '@/lib/firebase';
+
+async function getSessionData(firebaseUser: import('firebase/auth').User): Promise<{ user: User } | null> {
+    const userDocRef = doc(db, 'users', firebaseUser.uid);
+    const userDocSnap = await getDoc(userDocRef);
+
+    if (userDocSnap.exists()) {
+        const userData = userDocSnap.data() as Omit<User, 'id' | 'email'>;
+        return {
+            user: {
+                id: firebaseUser.uid,
+                email: firebaseUser.email || '',
+                ...userData
+            }
+        };
+    }
+    return null;
+}
+
 
 export default function Home() {
   const [session, setSession] = React.useState<{ user: User } | null>(null);
@@ -20,18 +38,23 @@ export default function Home() {
   React.useEffect(() => {
     const unsubscribe = onAuthChanged(async (user) => {
       if (user) {
-        // First, verify the server-side session from the cookie
-        const sessionData = await getSession();
-        if (sessionData) {
-          setSession(sessionData);
-          // Now, fetch projects using the server action, which runs with auth context
-          const projectData = await getProjectsForUser();
-          setProjects(projectData);
-          setLoading(false);
-        } else {
-           console.error("Auth state changed, but no server session found. This can happen in a race condition. Logging out.");
-           await logout();
-           router.push('/login');
+        try {
+            const sessionData = await getSessionData(user);
+            if (sessionData) {
+              setSession(sessionData);
+              const projectData = await getProjectsForUser(sessionData.user.name, sessionData.user.roles);
+              setProjects(projectData);
+            } else {
+              console.error("User document not found in Firestore, cannot fetch projects.");
+              // Handle case where user is in Auth but not Firestore DB
+              router.push('/login');
+            }
+        } catch (error) {
+            console.error("Error fetching session or project data:", error);
+            // Potentially a permissions error, redirect to login
+            router.push('/login');
+        } finally {
+             setLoading(false);
         }
       } else {
         router.push('/login');

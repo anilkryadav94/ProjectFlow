@@ -1,43 +1,101 @@
+
 import * as React from 'react';
 import type { Project } from '@/lib/data';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
-import { getSession } from '@/lib/auth-actions';
 import { Header } from '@/components/header';
 import { clientNames, processes } from '@/lib/data';
 import { doc, getDoc, collection, getDocs } from 'firebase/firestore';
 import { db } from '@/lib/firebase';
 import { EditProjectDialog } from '@/components/edit-project-dialog';
+import { onAuthChanged } from '@/lib/auth';
+import { Loader2 } from 'lucide-react';
+import type { User } from '@/lib/data';
 
-// This function is no longer for static generation, but can help with types.
-// It could be used for generating a sitemap in the future.
-export async function generateStaticParams() {
-    const projectsCollection = collection(db, "projects");
-    const projectSnapshot = await getDocs(projectsCollection);
-    return projectSnapshot.docs.map((doc) => ({
-        id: doc.id,
-    }));
+interface TaskPageProps {
+    params: { id: string };
 }
 
 async function getProjectById(id: string): Promise<Project | undefined> {
     const projectDoc = await getDoc(doc(db, 'projects', id));
     if (projectDoc.exists()) {
-        return { id: projectDoc.id, ...projectDoc.data() } as Project;
+        const data = projectDoc.data();
+        // Convert Timestamps to ISO strings
+        Object.keys(data).forEach(key => {
+            if (data[key] instanceof Timestamp) {
+                data[key] = data[key].toDate().toISOString().split('T')[0];
+            }
+        });
+        return { id: projectDoc.id, ...data } as Project;
     }
     return undefined;
 }
 
-// This is the server component.
-export default async function TaskPage({ params }: { params: { id: string } }) {
-  const session = await getSession();
-  const project = await getProjectById(params.id);
+async function getUser(firebaseUser: import('firebase/auth').User): Promise<User | null> {
+    const userDocRef = doc(db, 'users', firebaseUser.uid);
+    const userDocSnap = await getDoc(userDocRef);
 
-  if (!session || !project) {
+    if (userDocSnap.exists()) {
+        return {
+            id: firebaseUser.uid,
+            email: firebaseUser.email || '',
+            ...userDocSnap.data()
+        } as User;
+    }
+    return null;
+}
+
+// This is the server component part that fetches initial data.
+export default function TaskPage({ params }: TaskPageProps) {
+  const [project, setProject] = React.useState<Project | null>(null);
+  const [user, setUser] = React.useState<User | null>(null);
+  const [loading, setLoading] = React.useState(true);
+
+  React.useEffect(() => {
+    const fetchPageData = async (fbUser: import('firebase/auth').User) => {
+        try {
+            const [projectData, userData] = await Promise.all([
+                getProjectById(params.id),
+                getUser(fbUser)
+            ]);
+            
+            if (projectData) setProject(projectData);
+            if (userData) setUser(userData);
+
+        } catch (error) {
+            console.error("Error fetching task page data:", error);
+        } finally {
+            setLoading(false);
+        }
+    };
+
+    const unsubscribe = onAuthChanged(fbUser => {
+        if (fbUser) {
+            fetchPageData(fbUser);
+        } else {
+            // Handle not logged in case
+            setLoading(false);
+        }
+    });
+
+    return () => unsubscribe();
+  }, [params.id]);
+
+
+  if (loading) {
+     return (
+        <div className="flex h-screen w-full items-center justify-center bg-background">
+            <Loader2 className="h-12 w-12 animate-spin text-primary" />
+        </div>
+    );
+  }
+
+  if (!user || !project) {
     return (
         <div className="flex flex-col h-screen bg-background w-full">
             <Header 
-                user={session?.user || {name: 'Guest', email: '', roles: []}}
-                activeRole={session?.user?.roles[0] || 'Processor'}
+                user={user || {name: 'Guest', email: '', roles: []}}
+                activeRole={user?.roles[0] || 'Processor'}
                 isManagerOrAdmin={false}
                 clientNames={clientNames}
                 processes={processes}
@@ -49,20 +107,13 @@ export default async function TaskPage({ params }: { params: { id: string } }) {
     )
   }
   
-  const isManagerOrAdmin = session.user.roles.includes('Manager') || session.user.roles.includes('Admin');
-
-  // Since we are moving to a fully dynamic app, we can no longer rely on
-  // a separate client component. The page itself will be interactive.
-  // We can pass the initial project data to a client component that contains the dialog.
-  
-  // A better approach for a fully dynamic page would be to fetch the data client-side
-  // in a useEffect hook. But for now, we pass it from the server component.
+  const isManagerOrAdmin = user.roles.includes('Manager') || user.roles.includes('Admin');
 
   return (
      <div className="flex flex-col h-screen bg-background w-full">
             <Header 
-                user={session.user}
-                activeRole={session.user.roles[0]}
+                user={user}
+                activeRole={user.roles[0]}
                 isManagerOrAdmin={isManagerOrAdmin}
                 clientNames={clientNames}
                 processes={processes}

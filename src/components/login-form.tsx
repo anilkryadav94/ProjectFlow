@@ -3,7 +3,6 @@
 
 import * as React from "react";
 import { login } from "@/lib/auth";
-import { createSession } from "@/lib/auth-actions";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
@@ -36,16 +35,17 @@ export function LoginForm() {
 
     try {
       await login(email, password);
-      const user = getAuth().currentUser;
-      if (user) {
-        // CRITICAL FIX: Await the session creation before redirecting
-        await createSession(user.uid);
-      }
       // On successful login, redirect to the dashboard.
-      // The router.push will trigger a refresh of the page component.
+      // The `onAuthChanged` listener in `page.tsx` will handle fetching data.
       router.push('/');
     } catch (err: any) {
-      setError(err.message || 'Failed to login.');
+      let friendlyError = 'Failed to login. Please check your credentials.';
+      if (err.code === 'auth/invalid-credential' || err.code === 'auth/wrong-password' || err.code === 'auth/user-not-found') {
+        friendlyError = 'Invalid email or password.';
+      } else if (err.message) {
+        friendlyError = err.message;
+      }
+      setError(friendlyError);
     } finally {
       // Ensure loading is always set to false after the attempt.
       setLoading(false);

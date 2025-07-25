@@ -6,7 +6,6 @@ import type { Project, Role, ClientStatus } from "@/lib/data";
 import { revalidatePath } from "next/cache";
 import { db } from "@/lib/firebase";
 import { collection, getDocs, doc, writeBatch, updateDoc, serverTimestamp, addDoc, getDoc, query, orderBy, limit, Timestamp, where } from "firebase/firestore";
-import { getSession } from "@/lib/auth-actions";
 
 function convertTimestampsToDates(data: any): any {
     const newData: { [key: string]: any } = { ...data };
@@ -19,18 +18,11 @@ function convertTimestampsToDates(data: any): any {
 }
 
 
-export async function getProjectsForUser(): Promise<Project[]> {
-    const session = await getSession();
-    if (!session) {
-      console.error("getProjectsForUser failed: User not authenticated.");
-      return []; // Return empty array if no session
-    }
-    const user = session.user;
-    
+export async function getProjectsForUser(userName: string, roles: Role[]): Promise<Project[]> {
     const projectsCollection = collection(db, "projects");
     let projectsQuery;
 
-    const highestRole = user.roles.sort((a, b) => {
+    const highestRole = roles.sort((a, b) => {
         const roleOrder = ['Admin', 'Manager', 'QA', 'Case Manager', 'Processor'];
         return roleOrder.indexOf(a) - roleOrder.indexOf(b);
     })[0];
@@ -38,11 +30,11 @@ export async function getProjectsForUser(): Promise<Project[]> {
     if (highestRole === 'Admin' || highestRole === 'Manager') {
         projectsQuery = query(projectsCollection); // Admins/Managers get all projects
     } else if (highestRole === 'Processor') {
-        projectsQuery = query(projectsCollection, where("processor", "==", user.name));
+        projectsQuery = query(projectsCollection, where("processor", "==", userName));
     } else if (highestRole === 'QA') {
-        projectsQuery = query(projectsCollection, where("qa", "==", user.name));
+        projectsQuery = query(projectsCollection, where("qa", "==", userName));
     } else if (highestRole === 'Case Manager') {
-        projectsQuery = query(projectsCollection, where("case_manager", "==", user.name));
+        projectsQuery = query(projectsCollection, where("case_manager", "==", userName));
     } else {
         projectsQuery = query(projectsCollection, where("id", "==", "null")); // No access
     }
@@ -67,11 +59,6 @@ const bulkUpdateSchema = z.object({
 });
 
 export async function bulkUpdateProjects(data: z.infer<typeof bulkUpdateSchema>): Promise<{ success: boolean; updatedProjects?: Project[] }> {
-    const session = await getSession();
-    if (!session) {
-      return { success: false };
-    }
-    
     const validatedData = bulkUpdateSchema.parse(data);
     const batch = writeBatch(db);
 
@@ -104,12 +91,6 @@ export async function updateProject(
     clientData: Partial<Project>, 
     submitAction?: 'submit_for_qa' | 'submit_qa' | 'send_rework' | 'save' | 'client_submit'
 ): Promise<{success: boolean, project?: Project, error?: string}> {
-    const session = await getSession();
-    if (!session) {
-      console.error("Update failed: User not authenticated.");
-      return { success: false, error: "User not authenticated." };
-    }
-    
     if (!projectId) {
         console.error("Update failed: No project ID provided.");
         return { success: false, error: "No project ID provided." };
@@ -191,11 +172,6 @@ export async function updateProject(
 export async function addRows(
   projectsToAdd: Partial<Project>[]
 ): Promise<{ success: boolean; addedCount?: number; error?: string }> {
-  const session = await getSession();
-  if (!session) {
-    return { success: false, error: "User not authenticated." };
-  }
-  
   if (!projectsToAdd || projectsToAdd.length === 0) {
     return { success: false, error: "No data provided to add." };
   }
