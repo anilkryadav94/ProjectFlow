@@ -172,8 +172,6 @@ export function EditProjectDialog({
   const form = useForm<EditProjectFormValues>({
     resolver: zodResolver(getValidationSchema()),
     defaultValues: project || {},
-    // The mode needs to be `onBlur` to prevent premature validation on every keystroke,
-    // which was clearing errors before submission was attempted.
     mode: 'onBlur',
   });
 
@@ -189,31 +187,18 @@ export function EditProjectDialog({
     }
   }, [project, form, isOpen]);
   
-  const handleFormSubmit = async (action: 'save' | 'submit_for_qa' | 'submit_qa' | 'send_rework' | 'client_submit') => {
-    if (!project || !onUpdateSuccess || !onNavigate) return;
+  const processSubmit = async (data: EditProjectFormValues) => {
+    if (!project || !onUpdateSuccess || !onNavigate || !submitAction) return;
 
-    setSubmitAction(action);
-    
-    // Manually trigger validation before submitting
-    const isValid = await form.trigger();
-    if (!isValid) {
-        toast({ title: "Validation Error", description: "Please fill all required fields.", variant: "destructive"});
-        setSubmitAction(null);
-        return;
-    }
-
-    if (action === 'send_rework' && !form.getValues('rework_reason')) {
+    if (submitAction === 'send_rework' && !data.rework_reason) {
         form.setError("rework_reason", { type: "manual", message: "Rework reason is required." });
         setSubmitAction(null);
         return;
     }
     
-    // Using getValues() to get the latest form state to pass to the server action
-    let data = form.getValues();
-
     setIsSubmitting(true);
     try {
-        const result = await updateProject(project.id, data, action);
+        const result = await updateProject(project.id, data, submitAction);
         if (result.success && result.project) {
             onUpdateSuccess();
             toast({
@@ -221,11 +206,8 @@ export function EditProjectDialog({
                 description: `Project ${result.project.ref_number || result.project.id} updated.`,
             });
 
-            // Navigate to next project in the queue
             const currentIndex = projectQueue.findIndex(p => p.id === result.project!.id);
-            
             const newQueueAfterUpdate = projectQueue.filter(p => p.id !== result.project!.id);
-            
             let nextProject;
 
             if (newQueueAfterUpdate.length > 0) {
@@ -240,10 +222,10 @@ export function EditProjectDialog({
                 onNavigate(nextProject);
             } else {
                 toast({ title: "End of Queue", description: "You've reached the end of your project queue."});
-                onOpenChange(false); // Close if no next project
+                onOpenChange(false);
             }
         } else {
-            throw new Error("Failed to update project on the server.");
+            throw new Error(result.error || "Failed to update project on the server.");
         }
     } catch (error) {
         toast({
@@ -256,6 +238,11 @@ export function EditProjectDialog({
         setSubmitAction(null);
     }
   }
+
+  const handleFormSubmit = async (action: 'save' | 'submit_for_qa' | 'submit_qa' | 'send_rework' | 'client_submit') => {
+      setSubmitAction(action);
+      // form.handleSubmit will trigger validation and then call our processSubmit function
+  };
   
   const isManagerOrAdmin = userRole === 'Manager' || userRole === 'Admin';
   const canEditMainFields = isManagerOrAdmin;
@@ -396,7 +383,7 @@ export function EditProjectDialog({
       <Dialog open={isOpen} onOpenChange={onOpenChange}>
         <DialogContent className="max-w-4xl h-[90vh] flex flex-col">
            <Form {...form}>
-            <form onSubmit={(e) => e.preventDefault()} className="flex flex-col h-full">
+            <form onSubmit={form.handleSubmit(processSubmit)} className="flex flex-col h-full">
               <DialogHeader>
                   <div className="flex justify-between items-center">
                     <div>
@@ -421,8 +408,7 @@ export function EditProjectDialog({
                     <div className="flex justify-end gap-2 w-full">
                     {isManagerOrAdmin && (
                         <Button
-                            type="button"
-                            variant="secondary"
+                            type="submit"
                             onClick={() => handleFormSubmit('save')}
                             disabled={isSubmitting || !form.formState.isDirty}
                         >
@@ -433,7 +419,7 @@ export function EditProjectDialog({
 
                     {isProcessorView && (
                         <Button
-                            type="button"
+                            type="submit"
                             onClick={() => handleFormSubmit('submit_for_qa')}
                             disabled={isSubmitting}
                         >
@@ -444,7 +430,7 @@ export function EditProjectDialog({
                     {isQaView && (
                         <>
                             <Button
-                                type="button"
+                                type="submit"
                                 variant="destructive"
                                 onClick={() => handleFormSubmit('send_rework')}
                                 disabled={isSubmitting}
@@ -453,7 +439,7 @@ export function EditProjectDialog({
                                 Send for Rework & Next
                             </Button>
                             <Button
-                                type="button"
+                                type="submit"
                                 onClick={() => handleFormSubmit('submit_qa')}
                                 disabled={isSubmitting}
                             >
@@ -464,7 +450,7 @@ export function EditProjectDialog({
                     )}
                     {isCaseManagerView && (
                         <Button
-                            type="button"
+                            type="submit"
                             onClick={() => handleFormSubmit('client_submit')}
                             disabled={isSubmitting}
                         >
