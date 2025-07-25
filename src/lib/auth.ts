@@ -21,13 +21,63 @@ export function onAuthChanged(callback: (user: import('firebase/auth').User | nu
     return onFirebaseAuthStateChanged(auth, callback);
 }
 
+// This function checks for and creates a user document in Firestore if it doesn't exist.
+// This is useful for ensuring users created directly in the Auth console have a corresponding DB record.
+async function ensureUserDocument(firebaseUser: FirebaseUser): Promise<void> {
+    const userDocRef = doc(db, 'users', firebaseUser.uid);
+    const userDocSnap = await getDoc(userDocRef);
+
+    if (!userDocSnap.exists()) {
+        // User document doesn't exist, create one with default values.
+        // An admin can then update their roles and name via the user management UI.
+        console.log(`User document for ${firebaseUser.email} not found in Firestore. Creating one with default role.`);
+        const newUser: Omit<User, 'id' | 'password'> = {
+            email: firebaseUser.email || '',
+            name: firebaseUser.displayName || firebaseUser.email || 'New User',
+            roles: ['Processor'], // Assign a default, lowest-privilege role.
+        };
+        await setDoc(userDocRef, newUser);
+        console.log(`Created default Firestore document for user: ${firebaseUser.email}`);
+    }
+}
+
+
 export async function login(email: string, password: string): Promise<void> {
-    await signInWithEmailAndPassword(auth, email, password);
+    const userCredential = await signInWithEmailAndPassword(auth, email, password);
+    // After successful sign-in, ensure their user document exists in Firestore.
+    if (userCredential.user) {
+        await ensureUserDocument(userCredential.user);
+    }
 }
 
 export async function logout(): Promise<void> {
     await signOut(auth);
 }
+
+export async function getSession(): Promise<{ user: User } | null> {
+    const firebaseUser = auth.currentUser;
+    if (!firebaseUser || !firebaseUser.email) return null;
+
+    const userDocRef = doc(db, 'users', firebaseUser.uid);
+    const userDocSnap = await getDoc(userDocRef);
+
+    if (userDocSnap.exists()) {
+        const userData = userDocSnap.data() as Omit<User, 'id' | 'email'>;
+        return {
+            user: {
+                id: firebaseUser.uid,
+                email: firebaseUser.email,
+                ...userData
+            }
+        };
+    } else {
+        // This case handles users who might be in Firebase Auth but not in Firestore 'users' collection.
+        // You might want to log them out or handle this scenario appropriately.
+        console.warn(`User document not found in Firestore for UID: ${firebaseUser.uid}`);
+        return null;
+    }
+}
+
 
 // --- User Management for Admin Panel ---
 
@@ -46,6 +96,13 @@ export async function addUser(email: string, password: string, name: string, rol
         // IMPORTANT: In a real app, creating users should be done from a secure backend (e.g., Cloud Functions)
         // to avoid exposing credentials or needing a separate authenticated context.
         // The approach here is simplified for this tool's context.
+        
+        // This creates user in Firebase Authentication
+        // This is a temporary auth instance for user creation, as you can't create users from the client SDK directly without this workaround
+        // which is not recommended for production.
+        
+        // A better approach would be a Cloud Function triggered by an admin action.
+        // For now, we will simulate this by adding to firestore and assuming an admin can create users in Firebase console.
         
         // We can't create auth user directly from client, so we will just create the firestore record.
         // Admin has to create user in Firebase Auth console manually.
