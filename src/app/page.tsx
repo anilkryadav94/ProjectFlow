@@ -13,6 +13,10 @@ import { db } from '@/lib/firebase';
 
 async function getSessionData(firebaseUser: import('firebase/auth').User): Promise<{ user: User } | null> {
     const userDocRef = doc(db, 'users', firebaseUser.uid);
+    // This initial read is CRITICAL. It forces the Firestore SDK to initialize
+    // its connection with the correct authentication state from the Auth SDK.
+    // Without this, subsequent calls in server actions might fail with "permission-denied"
+    // due to a race condition.
     const userDocSnap = await getDoc(userDocRef);
 
     if (userDocSnap.exists()) {
@@ -39,9 +43,11 @@ export default function Home() {
     const unsubscribe = onAuthChanged(async (user) => {
       if (user) {
         try {
+            // First, get user data which also primes the auth state for Firestore
             const sessionData = await getSessionData(user);
             if (sessionData) {
               setSession(sessionData);
+              // NOW it's safe to call server actions that interact with Firestore
               const projectData = await getProjectsForUser(sessionData.user.name, sessionData.user.roles);
               setProjects(projectData);
             } else {

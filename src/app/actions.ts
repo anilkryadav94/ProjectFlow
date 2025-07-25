@@ -122,7 +122,12 @@ export async function updateProject(
         const dateFields: (keyof Project)[] = ['received_date', 'allocation_date', 'processing_date', 'qa_date', 'reportout_date', 'client_response_date'];
         for (const dateField of dateFields) {
             if (dataToUpdate[dateField] && typeof dataToUpdate[dateField] === 'string') {
-                dataToUpdate[dateField] = Timestamp.fromDate(new Date(dataToUpdate[dateField]));
+                const date = new Date(dataToUpdate[dateField]);
+                 if (!isNaN(date.getTime())) { // Check if the date is valid
+                    dataToUpdate[dateField] = Timestamp.fromDate(date);
+                } else {
+                    dataToUpdate[dateField] = null; // Set to null if date is invalid
+                }
             }
         }
 
@@ -130,13 +135,13 @@ export async function updateProject(
         if (submitAction === 'client_submit') {
           dataToUpdate.workflowStatus = 'With QA';
           dataToUpdate.qa_status = 'Pending';
-          dataToUpdate.client_response_date = Timestamp.fromDate(new Date());
+          dataToUpdate.client_response_date = serverTimestamp();
         } else if (submitAction === 'submit_for_qa') {
             dataToUpdate.workflowStatus = 'With QA';
-            dataToUpdate.processing_date = Timestamp.fromDate(new Date());
+            dataToUpdate.processing_date = serverTimestamp();
         } else if (submitAction === 'submit_qa') {
             dataToUpdate.workflowStatus = 'Completed';
-            dataToUpdate.qa_date = Timestamp.fromDate(new Date());
+            dataToUpdate.qa_date = serverTimestamp();
         } else if (submitAction === 'send_rework') {
             dataToUpdate.workflowStatus = 'With Processor';
             dataToUpdate.processing_status = 'Re-Work';
@@ -149,7 +154,7 @@ export async function updateProject(
         }
         
         console.log("Updating project ID:", projectId);
-        console.log("Updating Firestore with (sanitized):", dataToUpdate);
+        console.log("Updating Firestore with (sanitized):", JSON.stringify(dataToUpdate, null, 2));
 
         await updateDoc(projectRef, dataToUpdate);
 
@@ -228,7 +233,12 @@ export async function addRows(
         
         for (const dateField of dateFields) {
             if (finalProjectData[dateField] && typeof finalProjectData[dateField] === 'string') {
-                (finalProjectData as any)[dateField] = Timestamp.fromDate(new Date(finalProjectData[dateField] as string));
+                const date = new Date(finalProjectData[dateField] as string);
+                if (!isNaN(date.getTime())) { // Check if the date is valid
+                   (finalProjectData as any)[dateField] = Timestamp.fromDate(date);
+                } else {
+                   (finalProjectData as any)[dateField] = null;
+                }
             }
         }
         
