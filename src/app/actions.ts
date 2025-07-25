@@ -68,7 +68,8 @@ export async function updateProject(
             if (Object.prototype.hasOwnProperty.call(clientData, key)) {
                 const typedKey = key as keyof typeof clientData;
                 if (clientData[typedKey] !== undefined) {
-                     dataToUpdate[typedKey] = clientData[typedKey];
+                     // CRITICAL FIX: Convert empty strings to null to match Firestore types
+                     dataToUpdate[typedKey] = clientData[typedKey] === "" ? null : clientData[typedKey];
                 }
             }
         }
@@ -90,13 +91,13 @@ export async function updateProject(
         }
         
         if (Object.keys(dataToUpdate).length === 0) {
-            console.log("No fields to update for project:", projectId);
+            console.log("No valid fields to update for project:", projectId);
             const existingProject = { id: docSnap.id, ...docSnap.data() } as Project;
             return { success: true, project: existingProject };
         }
         
         console.log("Updating project ID:", projectId);
-        console.log("Updating Firestore with:", dataToUpdate);
+        console.log("Updating Firestore with (sanitized):", dataToUpdate);
 
         await updateDoc(projectRef, dataToUpdate);
 
