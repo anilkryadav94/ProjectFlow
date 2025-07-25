@@ -5,7 +5,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/com
 import { Badge } from '@/components/ui/badge';
 import { Header } from '@/components/header';
 import { clientNames, processes } from '@/lib/data';
-import { doc, getDoc, collection, getDocs } from 'firebase/firestore';
+import { doc, getDoc, collection, getDocs, Timestamp } from 'firebase/firestore';
 import { db } from '@/lib/firebase';
 import { EditProjectDialog } from '@/components/edit-project-dialog';
 import { onAuthChanged } from '@/lib/auth';
@@ -45,7 +45,7 @@ async function getUser(firebaseUser: import('firebase/auth').User): Promise<User
     return null;
 }
 
-// This is the server component part that fetches initial data.
+// This is a client component because of useEffect and useState
 export default function TaskPage({ params }: TaskPageProps) {
   const [project, setProject] = React.useState<Project | null>(null);
   const [user, setUser] = React.useState<User | null>(null);
@@ -94,7 +94,7 @@ export default function TaskPage({ params }: TaskPageProps) {
     return (
         <div className="flex flex-col h-screen bg-background w-full">
             <Header 
-                user={user || {name: 'Guest', email: '', roles: []}}
+                user={user || {id: '', name: 'Guest', email: '', roles: []}}
                 activeRole={user?.roles[0] || 'Processor'}
                 isManagerOrAdmin={false}
                 clientNames={clientNames}
