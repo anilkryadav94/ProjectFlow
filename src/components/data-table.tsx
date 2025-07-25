@@ -3,7 +3,7 @@
 
 import * as React from "react"
 import { ArrowDown, ArrowUp } from "lucide-react"
-import type { Project } from "@/lib/data"
+import type { Project, Role } from "@/lib/data"
 import {
   Table,
   TableBody,
@@ -27,6 +27,7 @@ interface DataTableProps {
   setRowSelection: (selection: Record<string, boolean>) => void;
   isManagerOrAdmin: boolean;
   totalCount: number;
+  activeRole: Role;
 }
 
 export function DataTable({ 
@@ -37,7 +38,8 @@ export function DataTable({
     rowSelection, 
     setRowSelection,
     isManagerOrAdmin, 
-    totalCount
+    totalCount,
+    activeRole
 }: DataTableProps) {
   const handleSort = (key: string) => {
     if (key === 'select' || key === 'actions') return;
@@ -48,51 +50,63 @@ export function DataTable({
       setSort({ key: projectKey, direction: 'asc' });
     }
   };
+  
+  const renderEmptyState = () => {
+    let message = "No results found.";
+    
+    if (activeRole === 'Processor' || activeRole === 'QA') {
+        message = "There are currently no tasks assigned to you. Please contact your manager for further assignments.";
+    } else if (activeRole === 'Case Manager') {
+        message = "Your dashboard is up to date — there are no pending queries at the moment.";
+    }
+
+    return (
+        <div className="flex items-center justify-center h-full text-center p-8">
+            <p className="text-muted-foreground">{message}</p>
+        </div>
+    );
+  };
 
   return (
     <div className={cn("h-full flex flex-col")}>
        <div className={cn("flex-grow rounded-t-md border bg-card relative overflow-y-auto")}>
-        <Table>
-          <TableHeader className="sticky top-0 z-10 bg-primary">
-            <TableRow>
-              {columns.map((column) => (
-                <TableHead key={column.key} className="text-primary-foreground/90">
-                    <div
-                      className={cn("flex items-center gap-2", !['select', 'actions'].includes(column.key) && "cursor-pointer")}
-                      onClick={() => handleSort(column.key)}
+        {data.length > 0 ? (
+            <Table>
+                <TableHeader className="sticky top-0 z-10 bg-primary">
+                    <TableRow>
+                    {columns.map((column) => (
+                        <TableHead key={column.key} className="text-primary-foreground/90">
+                            <div
+                            className={cn("flex items-center gap-2", !['select', 'actions'].includes(column.key) && "cursor-pointer")}
+                            onClick={() => handleSort(column.key)}
+                            >
+                            {column.header}
+                            {sort?.key === column.key && (
+                                sort.direction === 'asc' ? <ArrowUp className="h-4 w-4" /> : <ArrowDown className="h-4 w-4" />
+                            )}
+                            </div>
+                        </TableHead>
+                    ))}
+                    </TableRow>
+                </TableHeader>
+                <TableBody>
+                    {data.map((row) => (
+                    <TableRow 
+                        key={row.id}
+                        data-state={rowSelection[row.id] ? "selected" : undefined}
                     >
-                      {column.header}
-                      {sort?.key === column.key && (
-                        sort.direction === 'asc' ? <ArrowUp className="h-4 w-4" /> : <ArrowDown className="h-4 w-4" />
-                      )}
-                    </div>
-                </TableHead>
-              ))}
-            </TableRow>
-          </TableHeader>
-          <TableBody>
-            {data.length > 0 ? (
-              data.map((row) => (
-                <TableRow 
-                  key={row.id}
-                  data-state={rowSelection[row.id] ? "selected" : undefined}
-                >
-                  {columns.map((column) => (
-                    <TableCell key={column.key} className={cn(column.key === 'select' && 'pr-0')}>
-                      {column.render ? column.render(row) : (row[column.key as keyof Project] ?? 'N/A')}
-                    </TableCell>
-                  ))}
-                </TableRow>
-              ))
-            ) : (
-              <TableRow>
-                <TableCell colSpan={columns.length} className="h-24 text-center">
-                  No results found.
-                </TableCell>
-              </TableRow>
-            )}
-          </TableBody>
-        </Table>
+                        {columns.map((column) => (
+                        <TableCell key={column.key} className={cn(column.key === 'select' && 'pr-0')}>
+                            {column.render ? column.render(row) : (row[column.key as keyof Project] ?? 'N/A')}
+                        </TableCell>
+                        ))}
+                    </TableRow>
+                    ))}
+                </TableBody>
+            </Table>
+        ) : (
+            renderEmptyState()
+        )}
       </div>
 
        <div className="rounded-b-md border border-t-0 bg-card">

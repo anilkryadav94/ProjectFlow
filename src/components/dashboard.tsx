@@ -835,6 +835,7 @@ function Dashboard({
                               setRowSelection={setRowSelection}
                               isManagerOrAdmin={isManagerOrAdmin}
                               totalCount={dashboardProjects.length}
+                              activeRole={activeRole}
                           />
                         </div>
                     )}
@@ -852,6 +853,7 @@ function Dashboard({
                         setRowSelection={setRowSelection}
                         isManagerOrAdmin={isManagerOrAdmin}
                         totalCount={dashboardProjects.length}
+                        activeRole={activeRole}
                     />
                  </div>
             )}
