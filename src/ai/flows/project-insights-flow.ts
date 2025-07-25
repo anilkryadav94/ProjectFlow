@@ -12,14 +12,14 @@ import { z } from 'zod';
 import { getAllProjects } from '@/services/project-service';
 import { googleAI } from '@genkit-ai/googleai';
 
-// Define the schema inline as it cannot be exported from a 'use server' file.
+// Define the schema for the expected structured output from the AI.
 const InsightResponseSchema = z.object({
   responseType: z.enum(['text', 'chart']).describe("The type of response to render. Use 'chart' for data visualizations and 'text' for all other answers."),
   data: z.any().describe("The data for the response. For 'text', this is a string. For 'chart', this is a JSON array of objects, typically with 'name' and 'value' keys."),
 });
 
-// Define the type for use within this file.
-type InsightResponse = z.infer<typeof InsightResponseSchema>;
+// Define the TypeScript type from the Zod schema for use within this file.
+export type InsightResponse = z.infer<typeof InsightResponseSchema>;
 
 const getProjectsTool = ai.defineTool(
   {
@@ -56,19 +56,26 @@ const projectInsightsFlow = ai.defineFlow(
     outputSchema: InsightResponseSchema,
   },
   async (query) => {
+    // Await the prompt to get the full generation response.
     const response = await insightsPrompt(query);
+    
+    // In Genkit v1.x, the structured output is directly available in the .output property.
     const structuredOutput = response.output;
 
+    // Check if the AI returned a valid, structured output.
     if (!structuredOutput) {
        // This can happen if the model fails to follow instructions or if there's an issue.
-       // We can check the raw response for clues.
+       // We can check the raw response for clues as a fallback.
        const rawTextResponse = response.text;
        if (rawTextResponse) {
+          // If we have raw text, return it so the user sees something.
           return { responseType: 'text', data: `The AI returned an unexpected response. Raw text: ${rawTextResponse}` };
        }
+      // If there's no output and no raw text, throw a clear error.
       throw new Error('The AI failed to generate a valid structured response. Please try rephrasing your question.');
     }
 
+    // If we have a valid structured output, return it.
     return structuredOutput;
   }
 );
