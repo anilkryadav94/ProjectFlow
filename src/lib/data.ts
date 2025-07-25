@@ -339,7 +339,9 @@ export async function addRows(
 
 
 // This function is for one-time seeding of the database.
+// It is now disabled from being called automatically as per user request.
 export async function seedDatabase() {
+  /*
   try {
     const projectsCollection = collection(db, 'projects');
     const batch = writeBatch(db);
@@ -353,4 +355,5 @@ export async function seedDatabase() {
   } catch (error) {
     console.error('Error seeding database:', error);
   }
+  */
 }

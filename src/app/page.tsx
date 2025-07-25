@@ -68,13 +68,8 @@ export default function Home() {
         if (sessionData) {
           setSession(sessionData);
 
-          // Seed database if it's empty
-          const projectsCollection = collection(db, 'projects');
-          const projectsSnapshot = await getDocs(projectsCollection);
-          if (projectsSnapshot.empty) {
-            console.log('Projects collection is empty, seeding database...');
-            await seedDatabase();
-          }
+          // Seeding logic is removed as per user request.
+          // The application will now rely on manually uploaded data.
 
           const projectData = await getProjectsForUser(sessionData.user);
           setProjects(projectData);
