@@ -28,16 +28,17 @@ export async function bulkUpdateProjects(data: z.infer<typeof bulkUpdateSchema>)
     return { success: true };
 }
 
-// This is the "whitelist" of all fields that are allowed to be updated.
+// This is the "whitelist" of all fields that are allowed to be updated by a user.
 // We will use this to build a safe update object.
+// CRITICAL FIX: Removed id, row_number, and server-set date fields.
 const updatableProjectFields = [
   'ref_number', 'client_name', 'process', 'subject_line', 'application_number',
   'patent_number', 'received_date', 'allocation_date', 'processor', 'qa',
   'case_manager', 'processing_status', 'qa_status', 'rework_reason',
   'client_comments', 'clientquery_status', 'sender', 'country', 'document_type',
   'action_taken', 'renewal_agent', 'client_query_description', 'client_error_description',
-  'qa_remark', 'error', 'email_renaming', 'email_forwarded', 'reportout_date',
-  'manager_name', 'client_response_date', 'workflowStatus', 'processing_date', 'qa_date'
+  'qa_remark', 'error', 'email_renaming', 'email_forwarded',
+  'manager_name'
 ] as const;
 
 
@@ -55,7 +56,6 @@ export async function updateProject(
     const projectRef = doc(db, 'projects', projectId);
 
     try {
-        // ✅ Point #3: Ensure project exists in Firestore
         const docSnap = await getDoc(projectRef);
         if (!docSnap.exists()) {
           console.error(`No such project found with ID: ${projectId}`);
@@ -64,11 +64,9 @@ export async function updateProject(
 
         const dataToUpdate: { [key: string]: any } = {};
         
-        // ✅ Point #1 & #6: Build safe update object using whitelist
         for (const key of updatableProjectFields) {
             if (Object.prototype.hasOwnProperty.call(clientData, key)) {
                 const typedKey = key as keyof typeof clientData;
-                // Only add the field if it's not undefined in the source data
                 if (clientData[typedKey] !== undefined) {
                      dataToUpdate[typedKey] = clientData[typedKey];
                 }
@@ -97,7 +95,6 @@ export async function updateProject(
             return { success: true, project: existingProject };
         }
         
-        // ✅ Point #1 & #2: Log the exact data before updating
         console.log("Updating project ID:", projectId);
         console.log("Updating Firestore with:", dataToUpdate);
 
@@ -113,7 +110,6 @@ export async function updateProject(
         return { success: true, project: finalProject };
 
     } catch (error: any) {
-        // ✅ Point #7: Detailed console.error on catch
         console.error(`Project update error for ID ${projectId}:`, error);
         return { success: false, error: error.message || "An unknown Firestore error occurred." };
     }
