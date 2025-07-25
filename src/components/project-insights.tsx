@@ -42,7 +42,7 @@ export function ProjectInsights() {
       return <p className="text-sm whitespace-pre-wrap">{response.data}</p>;
     }
 
-    if (response.responseType === "chart" && response.data) {
+    if (response.responseType === "chart" && Array.isArray(response.data) && response.data.length > 0) {
       const chartData = response.data as { name: string; value: number }[];
       
       const chartConfig = {
@@ -71,7 +71,7 @@ export function ProjectInsights() {
       );
     }
 
-    return null;
+    return <p className="text-sm text-muted-foreground">The AI returned an empty or invalid response.</p>;
   };
 
   return (

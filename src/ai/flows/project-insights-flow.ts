@@ -5,12 +5,20 @@
  * @fileOverview An AI flow for querying project data using natural language.
  *
  * - askProjectInsights - The main function to ask a question about projects.
- * - InsightResponse - The structured output type for the flow.
  */
 
 import { ai } from '@/ai/genkit';
-import { z } from 'genkit/zod';
+import { z } from 'zod';
 import { getAllProjects } from '@/services/project-service';
+
+// Define the schema inline as it cannot be exported from a 'use server' file.
+const InsightResponseSchema = z.object({
+  responseType: z.enum(['text', 'chart']).describe("The type of response to render. Use 'chart' for data visualizations and 'text' for all other answers."),
+  data: z.any().describe("The data for the response. For 'text', this is a string. For 'chart', this is a JSON array of objects, typically with 'name' and 'value' keys."),
+});
+
+// Define the type for use within this file.
+export type InsightResponse = z.infer<typeof InsightResponseSchema>;
 
 const getProjectsTool = ai.defineTool(
   {
@@ -23,13 +31,6 @@ const getProjectsTool = ai.defineTool(
     return await getAllProjects();
   }
 );
-
-export const InsightResponseSchema = z.object({
-  responseType: z.enum(['text', 'chart']).describe("The type of response to render. Use 'chart' for data visualizations and 'text' for all other answers."),
-  data: z.any().describe("The data for the response. For 'text', this is a string. For 'chart', this is a JSON array of objects, typically with 'name' and 'value' keys."),
-});
-
-export type InsightResponse = z.infer<typeof InsightResponseSchema>;
 
 const insightsPrompt = ai.definePrompt({
   name: 'projectInsightsPrompt',
@@ -54,7 +55,7 @@ const projectInsightsFlow = ai.defineFlow(
   },
   async (query) => {
     const llmResponse = await insightsPrompt(query);
-    const response = llmResponse.output();
+    const response = llmResponse.output;
     if (!response) {
       throw new Error('The AI failed to generate a response.');
     }
