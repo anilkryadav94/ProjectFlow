@@ -54,7 +54,7 @@ export async function getProjectsForUser(userName: string, roles: Role[]): Promi
 
 const bulkUpdateSchema = z.object({
   projectIds: z.array(z.string()),
-  field: z.enum(['processor', 'qa']),
+  field: z.enum(['processor', 'qa', 'case_manager', 'client_name', 'process', 'workflowStatus', 'processing_status', 'qa_status']),
   value: z.string().min(1, "New value cannot be empty."),
 });
 
