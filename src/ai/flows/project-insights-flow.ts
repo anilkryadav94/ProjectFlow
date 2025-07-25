@@ -11,8 +11,6 @@ import { ai } from '@/ai/genkit';
 import { z } from 'zod';
 import { getAllProjects } from '@/services/project-service';
 import { googleAI } from '@genkit-ai/googleai';
-import { type GenerateResponse } from 'genkit';
-
 
 // Define the schema inline as it cannot be exported from a 'use server' file.
 const InsightResponseSchema = z.object({
@@ -59,33 +57,51 @@ const projectInsightsFlow = ai.defineFlow(
   },
   async (query) => {
     const llmResponse = await insightsPrompt(query);
-    
-    // The final response from a tool-using prompt can be in one of two places.
-    // 1. Directly in `llmResponse.output` if no tool was called.
-    // 2. In the `message.content` of the output if a tool was called.
     const response = llmResponse.output;
 
     if (!response) {
       throw new Error('The AI failed to generate a response.');
     }
-    
-    // Check if the output is the final message content after a tool call
+
+    // Case 1: The response is already in the final format (no tool used).
+    if (response.responseType && response.data) {
+        return response;
+    }
+
+    // Case 2: A tool was used, and the response is nested.
     if (response.message && response.message.content) {
-      const finalContent = response.message.content.find(part => part.output);
-      if (finalContent && finalContent.output) {
-        return finalContent.output as InsightResponse;
+      const toolResponsePart = response.message.content.find(part => part.toolResponse);
+      const textResponsePart = response.message.content.find(part => part.text);
+
+      // Check if the AI provided its final answer in a structured output part.
+      // This is the new expected format for tool-using flows with output schemas.
+      const outputPart = response.message.content.find(part => part.output);
+      if(outputPart && outputPart.output) {
+        return outputPart.output as InsightResponse;
+      }
+      
+      // Fallback: If not found in a structured output, try to parse from a text part.
+      if (textResponsePart && textResponsePart.text) {
+          try {
+              // Sometimes the AI might return the JSON as a string inside the text part.
+              const parsedText = JSON.parse(textResponsePart.text);
+              if(parsedText.responseType && parsedText.data) {
+                return parsedText as InsightResponse;
+              }
+          } catch (e) {
+              // It's not a JSON string, so treat it as a simple text response.
+               return {
+                  responseType: 'text',
+                  data: textResponsePart.text,
+               };
+          }
       }
     }
-
-    // If no tool was called, the output might be directly available
-    // and might be a plain object that needs parsing.
-    if (typeof response === 'object' && 'responseType' in response && 'data' in response) {
-        return response as InsightResponse;
-    }
-
+    
     throw new Error('The AI returned an unexpected response format.');
   }
 );
+
 
 export async function askProjectInsights(query: string): Promise<InsightResponse> {
   return projectInsightsFlow(query);
