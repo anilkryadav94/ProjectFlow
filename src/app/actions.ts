@@ -64,6 +64,7 @@ export async function updateProject(
 
         const dataToUpdate: { [key: string]: any } = {};
         
+        // Explicitly iterate over the whitelist and only add defined values from clientData
         for (const key of updatableProjectFields) {
             if (Object.prototype.hasOwnProperty.call(clientData, key)) {
                 const typedKey = key as keyof typeof clientData;

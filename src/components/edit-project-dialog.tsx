@@ -126,6 +126,7 @@ const caseManagerFormSchema = z.object({
 
 
 type EditProjectFormValues = z.infer<typeof fullFormSchema>;
+type SubmitAction = 'save' | 'submit_for_qa' | 'submit_qa' | 'send_rework' | 'client_submit';
 
 interface EditProjectDialogProps {
   isOpen: boolean;
@@ -153,8 +154,6 @@ export function EditProjectDialog({
   description,
 }: EditProjectDialogProps) {
   const [isSubmitting, setIsSubmitting] = React.useState(false);
-  const [submitAction, setSubmitAction] = React.useState<'save' | 'submit_for_qa' | 'submit_qa' | 'send_rework' | 'client_submit' | null>(null);
-  
   const { toast } = useToast();
   
   const isProcessorView = userRole === 'Processor' && project?.workflowStatus === 'With Processor';
@@ -187,18 +186,17 @@ export function EditProjectDialog({
     }
   }, [project, form, isOpen]);
   
-  const processSubmit = async (data: EditProjectFormValues) => {
-    if (!project || !onUpdateSuccess || !onNavigate || !submitAction) return;
+  const processSubmit = async (data: EditProjectFormValues, action?: SubmitAction) => {
+    if (!project || !onUpdateSuccess || !onNavigate || !action) return;
 
-    if (submitAction === 'send_rework' && !data.rework_reason) {
+    if (action === 'send_rework' && !data.rework_reason) {
         form.setError("rework_reason", { type: "manual", message: "Rework reason is required." });
-        setSubmitAction(null);
         return;
     }
     
     setIsSubmitting(true);
     try {
-        const result = await updateProject(project.id, data, submitAction);
+        const result = await updateProject(project.id, data, action);
         if (result.success && result.project) {
             onUpdateSuccess();
             toast({
@@ -235,15 +233,9 @@ export function EditProjectDialog({
         });
     } finally {
         setIsSubmitting(false);
-        setSubmitAction(null);
     }
   }
 
-  const handleFormSubmit = async (action: 'save' | 'submit_for_qa' | 'submit_qa' | 'send_rework' | 'client_submit') => {
-      setSubmitAction(action);
-      // form.handleSubmit will trigger validation and then call our processSubmit function
-  };
-  
   const isManagerOrAdmin = userRole === 'Manager' || userRole === 'Admin';
   const canEditMainFields = isManagerOrAdmin;
 
@@ -383,7 +375,7 @@ export function EditProjectDialog({
       <Dialog open={isOpen} onOpenChange={onOpenChange}>
         <DialogContent className="max-w-4xl h-[90vh] flex flex-col">
            <Form {...form}>
-            <form onSubmit={form.handleSubmit(processSubmit)} className="flex flex-col h-full">
+            <form className="flex flex-col h-full">
               <DialogHeader>
                   <div className="flex justify-between items-center">
                     <div>
@@ -408,53 +400,53 @@ export function EditProjectDialog({
                     <div className="flex justify-end gap-2 w-full">
                     {isManagerOrAdmin && (
                         <Button
-                            type="submit"
-                            onClick={() => handleFormSubmit('save')}
+                            type="button"
+                            onClick={form.handleSubmit((data) => processSubmit(data, 'save'))}
                             disabled={isSubmitting || !form.formState.isDirty}
                         >
-                            {isSubmitting && submitAction === 'save' && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
+                            {isSubmitting && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
                             Save & Next
                         </Button>
                     )}
 
                     {isProcessorView && (
                         <Button
-                            type="submit"
-                            onClick={() => handleFormSubmit('submit_for_qa')}
+                            type="button"
+                            onClick={form.handleSubmit((data) => processSubmit(data, 'submit_for_qa'))}
                             disabled={isSubmitting}
                         >
-                            {isSubmitting && submitAction === 'submit_for_qa' && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
+                            {isSubmitting && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
                             Submit for QA & Next
                         </Button>
                     )}
                     {isQaView && (
                         <>
                             <Button
-                                type="submit"
+                                type="button"
                                 variant="destructive"
-                                onClick={() => handleFormSubmit('send_rework')}
+                                onClick={form.handleSubmit((data) => processSubmit(data, 'send_rework'))}
                                 disabled={isSubmitting}
                             >
-                                {isSubmitting && submitAction === 'send_rework' && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
+                                {isSubmitting && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
                                 Send for Rework & Next
                             </Button>
                             <Button
-                                type="submit"
-                                onClick={() => handleFormSubmit('submit_qa')}
+                                type="button"
+                                onClick={form.handleSubmit((data) => processSubmit(data, 'submit_qa'))}
                                 disabled={isSubmitting}
                             >
-                                {isSubmitting && submitAction === 'submit_qa' && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
+                                {isSubmitting && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
                                 Submit & Next
                             </Button>
                         </>
                     )}
                     {isCaseManagerView && (
                         <Button
-                            type="submit"
-                            onClick={() => handleFormSubmit('client_submit')}
+                            type="button"
+                            onClick={form.handleSubmit((data) => processSubmit(data, 'client_submit'))}
                             disabled={isSubmitting}
                         >
-                            {isSubmitting && submitAction === 'client_submit' && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
+                            {isSubmitting && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
                             Submit & Next
                         </Button>
                     )}
