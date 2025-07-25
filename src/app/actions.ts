@@ -76,7 +76,7 @@ export async function bulkUpdateProjects(data: z.infer<typeof bulkUpdateSchema>)
 // This is the "whitelist" of all fields that are allowed to be updated by a user.
 // We use this to build a safe update object.
 const updatableProjectFields = [
-  'ref_number', 'application_number', 'patent_number', 'client_name', 'process', 'processor', 'qa', 
+  'row_number', 'ref_number', 'application_number', 'patent_number', 'client_name', 'process', 'processor', 'qa', 
   'case_manager', 'manager_name', 'sender', 'subject_line', 'country', 'document_type', 'action_taken', 
   'renewal_agent', 'processing_status', 'qa_status', 'clientquery_status', 'error', 'rework_reason', 
   'qa_remark', 'client_query_description', 'client_comments', 'client_error_description', 
@@ -216,7 +216,8 @@ export async function addRows(
     for (const projectData of projectsToAdd) {
         const newProjectRef = doc(projectsCollection); // Let Firestore generate the document ID
         
-        const newProject: Partial<Project> = {
+        const newProject: Omit<Project, 'id'> = {
+            row_number: "TBD", // Will be replaced
             ref_number: null,
             application_number: null,
             patent_number: null,
