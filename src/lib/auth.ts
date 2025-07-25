@@ -21,29 +21,8 @@ export function onAuthChanged(callback: (user: import('firebase/auth').User | nu
     return onFirebaseAuthStateChanged(auth, callback);
 }
 
-// This function checks for and creates a user document in Firestore if it doesn't exist.
-async function ensureUserDocument(firebaseUser: FirebaseUser): Promise<void> {
-    const userDocRef = doc(db, 'users', firebaseUser.uid);
-    const userDocSnap = await getDoc(userDocRef);
-
-    if (!userDocSnap.exists()) {
-        console.log(`User document for ${firebaseUser.email} not found in Firestore. Creating one with default role.`);
-        const newUser: Omit<User, 'id' | 'password'> = {
-            email: firebaseUser.email || '',
-            name: firebaseUser.displayName || firebaseUser.email || 'New User',
-            roles: ['Processor'], // Assign a default, lowest-privilege role.
-        };
-        await setDoc(userDocRef, newUser);
-        console.log(`Created default Firestore document for user: ${firebaseUser.email}`);
-    }
-}
-
-
 export async function login(email: string, password: string): Promise<void> {
-    const userCredential = await signInWithEmailAndPassword(auth, email, password);
-    if (userCredential.user) {
-        await ensureUserDocument(userCredential.user);
-    }
+    await signInWithEmailAndPassword(auth, email, password);
 }
 
 // --- User Management for Admin Panel (Server-Side safe) ---
