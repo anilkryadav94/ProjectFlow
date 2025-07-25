@@ -193,7 +193,7 @@ async function getNextRefNumber(): Promise<string> {
         return `${yearPrefix}00001`;
     } else {
         const lastRefNumber = querySnapshot.docs[0].data().ref_number as string;
-        const lastSequence = parseInt(lastRefNumber.slice(6), 10);
+        const lastSequence = parseInt(lastRefNumber.slice(4), 10); // PF2400001 -> 2400001
         const nextSequence = lastSequence + 1;
         return `${yearPrefix}${nextSequence.toString().padStart(5, '0')}`;
     }
@@ -256,8 +256,8 @@ export async function addRows(
         const finalProjectData = { ...newProject, ...restOfProjectData };
         
         // Increment the ref number for the next iteration
-        const yearPrefix = currentRefNumber.slice(0, 6);
-        const sequence = parseInt(currentRefNumber.slice(6), 10) + 1;
+        const yearPrefix = currentRefNumber.slice(0, 4);
+        const sequence = parseInt(currentRefNumber.slice(4), 10) + 1;
         currentRefNumber = `${yearPrefix}${sequence.toString().padStart(5, '0')}`;
 
         // Convert date strings to Timestamps before sending to Firestore
