@@ -426,7 +426,7 @@ function Dashboard({ user, error }: DashboardProps) {
   }
   
   const columns = getColumns(isManagerOrAdmin, activeRole, rowSelection, setRowSelection, projects, handleOpenEditDialog, handleAddRowsDialog, visibleColumnKeys);
-  const showSubHeader = !isManagerOrAdmin && (totalCount > 0 || isLoading);
+  const showSubHeader = !isManagerOrAdmin && totalCount > 0;
   
    const bulkUpdateFields: {
         value: keyof Project;
@@ -481,12 +481,16 @@ function Dashboard({ user, error }: DashboardProps) {
                         </div>
                     ) : <div className="flex-grow" />}
                     
-                    <Button variant="outline" className="h-7 px-2 text-xs" onClick={() => setIsColumnSelectOpen(true)}>
-                        <Rows className="mr-1.5 h-3.5 w-3.5" /> Select Columns
-                    </Button>
-                    <Button variant="outline" className="h-7 px-2 text-xs" onClick={() => saveColumnLayout(activeRole)}>
-                        <Save className="mr-1.5 h-3.5 w-3.5" /> Save Layout
-                    </Button>
+                    {activeRole !== 'Case Manager' && (
+                        <>
+                            <Button variant="outline" className="h-7 px-2 text-xs" onClick={() => setIsColumnSelectOpen(true)}>
+                                <Rows className="mr-1.5 h-3.5 w-3.5" /> Select Columns
+                            </Button>
+                            <Button variant="outline" className="h-7 px-2 text-xs" onClick={() => saveColumnLayout(activeRole)}>
+                                <Save className="mr-1.5 h-3.5 w-3.5" /> Save Layout
+                            </Button>
+                        </>
+                    )}
                     <Button variant="outline" className="h-7 px-2 text-xs" onClick={handleNonManagerDownload} disabled={projects.length === 0 || isLoading}>
                         <FileSpreadsheet className="mr-1.5 h-3.5 w-3.5" />
                          Download
@@ -534,7 +538,7 @@ function Dashboard({ user, error }: DashboardProps) {
                      <AccordionItem value="ai-insights" className="border-0 bg-muted/30 shadow-md mb-4 rounded-lg">
                         <AccordionTrigger className="px-4 py-3 hover:no-underline">AI Project Insights</AccordionTrigger>
                         <AccordionContent className="p-4 pt-0">
-                           <div>
+                           <div className="p-1">
                              <ProjectInsights />
                            </div>
                         </AccordionContent>
@@ -542,7 +546,7 @@ function Dashboard({ user, error }: DashboardProps) {
                     <AccordionItem value="advanced-search" className="border-0 bg-muted/30 shadow-md mb-4 rounded-lg">
                         <AccordionTrigger className="px-4 py-3 hover:no-underline">Advanced Search</AccordionTrigger>
                         <AccordionContent className="p-4 pt-0">
-                          <div>
+                          <div className="p-1">
                             <AdvancedSearchForm onSearch={handleAdvancedSearch} initialCriteria={null} processors={dropdownOptions.processors} qas={dropdownOptions.qas} clientNames={dropdownOptions.clientNames} processes={dropdownOptions.processes} />
                           </div>
                         </AccordionContent>
@@ -609,5 +613,3 @@ function Dashboard({ user, error }: DashboardProps) {
 }
 
 export default Dashboard;
-
-    
