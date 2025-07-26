@@ -5,7 +5,7 @@ import { z } from "zod";
 import type { Project, Role } from "@/lib/data";
 import { revalidatePath } from "next/cache";
 import { db } from "@/lib/firebase";
-import { collection, getDocs, doc, writeBatch, updateDoc, serverTimestamp, addDoc, getDoc, query, orderBy, limit, Timestamp, where, startAfter, endBefore, limitToLast, getCountFromServer, QueryConstraint, or } from "firebase/firestore";
+import { collection, getDocs, doc, writeBatch, updateDoc, serverTimestamp, addDoc, getDoc, query, orderBy, limit, Timestamp, where, startAfter, endBefore, limitToLast, getCountFromServer, QueryConstraint, or, and } from "firebase/firestore";
 
 function convertTimestampsToDates(data: any): any {
     const newData: { [key: string]: any } = { ...data };
@@ -295,37 +295,77 @@ export async function addRows(
 export async function getPaginatedProjects(options: {
     page: number;
     limit: number;
-    filters: any; // Simplified for now
+    filters: {
+        quickSearch?: string;
+        advanced?: { field: string; operator: string; value: any }[] | null;
+    };
     sort: { key: string, direction: 'asc' | 'desc' };
 }) {
     const { page, limit: pageSize, filters, sort } = options;
     const projectsCollection = collection(db, "projects");
     
     let queryConstraints: QueryConstraint[] = [];
+    const dateFields = ['received_date', 'allocation_date', 'processing_date', 'qa_date'];
 
-    // Apply filters
-    // This is a simplified filter implementation. A real implementation would need
-    // to handle different operators, data types, and compound queries carefully.
-    if (filters.quickSearch) {
-        // Firestore doesn't support full-text search natively. This is a very basic
-        // and limited implementation. For real full-text search, an external service
-        // like Algolia or Elasticsearch is recommended.
-        // We'll do a basic "startsWith" search on a few fields.
-        const searchFields: (keyof Project)[] = ['row_number', 'ref_number', 'client_name', 'processor', 'qa'];
-        const orConstraints = searchFields.map(field => 
-            where(field, '>=', filters.quickSearch) && where(field, '<=', filters.quickSearch + '\uf8ff')
-        );
-        // Note: Firestore 'or' queries are limited. This might not work as expected for complex cases.
-        // queryConstraints.push(or(...orConstraints)); 
+    // Apply advanced filters
+    if (filters.advanced && filters.advanced.length > 0) {
+        const andConstraints: QueryConstraint[] = [];
+        filters.advanced.forEach(criterion => {
+            if (!criterion.field || !criterion.operator) return;
+
+            const isDate = dateFields.includes(criterion.field);
+            let value = criterion.value;
+            if (isDate && value && typeof value === 'string') {
+                value = Timestamp.fromDate(new Date(value));
+            }
+            
+            switch (criterion.operator) {
+                case 'equals':
+                case 'dateEquals':
+                    andConstraints.push(where(criterion.field, '==', value));
+                    break;
+                case 'in':
+                     const values = typeof value === 'string' ? value.split(',').map(s => s.trim()) : [];
+                     if (values.length > 0) {
+                        andConstraints.push(where(criterion.field, 'in', values));
+                     }
+                    break;
+                case 'startsWith':
+                    andConstraints.push(where(criterion.field, '>=', value));
+                    andConstraints.push(where(criterion.field, '<=', value + '\uf8ff'));
+                    break;
+                case 'contains':
+                     // Firestore does not support 'contains' natively. Using startsWith as a workaround.
+                     andConstraints.push(where(criterion.field, '>=', value));
+                     andConstraints.push(where(criterion.field, '<=', value + '\uf8ff'));
+                    break;
+                case 'blank':
+                    andConstraints.push(where(criterion.field, '==', null));
+                    break;
+            }
+        });
+        if (andConstraints.length > 0) {
+             queryConstraints.push(...andConstraints);
+        }
     }
-
+    // Apply quick search filter if advanced filter is not active
+    else if (filters.quickSearch) {
+        // This is a very basic "search anywhere" which is inefficient.
+        // A dedicated search service like Algolia/Typesense is better.
+        // For now, it's disabled in favor of advanced search.
+        // If you need it, you would typically query multiple fields.
+        console.warn("Quick search is not fully implemented for server-side search due to Firestore limitations.");
+    }
+    
     // Apply sorting
-    if (sort.key) {
+    if (sort.key && sort.key !== 'id') { // 'id' is not a field in docs
         queryConstraints.push(orderBy(sort.key, sort.direction));
+    } else {
+        queryConstraints.push(orderBy('row_number', 'desc')); // Default sort
     }
 
-    // Get total count for pagination
-    const countQuery = query(projectsCollection, ...queryConstraints);
+    // Get total count for pagination based on the same filters
+    const countQuery = query(projectsCollection, ...queryConstraints.filter(c => !(c instanceof (startAfter as any))));
     const totalCountSnapshot = await getCountFromServer(countQuery);
     const totalCount = totalCountSnapshot.data().count;
 
