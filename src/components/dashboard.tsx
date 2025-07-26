@@ -25,6 +25,7 @@ import { ProjectInsights } from './project-insights';
 import { getUsers } from '@/lib/auth';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 
+
 interface DashboardProps {
   user: User;
   error: string | null;
@@ -47,7 +48,7 @@ function Dashboard({ user, error }: DashboardProps) {
   const [switchingToRole, setSwitchingToRole] = React.useState<Role | null>(null);
   const [activeRole, setActiveRole] = React.useState<Role | null>(null);
   
-  const [projects, setProjects] = React.useState<Project[]>([]);
+  const [dashboardProjects, setDashboardProjects] = React.useState<Project[]>([]);
   const [totalCount, setTotalCount] = React.useState(0);
   const [totalPages, setTotalPages] = React.useState(1);
   const [dropdownOptions, setDropdownOptions] = React.useState({
@@ -85,7 +86,10 @@ function Dashboard({ user, error }: DashboardProps) {
   
   const { toast } = useToast();
   
-  const isManagerOrAdmin = React.useMemo(() => activeRole === 'Manager' || activeRole === 'Admin', [activeRole]);
+  const isManagerOrAdmin = React.useMemo(() => {
+    if (!activeRole) return false;
+    return activeRole === 'Manager' || activeRole === 'Admin';
+  }, [activeRole]);
 
   const loadColumnLayout = React.useCallback((role: Role) => {
     const savedLayout = localStorage.getItem(`columnLayout-${role}`);
@@ -100,7 +104,7 @@ function Dashboard({ user, error }: DashboardProps) {
 
   const fetchPageData = React.useCallback(async (role: Role, currentPage: number, currentSort: typeof sort, currentFilters: any) => {
     if (!user || role === 'Admin') {
-        setProjects([]);
+        setDashboardProjects([]);
         setTotalCount(0);
         setIsLoading(false);
         return;
@@ -114,20 +118,8 @@ function Dashboard({ user, error }: DashboardProps) {
             sort: currentSort,
             filters: { ...currentFilters, roleFilter: { role, userName: user.name } },
         });
-        
-        let filteredProjects = result.projects;
-        if (role === 'Processor') {
-            filteredProjects = filteredProjects.filter(p => processorActionableStatuses.includes(p.processing_status));
-        } else if (role === 'QA') {
-            filteredProjects = filteredProjects.filter(p => (
-              (p.processing_status === 'Processed' || p.processing_status === 'Already Processed' || p.processing_status === 'NTP' || p.processing_status === 'Client Query') &&
-              (p.qa_status === 'Pending' || p.qa_status === 'On Hold')
-            ));
-        } else if (role === 'Case Manager') {
-            filteredProjects = filteredProjects.filter(p => p.qa_status === 'Client Query' && p.clientquery_status === null);
-        }
 
-        setProjects(filteredProjects);
+        setDashboardProjects(result.projects);
         setTotalCount(result.totalCount);
         setTotalPages(result.totalPages);
         
@@ -138,7 +130,7 @@ function Dashboard({ user, error }: DashboardProps) {
         } else {
             toast({ title: "Error", description: `Could not fetch project data.`, variant: "destructive" });
         }
-        setProjects([]);
+        setDashboardProjects([]);
         setTotalCount(0);
     } finally {
         setIsLoading(false);
@@ -156,7 +148,6 @@ function Dashboard({ user, error }: DashboardProps) {
         if (newActiveRole !== activeRole) {
             setActiveRole(newActiveRole);
             loadColumnLayout(newActiveRole);
-            // Reset state when role changes
             setPage(1);
             setSort({ key: 'row_number', direction: 'desc' });
             setSearch('');
@@ -166,7 +157,6 @@ function Dashboard({ user, error }: DashboardProps) {
         
         try {
             const allUsers = await getUsers();
-            
             setDropdownOptions({
                 clientNames: [...new Set(allUsers.map(u => u.name).filter(Boolean))].sort(),
                 processes: ['Patent', 'TM', 'IDS', 'Project'] as ProcessType[],
@@ -180,19 +170,14 @@ function Dashboard({ user, error }: DashboardProps) {
             toast({ title: "Error", description: "Could not load filter options.", variant: "destructive" });
         }
         
-        // Fetch data only after the role is set
         if (newActiveRole) {
-            if (newActiveRole !== 'Manager' && newActiveRole !== 'Admin') {
-                const currentFilters = {
-                    quickSearch: search,
-                    searchColumn: searchColumn,
-                    clientName: clientNameFilter,
-                    process: processFilter
-                };
-                await fetchPageData(newActiveRole, page, sort, currentFilters);
-            } else {
-                 setIsLoading(false);
-            }
+             const currentFilters = {
+                quickSearch: search,
+                searchColumn: searchColumn,
+                clientName: clientNameFilter,
+                process: processFilter
+            };
+            await fetchPageData(newActiveRole, page, sort, currentFilters);
         }
     };
     
@@ -203,17 +188,37 @@ function Dashboard({ user, error }: DashboardProps) {
   }, [user, searchParams]);
 
   React.useEffect(() => {
-    if (!activeRole || isManagerOrAdmin || isLoading) return;
+    if (!activeRole || isLoading) return;
+
+    const handler = setTimeout(() => {
+        const currentFilters = {
+            quickSearch: search,
+            searchColumn: searchColumn,
+            clientName: clientNameFilter,
+            process: processFilter,
+        };
+        setPage(1);
+        fetchPageData(activeRole, 1, sort, currentFilters);
+    }, 500);
+
+    return () => {
+        clearTimeout(handler);
+    };
     
-    const filters = {
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [search, searchColumn, clientNameFilter, processFilter, activeRole]);
+
+  React.useEffect(() => {
+    if (!activeRole || isLoading) return;
+     const currentFilters = {
         quickSearch: search,
         searchColumn: searchColumn,
         clientName: clientNameFilter,
-        process: processFilter
+        process: processFilter,
     };
-    fetchPageData(activeRole, page, sort, filters);
+    fetchPageData(activeRole, page, sort, currentFilters);
   // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [page, sort, search, searchColumn, clientNameFilter, processFilter]);
+  }, [page, sort]);
 
 
   const saveColumnLayout = (role: Role) => {
@@ -297,8 +302,7 @@ function Dashboard({ user, error }: DashboardProps) {
         params.set('searchColumn', searchColumn);
         router.push(`/search?${params.toString()}`);
     } else if (activeRole) {
-        setPage(1); // Reset to first page on new search
-        // The useEffect will trigger the fetch
+        // The useEffect hook for filters will handle this automatically
     }
   };
   
@@ -331,13 +335,13 @@ function Dashboard({ user, error }: DashboardProps) {
 
   const caseManagerTatInfo = React.useMemo(() => {
     if (activeRole !== 'Case Manager') return null;
-    const outsideTatCount = projects.filter(p => {
+    const outsideTatCount = dashboardProjects.filter(p => {
         if (!p.qa_date) return false;
         return differenceInBusinessDays(new Date(), new Date(p.qa_date)) > 3;
     }).length;
     const greeting = new Date().getHours() < 17 ? "Good Morning" : "Good Evening";
     return { count: outsideTatCount, greeting: `Hi ${user.name}, ${greeting}!`, plural: outsideTatCount === 1 ? 'Email' : 'Emails' };
-  }, [activeRole, projects, user.name]);
+  }, [activeRole, dashboardProjects, user.name]);
 
   const handleNonManagerDownload = async () => {
         const filters = {
@@ -407,8 +411,8 @@ function Dashboard({ user, error }: DashboardProps) {
     );
   }
   
-  const columns = getColumns(isManagerOrAdmin, activeRole, rowSelection, setRowSelection, projects, handleOpenEditDialog, handleAddRowsDialog, visibleColumnKeys);
-  const showSubHeader = !isManagerOrAdmin && projects.length > 0;
+  const columns = getColumns(isManagerOrAdmin, activeRole, rowSelection, setRowSelection, dashboardProjects, handleOpenEditDialog, handleAddRowsDialog, visibleColumnKeys);
+  const showSubHeader = dashboardProjects.length > 0;
   
    const bulkUpdateFields: {
         value: keyof Project;
@@ -432,7 +436,7 @@ function Dashboard({ user, error }: DashboardProps) {
              <EditProjectDialog
                 isOpen={isEditDialogOpen} onOpenChange={setIsEditDialogOpen} project={editingProject}
                 onUpdateSuccess={() => {if(activeRole) fetchPageData(activeRole, page, sort, {})}}
-                userRole={activeRole} projectQueue={projects} onNavigate={setEditingProject}
+                userRole={activeRole} projectQueue={dashboardProjects} onNavigate={setEditingProject}
                 clientNames={dropdownOptions.clientNames} processors={dropdownOptions.processors} qas={dropdownOptions.qas} caseManagers={dropdownOptions.caseManagers} processes={dropdownOptions.processes}
             />
         )}
@@ -473,7 +477,7 @@ function Dashboard({ user, error }: DashboardProps) {
                             </Button>
                         </>
                     )}
-                    <Button variant="outline" className="h-7 px-2 text-xs" onClick={handleNonManagerDownload} disabled={projects.length === 0 || isLoading}>
+                    <Button variant="outline" className="h-7 px-2 text-xs" onClick={handleNonManagerDownload} disabled={dashboardProjects.length === 0 || isLoading}>
                         <FileSpreadsheet className="mr-1.5 h-3.5 w-3.5" />
                          Download
                     </Button>
@@ -519,18 +523,14 @@ function Dashboard({ user, error }: DashboardProps) {
                     </AccordionItem>
                      <AccordionItem value="ai-insights" className="border-0 bg-muted/30 shadow-md mb-4 rounded-lg">
                         <AccordionTrigger className="px-4 py-3 hover:no-underline">AI Project Insights</AccordionTrigger>
-                        <AccordionContent className="p-4 pt-0">
-                           <div className="p-1">
-                             <ProjectInsights />
-                           </div>
+                        <AccordionContent>
+                           <ProjectInsights />
                         </AccordionContent>
                     </AccordionItem>
                     <AccordionItem value="advanced-search" className="border-0 bg-muted/30 shadow-md mb-4 rounded-lg">
                         <AccordionTrigger className="px-4 py-3 hover:no-underline">Advanced Search</AccordionTrigger>
-                        <AccordionContent className="p-4 pt-0">
-                          <div className="p-1">
-                            <AdvancedSearchForm onSearch={handleAdvancedSearch} initialCriteria={null} processors={dropdownOptions.processors} qas={dropdownOptions.qas} clientNames={dropdownOptions.clientNames} processes={dropdownOptions.processes} />
-                          </div>
+                        <AccordionContent>
+                           <AdvancedSearchForm onSearch={handleAdvancedSearch} initialCriteria={null} processors={dropdownOptions.processors} qas={dropdownOptions.qas} clientNames={dropdownOptions.clientNames} processes={dropdownOptions.processes} />
                         </AccordionContent>
                     </AccordionItem>
                 </Accordion>
@@ -573,7 +573,7 @@ function Dashboard({ user, error }: DashboardProps) {
                         </div>
                     )}
                      <DataTable 
-                        data={projects}
+                        data={dashboardProjects}
                         columns={columns}
                         sort={sort}
                         setSort={setSort}

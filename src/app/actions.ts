@@ -301,14 +301,13 @@ function buildFilterConstraints(
         roleFilter?: { role: Role; userName: string };
     }
 ): QueryConstraint[] {
-    const queryConstraints: QueryConstraint[] = [];
+    const andConstraints: QueryConstraint[] = [];
     const dateFields = ['received_date', 'allocation_date', 'processing_date', 'qa_date', 'reportout_date', 'client_response_date'];
     
-    const andConstraints: QueryConstraint[] = [];
-
     // --- Role-based filters ---
     if (filters.roleFilter) {
         const { role, userName } = filters.roleFilter;
+        // Manager and Admin see all, so no role-based 'where' clause is added for them.
         if (role === 'Processor') {
             andConstraints.push(where("processor", "==", userName));
         } else if (role === 'QA') {
@@ -363,24 +362,29 @@ function buildFilterConstraints(
     }
 
     // --- Quick Search Filter ---
-    if (filters.quickSearch && filters.searchColumn) {
-        const searchableFields = ['row_number', 'ref_number', 'application_number', 'patent_number', 'subject_line', 'processing_status', 'qa_status', 'workflowStatus', 'processor', 'qa', 'case_manager', 'client_name'];
-        if (filters.searchColumn === 'any') {
-            const orConstraints = searchableFields.map(field => 
-                and(where(field, '>=', filters.quickSearch), where(field, '<=', filters.quickSearch + '\uf8ff'))
-            );
-             queryConstraints.push(or(...orConstraints)); 
+    // Note: The 'any' column search is problematic with Firestore's limitations on combining OR queries.
+    // It's better to search a specific column. This code handles a single column search.
+    if (filters.quickSearch && filters.searchColumn && filters.searchColumn !== 'any') {
+        const isDateSearch = dateFields.includes(filters.searchColumn);
+        if (isDateSearch) {
+             try {
+                const date = new Date(filters.quickSearch);
+                if (!isNaN(date.getTime())) {
+                    const startOfDay = Timestamp.fromDate(new Date(date.setHours(0, 0, 0, 0)));
+                    const endOfDay = Timestamp.fromDate(new Date(date.setHours(23, 59, 59, 999)));
+                    andConstraints.push(where(filters.searchColumn, '>=', startOfDay));
+                    andConstraints.push(where(filters.searchColumn, '<=', endOfDay));
+                }
+             } catch (e) {
+                // Ignore if date is invalid
+             }
         } else {
              andConstraints.push(where(filters.searchColumn, '>=', filters.quickSearch));
              andConstraints.push(where(filters.searchColumn, '<=', filters.quickSearch + '\uf8ff'));
         }
     }
-
-    if (andConstraints.length > 0) {
-        queryConstraints.push(and(...andConstraints));
-    }
     
-    return queryConstraints;
+    return andConstraints;
 }
 
 // Server-side pagination and filtering for ALL roles
@@ -400,8 +404,13 @@ export async function getPaginatedProjects(options: {
     const { page, limit: pageSize, filters, sort } = options;
     const projectsCollection = collection(db, "projects");
 
-    // Build all filter constraints together, including role filters
-    let queryConstraints = buildFilterConstraints(filters);
+    // Build all filter constraints together
+    const filterConstraints = buildFilterConstraints(filters);
+    
+    let queryConstraints: QueryConstraint[] = [];
+    if (filterConstraints.length > 0) {
+        queryConstraints.push(and(...filterConstraints));
+    }
     
     // Get total count for pagination based on the same filters
     const countQuery = query(projectsCollection, ...queryConstraints);
@@ -464,12 +473,16 @@ export async function getProjectsForExport(options: {
     const { filters, sort, user } = options;
     const projectsCollection = collection(db, "projects");
     
-    // Consolidate all filters, including role filters, into a single set of constraints.
-    const queryConstraints = buildFilterConstraints({
+    // Build all filter constraints together
+    const filterConstraints = buildFilterConstraints({
         ...filters,
-        // Ensure roleFilter is passed if it exists
         ...(filters.roleFilter && user ? { roleFilter: filters.roleFilter } : {})
     });
+
+    let queryConstraints: QueryConstraint[] = [];
+    if (filterConstraints.length > 0) {
+        queryConstraints.push(and(...filterConstraints));
+    }
     
     if (sort.key && sort.key !== 'id') {
         queryConstraints.push(orderBy(sort.key, sort.direction));
