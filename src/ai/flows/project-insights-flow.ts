@@ -86,4 +86,3 @@ const projectInsightsFlow = ai.defineFlow(
 export async function askProjectInsights(request: InsightRequest): Promise<InsightResponse> {
   return projectInsightsFlow(request);
 }
-
