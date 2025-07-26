@@ -10,7 +10,7 @@ import { Header } from '@/components/header';
 import { UserManagementTable } from './user-management-table';
 import { Button } from './ui/button';
 import { useToast } from '@/hooks/use-toast';
-import { FileUp, Loader2, Upload, X, FileDown, Rows, Save, FileSpreadsheet, RotateCcw } from 'lucide-react';
+import { FileUp, Loader2, Upload, X, FileDown, Rows, Save, FileSpreadsheet } from 'lucide-react';
 import { AdvancedSearchForm, type SearchCriteria } from './advanced-search-form';
 import { useSearchParams, useRouter } from 'next/navigation';
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from './ui/card';
@@ -18,11 +18,12 @@ import { cn } from '@/lib/utils';
 import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from './ui/accordion';
 import { EditProjectDialog } from './edit-project-dialog';
 import { AddRowsDialog } from './add-rows-dialog';
-import { getPaginatedProjects, addRows, getProjectsForExport } from '@/app/actions';
+import { getPaginatedProjects, addRows, getProjectsForExport, bulkUpdateProjects } from '@/app/actions';
 import { ColumnSelectDialog } from './column-select-dialog';
 import { differenceInBusinessDays } from 'date-fns';
 import { ProjectInsights } from './project-insights';
 import { getUsers } from '@/lib/auth';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 
 interface DashboardProps {
   user: User;
@@ -54,11 +55,13 @@ function Dashboard({ user, error }: DashboardProps) {
   const [projects, setProjects] = React.useState<Project[]>([]);
   const [totalCount, setTotalCount] = React.useState(0);
   const [totalPages, setTotalPages] = React.useState(1);
-  const [clientNames, setClientNames] = React.useState<string[]>([]);
-  const [processors, setProcessors] = React.useState<string[]>([]);
-  const [qas, setQas] = React.useState<string[]>([]);
-  const [caseManagers, setCaseManagers] = React.useState<string[]>([]);
-  const [processes, setProcesses] = React.useState<ProcessType[]>([]);
+  const [dropdownOptions, setDropdownOptions] = React.useState({
+      clientNames: [] as string[],
+      processors: [] as string[],
+      qas: [] as string[],
+      caseManagers: [] as string[],
+      processes: [] as ProcessType[],
+  });
 
   // UI control states
   const [page, setPage] = React.useState(1);
@@ -78,6 +81,12 @@ function Dashboard({ user, error }: DashboardProps) {
   const [sourceProject, setSourceProject] = React.useState<Project | null>(null);
   const [isColumnSelectOpen, setIsColumnSelectOpen] = React.useState(false);
 
+  // Bulk update states
+  const [bulkUpdateField, setBulkUpdateField] = React.useState<keyof Project>('processor');
+  const [bulkUpdateValue, setBulkUpdateValue] = React.useState('');
+  const [isBulkUpdating, setIsBulkUpdating] = React.useState(false);
+
+
   // Column visibility states
   const defaultProcessorQAColumns = [ 'actions', 'row_number', 'ref_number', 'client_name', 'process', 'processor', 'sender', 'subject_line', 'received_date', 'case_manager', 'allocation_date', 'processing_date', 'processing_status', 'qa_status', 'workflowStatus' ];
   const defaultCaseManagerColumns = [ 'actions', 'row_number', 'ref_number', 'application_number', 'country', 'patent_number', 'sender', 'subject_line', 'client_query_description', 'client_comments', 'clientquery_status', 'case_manager', 'qa_date', 'client_response_date' ];
@@ -88,32 +97,16 @@ function Dashboard({ user, error }: DashboardProps) {
   
   const isManagerOrAdmin = React.useMemo(() => activeRole === 'Manager' || activeRole === 'Admin', [activeRole]);
 
-  const fetchInitialData = React.useCallback(async () => {
-    try {
-        const [allUsers, projForDropDowns] = await Promise.all([
-            getUsers(),
-            getPaginatedProjects({ page: 1, limit: 1000, filters: {}, sort: { key: 'client_name', direction: 'asc' }})
-        ]);
-
-        setClientNames([...new Set(projForDropDowns.projects.map(p => p.client_name).filter(Boolean))].sort());
-        setProcesses([...new Set(projForDropDowns.projects.map(p => p.process).filter(Boolean))].sort() as ProcessType[]);
-        setProcessors(allUsers.filter(u => u.roles.includes('Processor')).map(u => u.name).sort());
-        setQas(allUsers.filter(u => u.roles.includes('QA')).map(u => u.name).sort());
-        setCaseManagers(allUsers.filter(u => u.roles.includes('Case Manager')).map(u => u.name).sort());
-    } catch(e) {
-        console.error("Failed to fetch dropdown data", e);
-        toast({ title: "Error", description: "Could not load filter options.", variant: "destructive" });
-    }
-  }, [toast]);
-  
-  const fetchProjects = React.useCallback(async (role: Role, currentPage: number, currentSort: typeof sort, currentFilters: any) => {
+  const fetchPageData = React.useCallback(async (role: Role, currentPage: number, currentSort: typeof sort, currentFilters: any) => {
     if (!user || role === 'Admin') {
         setProjects([]);
         setTotalCount(0);
-        setIsLoading(false);
         return;
     };
-    setIsLoading(true);
+    
+    // For non-paginated roles, we fetch all data and handle pagination/sorting client-side
+    // For manager/admin, we use server-side pagination
+    const isServerPaginated = isManagerOrAdmin;
 
     try {
         const result = await getPaginatedProjects({
@@ -123,68 +116,64 @@ function Dashboard({ user, error }: DashboardProps) {
             filters: { ...currentFilters, roleFilter: { role, userName: user.name } },
             user,
         });
-
-        // For non-paginated role views, we sort client-side
-        if (result.totalPages === 1 && !isManagerOrAdmin) {
-            const sortedProjects = [...result.projects].sort((a, b) => {
-                const key = currentSort.key as keyof Project;
-                const aValue = a[key];
-                const bValue = b[key];
         
-                if (aValue === null || aValue === undefined) return 1;
-                if (bValue === null || bValue === undefined) return -1;
-                
-                let comparison = 0;
-                if (typeof aValue === 'string' && typeof bValue === 'string') {
-                    comparison = aValue.localeCompare(bValue);
-                } else if (typeof aValue === 'number' && typeof bValue === 'number') {
-                    comparison = aValue - bValue;
-                }
-        
-                return currentSort.direction === 'asc' ? comparison : -comparison;
-            });
-            setProjects(sortedProjects);
-        } else {
-             setProjects(result.projects);
-        }
+        setProjects(result.projects);
         setTotalCount(result.totalCount);
-        setTotalPages(result.totalPages);
+        setTotalPages(isServerPaginated ? result.totalPages : 1);
+        
     } catch (error) {
         console.error("Failed to fetch projects:", error);
         toast({ title: "Error", description: `Could not fetch project data. ${error}`, variant: "destructive" });
         setProjects([]);
         setTotalCount(0);
-    } finally {
-        setIsLoading(false);
     }
   }, [user, toast, isManagerOrAdmin]);
 
   // Effect to set initial role and load initial dropdown data
   React.useEffect(() => {
-    const highestRole = roleHierarchy.find(role => user.roles.includes(role)) || user.roles[0];
-    const urlRole = searchParams.get('role') as Role | null;
-    const newActiveRole = urlRole && user.roles.includes(urlRole) ? urlRole : highestRole;
+    const initializeDashboard = async () => {
+        setIsLoading(true);
+        const highestRole = roleHierarchy.find(role => user.roles.includes(role)) || user.roles[0];
+        const urlRole = searchParams.get('role') as Role | null;
+        const newActiveRole = urlRole && user.roles.includes(urlRole) ? urlRole : highestRole;
 
-    if (newActiveRole !== activeRole) {
-        setActiveRole(newActiveRole);
-        loadColumnLayout(newActiveRole);
-    }
+        if (newActiveRole !== activeRole) {
+            setActiveRole(newActiveRole);
+            loadColumnLayout(newActiveRole);
+        }
+        
+        try {
+            const [allUsers, projForDropDowns] = await Promise.all([
+                getUsers(),
+                getPaginatedProjects({ page: 1, limit: 1000, filters: {}, sort: { key: 'client_name', direction: 'asc' }})
+            ]);
+
+            setDropdownOptions({
+                clientNames: [...new Set(projForDropDowns.projects.map(p => p.client_name).filter(Boolean))].sort(),
+                processes: [...new Set(projForDropDowns.projects.map(p => p.process).filter(Boolean))].sort() as ProcessType[],
+                processors: allUsers.filter(u => u.roles.includes('Processor')).map(u => u.name).sort(),
+                qas: allUsers.filter(u => u.roles.includes('QA')).map(u => u.name).sort(),
+                caseManagers: allUsers.filter(u => u.roles.includes('Case Manager')).map(u => u.name).sort(),
+            });
+        } catch(e) {
+            console.error("Failed to fetch dropdown data", e);
+            toast({ title: "Error", description: "Could not load filter options.", variant: "destructive" });
+        } finally {
+            setIsLoading(false);
+        }
+    };
     
-    // Fetch dropdowns only once
-    if (clientNames.length === 0) {
-      fetchInitialData();
-    }
-  }, [user.roles, searchParams, activeRole, fetchInitialData, clientNames.length]);
+    initializeDashboard();
+  }, [user.roles, searchParams]); // Run only when user or params change
 
   // Fetch projects data when dependencies change
   React.useEffect(() => {
-    if (activeRole) {
+    if (activeRole && !isLoading) { // Don't fetch if initial load is happening
       if (isManagerOrAdmin) {
         // Manager/Admin view doesn't load data initially. It waits for search.
         setProjects([]);
         setTotalCount(0);
         setTotalPages(1);
-        setIsLoading(false);
       } else {
         const filters = {
             quickSearch: search,
@@ -192,10 +181,10 @@ function Dashboard({ user, error }: DashboardProps) {
             clientName: clientNameFilter,
             process: processFilter
         };
-        fetchProjects(activeRole, page, sort, filters);
+        fetchPageData(activeRole, page, sort, filters);
       }
     }
-  }, [activeRole, page, sort, search, searchColumn, clientNameFilter, processFilter, fetchProjects, isManagerOrAdmin]);
+  }, [activeRole, page, sort, search, searchColumn, clientNameFilter, processFilter, isManagerOrAdmin, isLoading]);
 
   const loadColumnLayout = (role: Role) => {
     const savedLayout = localStorage.getItem(`columnLayout-${role}`);
@@ -256,7 +245,7 @@ function Dashboard({ user, error }: DashboardProps) {
                 const result = await addRows(projectsToAdd);
                 if (result.success) {
                     toast({ title: "Bulk Add Complete", description: `${result.addedCount} projects have been added.` });
-                    if (activeRole) fetchProjects(activeRole, 1, sort, {});
+                    if (activeRole) fetchPageData(activeRole, 1, sort, {});
                 } else {
                     throw new Error(result.error || "An unknown error occurred during upload.");
                 }
@@ -290,7 +279,7 @@ function Dashboard({ user, error }: DashboardProps) {
         router.push(`/search?${params.toString()}`);
     } else if (activeRole) {
         setPage(1); 
-        fetchProjects(activeRole, 1, sort, { quickSearch: search, searchColumn });
+        fetchPageData(activeRole, 1, sort, { quickSearch: search, searchColumn });
     }
   };
   
@@ -321,9 +310,9 @@ function Dashboard({ user, error }: DashboardProps) {
   }
 
   const dashboardProjects = React.useMemo(() => {
-    if (isManagerOrAdmin || totalPages > 1) return projects; // Use server data directly for managers or paginated results
+    if (isManagerOrAdmin || totalPages > 1) return projects; 
     
-    let filtered = projects;
+    let filtered = [...projects];
 
     if (activeRole === 'Processor') {
         filtered = filtered.filter(p => processorActionableStatuses.includes(p.processing_status));
@@ -335,9 +324,27 @@ function Dashboard({ user, error }: DashboardProps) {
     } else if (activeRole === 'Case Manager') {
         filtered = filtered.filter(p => p.qa_status === 'Client Query' && p.clientquery_status === null);
     }
+
+    filtered.sort((a, b) => {
+        const key = sort.key as keyof Project;
+        const aValue = a[key];
+        const bValue = b[key];
+
+        if (aValue === null || aValue === undefined) return 1;
+        if (bValue === null || bValue === undefined) return -1;
+        
+        let comparison = 0;
+        if (typeof aValue === 'string' && typeof bValue === 'string') {
+            comparison = aValue.localeCompare(bValue);
+        } else if (typeof aValue === 'number' && typeof bValue === 'number') {
+            comparison = aValue - bValue;
+        }
+
+        return sort.direction === 'asc' ? comparison : -comparison;
+    });
     
     return filtered;
-  }, [projects, activeRole, isManagerOrAdmin, totalPages]);
+  }, [projects, activeRole, isManagerOrAdmin, totalPages, sort]);
 
 
   const caseManagerTatInfo = React.useMemo(() => {
@@ -351,7 +358,6 @@ function Dashboard({ user, error }: DashboardProps) {
   }, [activeRole, dashboardProjects, user.name]);
 
   const handleNonManagerDownload = async () => {
-        setIsLoading(true);
         const filters = {
             quickSearch: search,
             searchColumn: searchColumn,
@@ -361,7 +367,6 @@ function Dashboard({ user, error }: DashboardProps) {
         };
         
         const projectsToExport = await getProjectsForExport({ filters, sort, user });
-        setIsLoading(false);
 
         if (projectsToExport.length === 0) {
             toast({ title: "No data to export", variant: "destructive" });
@@ -378,6 +383,31 @@ function Dashboard({ user, error }: DashboardProps) {
         link.click();
         document.body.removeChild(link);
   };
+  
+    const handleBulkUpdate = async () => {
+        const projectIds = Object.keys(rowSelection).filter(id => rowSelection[id]);
+        if (projectIds.length === 0 || !bulkUpdateField || !bulkUpdateValue) {
+            toast({ title: "Bulk Update Error", description: "Please select rows, a field, and a value.", variant: "destructive" });
+            return;
+        }
+        
+        setIsBulkUpdating(true);
+        try {
+            const result = await bulkUpdateProjects({ projectIds, field: bulkUpdateField, value: bulkUpdateValue });
+            if (result.success) {
+                toast({ title: "Success", description: `${projectIds.length} projects have been updated.` });
+                if (activeRole) fetchPageData(activeRole, page, sort, {}); // Refresh data
+                setRowSelection({});
+                setBulkUpdateValue('');
+            } else {
+                throw new Error("An unknown error occurred.");
+            }
+        } catch(e) {
+            toast({ title: "Error", description: `Failed to update projects. ${e instanceof Error ? e.message : ''}`, variant: "destructive"});
+        } finally {
+            setIsBulkUpdating(false);
+        }
+    };
   
   if (isLoading || !activeRole) {
     return (
@@ -396,6 +426,21 @@ function Dashboard({ user, error }: DashboardProps) {
   
   const columns = getColumns(isManagerOrAdmin, activeRole, rowSelection, setRowSelection, projects, handleOpenEditDialog, handleAddRowsDialog, visibleColumnKeys);
   const showSubHeader = !isManagerOrAdmin && totalCount > 0;
+  
+   const bulkUpdateFields: {
+        value: keyof Project;
+        label: string;
+        options: readonly string[] | string[];
+        type: 'select';
+      }[] = [
+        { value: 'processor', label: 'Processor', options: dropdownOptions.processors, type: 'select' },
+        { value: 'qa', label: 'QA', options: dropdownOptions.qas, type: 'select' },
+        { value: 'case_manager', label: 'Case Manager', options: dropdownOptions.caseManagers, type: 'select' },
+        { value: 'client_name', label: 'Client Name', options: dropdownOptions.clientNames, type: 'select' },
+        { value: 'process', label: 'Process', options: dropdownOptions.processes, type: 'select' },
+      ];
+    const selectedBulkUpdateField = bulkUpdateFields.find(f => f.value === bulkUpdateField);
+
 
   return (
     <div className="flex flex-col h-screen bg-background w-full">
@@ -403,20 +448,20 @@ function Dashboard({ user, error }: DashboardProps) {
         {editingProject && (
              <EditProjectDialog
                 isOpen={isEditDialogOpen} onOpenChange={setIsEditDialogOpen} project={editingProject}
-                onUpdateSuccess={() => {if(activeRole) fetchProjects(activeRole, page, sort, {})}}
+                onUpdateSuccess={() => {if(activeRole) fetchPageData(activeRole, page, sort, {})}}
                 userRole={activeRole} projectQueue={dashboardProjects} onNavigate={setEditingProject}
-                clientNames={clientNames} processors={processors} qas={qas} caseManagers={caseManagers} processes={processes}
+                clientNames={dropdownOptions.clientNames} processors={dropdownOptions.processors} qas={dropdownOptions.qas} caseManagers={dropdownOptions.caseManagers} processes={dropdownOptions.processes}
             />
         )}
-        {sourceProject && ( <AddRowsDialog isOpen={isAddRowsDialogOpen} onOpenChange={setIsAddRowsDialogOpen} sourceProject={sourceProject} onAddRowsSuccess={() => {if(activeRole) fetchProjects(activeRole, page, sort, {})}} /> )}
-        <ColumnSelectDialog isOpen={isColumnSelectOpen} onOpenChange={setIsColumnSelectOpen} allColumns={allColumns} visibleColumns={visibleColumnKeys} setVisibleColumns={setVisibleColumnKeys} />
+        {sourceProject && ( <AddRowsDialog isOpen={isAddRowsDialogOpen} onOpenChange={setIsAddRowsDialogOpen} sourceProject={sourceProject} onAddRowsSuccess={() => {if(activeRole) fetchPageData(activeRole, page, sort, {})}} /> )}
+        <ColumnSelectDialog isOpen={isColumnSelectOpen} onOpenChange={setIsColumnSelectOpen} allColumns={allColumns} visibleColumns={visibleColumnKeys} setVisibleColumns={setVisibleColumns} />
 
         <Header 
             user={user} activeRole={activeRole} setActiveRole={handleRoleSwitch}
             search={search} setSearch={setSearch} searchColumn={searchColumn} setSearchColumn={setSearchColumn}
             onQuickSearch={handleQuickSearch} clientNameFilter={clientNameFilter} setClientNameFilter={setClientNameFilter}
             processFilter={processFilter} setProcessFilter={setProcessFilter} isManagerOrAdmin={isManagerOrAdmin}
-            showManagerSearch={isManagerOrAdmin} clientNames={clientNames} processes={processes}
+            showManagerSearch={isManagerOrAdmin} clientNames={dropdownOptions.clientNames} processes={dropdownOptions.processes}
         />
         
         {showSubHeader && (
@@ -442,7 +487,7 @@ function Dashboard({ user, error }: DashboardProps) {
                         <Save className="mr-1.5 h-3.5 w-3.5" /> Save Layout
                     </Button>
                     <Button variant="outline" className="h-7 px-2 text-xs" onClick={handleNonManagerDownload} disabled={projects.length === 0 || isLoading}>
-                        {isLoading ? <Loader2 className="mr-1.5 h-3.5 w-3.5 animate-spin" /> : <FileSpreadsheet className="mr-1.5 h-3.5 w-3.5" />}
+                        <FileSpreadsheet className="mr-1.5 h-3.5 w-3.5" />
                          Download
                     </Button>
                 </div>
@@ -459,30 +504,30 @@ function Dashboard({ user, error }: DashboardProps) {
                 <Accordion type="single" collapsible className="w-full" defaultValue='advanced-search'>
                     <AccordionItem value="work-allocation" className="border-0 bg-muted/30 shadow-md mb-4 rounded-lg">
                         <AccordionTrigger className="px-4 py-3 hover:no-underline">Work Allocation / Records Addition</AccordionTrigger>
-                        <AccordionContent className="p-4 pt-0">
-                        <Card>
-                            <CardHeader>
-                                <CardTitle>Bulk Upload Records</CardTitle>
-                                <CardDescription>Upload a CSV file to add multiple new project records at once. Download the sample file for the correct format.</CardDescription>
-                            </CardHeader>
-                            <CardContent>
-                                <div className="flex items-center gap-4">
-                                    <Button variant="outline" onClick={() => fileInputRef.current?.click()} disabled={isUploading}>
-                                        <Upload className="mr-2" /> Choose CSV File
+                        <AccordionContent>
+                           <Card>
+                                <CardHeader>
+                                    <CardTitle>Bulk Upload Records</CardTitle>
+                                    <CardDescription>Upload a CSV file to add multiple new project records at once. Download the sample file for the correct format.</CardDescription>
+                                </CardHeader>
+                                <CardContent>
+                                    <div className="flex items-center gap-4">
+                                        <Button variant="outline" onClick={() => fileInputRef.current?.click()} disabled={isUploading}>
+                                            <Upload className="mr-2" /> Choose CSV File
+                                        </Button>
+                                        {selectedFile && <span className="text-sm text-muted-foreground">{selectedFile.name}</span>}
+                                        {selectedFile && <Button size="sm" variant="ghost" onClick={() => setSelectedFile(null)}><X /></Button>}
+                                    </div>
+                                </CardContent>
+                                <CardFooter className="gap-2">
+                                    <Button onClick={handleProcessUpload} disabled={!selectedFile || isUploading}>
+                                        {isUploading ? <Loader2 className="mr-2 animate-spin" /> : <FileUp className="mr-2" />} Process Upload
                                     </Button>
-                                    {selectedFile && <span className="text-sm text-muted-foreground">{selectedFile.name}</span>}
-                                    {selectedFile && <Button size="sm" variant="ghost" onClick={() => setSelectedFile(null)}><X /></Button>}
-                                </div>
-                            </CardContent>
-                            <CardFooter className="gap-2">
-                                <Button onClick={handleProcessUpload} disabled={!selectedFile || isUploading}>
-                                    {isUploading ? <Loader2 className="mr-2 animate-spin" /> : <FileUp className="mr-2" />} Process Upload
-                                </Button>
-                                <Button variant="secondary" onClick={handleDownloadSample}>
-                                    <FileDown className="mr-2" /> Download Sample CSV
-                                </Button>
-                            </CardFooter>
-                        </Card>
+                                    <Button variant="secondary" onClick={handleDownloadSample}>
+                                        <FileDown className="mr-2" /> Download Sample CSV
+                                    </Button>
+                                </CardFooter>
+                           </Card>
                         </AccordionContent>
                     </AccordionItem>
                       <AccordionItem value="ai-insights" className="border-0 bg-muted/30 shadow-md mb-4 rounded-lg">
@@ -494,20 +539,48 @@ function Dashboard({ user, error }: DashboardProps) {
                     <AccordionItem value="advanced-search" className="border-0 bg-muted/30 shadow-md mb-4 rounded-lg">
                         <AccordionTrigger className="px-4 py-3 hover:no-underline">Advanced Search</AccordionTrigger>
                         <AccordionContent className="p-4 pt-0">
-                        <AdvancedSearchForm onSearch={handleAdvancedSearch} initialCriteria={null} processors={processors} qas={qas} clientNames={clientNames} processes={processes} />
-                        </AccordionContent>
-                    </AccordionItem>
-                    <AccordionItem value="work-status" className="border-0 bg-muted/30 shadow-md mb-4 rounded-lg">
-                        <AccordionTrigger className="px-4 py-3 hover:no-underline">Work Status (Client Wise)</AccordionTrigger>
-                        <AccordionContent className="p-4 pt-0">
-                            {/* This would need its own data fetching logic now */}
-                            <p className="p-4 text-muted-foreground">Work status overview will be implemented here.</p>
+                        <AdvancedSearchForm onSearch={handleAdvancedSearch} initialCriteria={null} processors={dropdownOptions.processors} qas={dropdownOptions.qas} clientNames={dropdownOptions.clientNames} processes={dropdownOptions.processes} />
                         </AccordionContent>
                     </AccordionItem>
                 </Accordion>
               </div>
             ) : (
                  <div className="flex-grow flex flex-col">
+                    {Object.keys(rowSelection).length > 0 && (
+                        <div className="flex-shrink-0 flex items-center gap-4 p-4 border-b bg-muted/50">
+                            <span className="text-sm font-semibold">{Object.keys(rowSelection).length} selected</span>
+                            <div className="flex items-center gap-2">
+                                <Select value={bulkUpdateField} onValueChange={(v) => {
+                                    setBulkUpdateField(v as keyof Project);
+                                    setBulkUpdateValue('');
+                                }}>
+                                    <SelectTrigger className="w-[180px] h-9">
+                                        <SelectValue placeholder="Select field" />
+                                    </SelectTrigger>
+                                    <SelectContent>
+                                        {bulkUpdateFields.map(f => (
+                                            <SelectItem key={f.value} value={f.value}>{f.label}</SelectItem>
+                                        ))}
+                                    </SelectContent>
+                                </Select>
+                                
+                                <Select value={bulkUpdateValue} onValueChange={setBulkUpdateValue}>
+                                    <SelectTrigger className="w-[180px] h-9">
+                                        <SelectValue placeholder="Select new value" />
+                                    </SelectTrigger>
+                                    <SelectContent>
+                                        {selectedBulkUpdateField?.options.map(opt => (
+                                            <SelectItem key={opt} value={opt}>{opt}</SelectItem>
+                                        ))}
+                                    </SelectContent>
+                                </Select>
+                            </div>
+                            <Button size="sm" onClick={handleBulkUpdate} disabled={isBulkUpdating}>
+                                {isBulkUpdating && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
+                                Apply Update
+                            </Button>
+                        </div>
+                    )}
                      <DataTable 
                         data={dashboardProjects}
                         columns={columns}
@@ -531,3 +604,5 @@ function Dashboard({ user, error }: DashboardProps) {
 }
 
 export default Dashboard;
+
+    
