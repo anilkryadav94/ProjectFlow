@@ -1,16 +1,14 @@
 
 import * as React from 'react';
-import type { Project } from '@/lib/data';
+import type { Project, Role, User, ProcessType } from '@/lib/data';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Header } from '@/components/header';
-import { clientNames, processes } from '@/lib/data';
 import { doc, getDoc, collection, getDocs, Timestamp } from 'firebase/firestore';
 import { db } from '@/lib/firebase';
 import { EditProjectDialog } from '@/components/edit-project-dialog';
-import { onAuthChanged } from '@/lib/auth';
+import { onAuthChanged, getUsers } from '@/lib/auth';
 import { Loader2 } from 'lucide-react';
-import type { User } from '@/lib/data';
 
 interface TaskPageProps {
     params: { id: string };
@@ -50,17 +48,28 @@ export default function TaskPage({ params }: TaskPageProps) {
   const [project, setProject] = React.useState<Project | null>(null);
   const [user, setUser] = React.useState<User | null>(null);
   const [loading, setLoading] = React.useState(true);
+  const [dropdownOptions, setDropdownOptions] = React.useState({
+      clientNames: [] as string[],
+      processes: [] as ProcessType[],
+  });
 
   React.useEffect(() => {
     const fetchPageData = async (fbUser: import('firebase/auth').User) => {
         try {
-            const [projectData, userData] = await Promise.all([
+            const [projectData, userData, allUsers] = await Promise.all([
                 getProjectById(params.id),
-                getUser(fbUser)
+                getUser(fbUser),
+                getUsers()
             ]);
             
             if (projectData) setProject(projectData);
             if (userData) setUser(userData);
+            if (allUsers) {
+                 setDropdownOptions({
+                    clientNames: [...new Set(allUsers.map(u => u.name).filter(Boolean))].sort(),
+                    processes: ['Patent', 'TM', 'IDS', 'Project'] as ProcessType[],
+                });
+            }
 
         } catch (error) {
             console.error("Error fetching task page data:", error);
@@ -97,8 +106,8 @@ export default function TaskPage({ params }: TaskPageProps) {
                 user={user || {id: '', name: 'Guest', email: '', roles: []}}
                 activeRole={user?.roles[0] || 'Processor'}
                 isManagerOrAdmin={false}
-                clientNames={clientNames}
-                processes={processes}
+                clientNames={dropdownOptions.clientNames}
+                processes={dropdownOptions.processes}
             />
             <main className="flex-1 h-full overflow-y-auto p-4 md:p-6 flex items-center justify-center">
                 <p>Project not found or you do not have access.</p>
@@ -115,8 +124,8 @@ export default function TaskPage({ params }: TaskPageProps) {
                 user={user}
                 activeRole={user.roles[0]}
                 isManagerOrAdmin={isManagerOrAdmin}
-                clientNames={clientNames}
-                processes={processes}
+                clientNames={dropdownOptions.clientNames}
+                processes={dropdownOptions.processes}
             />
             <main className="flex-1 h-full overflow-y-auto p-4 md:p-6">
                 <div>
@@ -161,3 +170,5 @@ export default function TaskPage({ params }: TaskPageProps) {
         </div>
   );
 }
+
+    

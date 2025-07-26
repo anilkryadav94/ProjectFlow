@@ -156,10 +156,11 @@ function Dashboard({ user, error }: DashboardProps) {
         }
         
         try {
+            // Fetch users to populate dropdowns dynamically
             const allUsers = await getUsers();
             setDropdownOptions({
                 clientNames: [...new Set(allUsers.map(u => u.name).filter(Boolean))].sort(),
-                processes: ['Patent', 'TM', 'IDS', 'Project'] as ProcessType[],
+                processes: ['Patent', 'TM', 'IDS', 'Project'] as ProcessType[], // Processes are a fixed list
                 processors: allUsers.filter(u => u.roles.includes('Processor')).map(u => u.name).sort(),
                 qas: allUsers.filter(u => u.roles.includes('QA')).map(u => u.name).sort(),
                 caseManagers: allUsers.filter(u => u.roles.includes('Case Manager')).map(u => u.name).sort(),
@@ -190,17 +191,17 @@ function Dashboard({ user, error }: DashboardProps) {
   React.useEffect(() => {
     if (!activeRole || isLoading) return;
 
-    // Remove automatic search on filter change, search is now manual via button
+    // This effect now only runs for pagination or sorting changes.
+    // Filtering is handled by the manual search button.
     const currentFilters = {
       quickSearch: search,
       searchColumn: searchColumn,
       clientName: clientNameFilter,
       process: processFilter,
     };
-    // Fetch data only when page or sort changes.
-    // Filter changes will trigger a search via handleQuickSearch.
     fetchPageData(activeRole, page, sort, currentFilters);
-  }, [page, sort, activeRole]);
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [page, sort]);
 
 
   const saveColumnLayout = (role: Role) => {
@@ -341,7 +342,7 @@ function Dashboard({ user, error }: DashboardProps) {
             roleFilter: activeRole ? { role: activeRole, userName: user.name } : undefined
         };
         
-        const projectsToExport = await getProjectsForExport({ filters, sort, user });
+        const projectsToExport = await getProjectsForExport({ filters: { ...filters, roleFilter: filters.roleFilter as any }, sort, user });
 
         if (projectsToExport.length === 0) {
             toast({ title: "No data to export", variant: "destructive" });
