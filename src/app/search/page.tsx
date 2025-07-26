@@ -36,7 +36,7 @@ export default function SearchResultsPage() {
 
     // Consolidated loading state
     const [isLoading, setIsLoading] = React.useState(true);
-    const [isSwitching, setIsSwitching] = React.useState(false);
+    const [isSwitching, setIsSwitching] = React.useState(isSwitching);
     const [switchingToRole, setSwitchingToRole] = React.useState<Role | null>(null);
 
     // Data state
@@ -289,7 +289,7 @@ export default function SearchResultsPage() {
         visibleColumnKeys
     );
     
-    const showSubHeader = dataState.totalCount > 0;
+    const showSubHeader = dataState.projects.length > 0;
 
     return (
         <div className="flex flex-col h-screen bg-background w-full">
@@ -421,3 +421,5 @@ export default function SearchResultsPage() {
         </div>
     );
 }
+
+    

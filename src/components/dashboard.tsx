@@ -378,6 +378,7 @@ function Dashboard({ user, error }: DashboardProps) {
         const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
         const link = document.createElement("a");
         const url = URL.createObjectURL(blob);
+        link.setAttribute("href", url);
         link.setAttribute("download", `${activeRole}_dashboard_export_${new Date().toISOString().split('T')[0]}.csv`);
         link.style.visibility = 'hidden';
         document.body.appendChild(link);
@@ -426,7 +427,7 @@ function Dashboard({ user, error }: DashboardProps) {
   }
   
   const columns = getColumns(isManagerOrAdmin, activeRole, rowSelection, setRowSelection, projects, handleOpenEditDialog, handleAddRowsDialog, visibleColumnKeys);
-  const showSubHeader = !isManagerOrAdmin && totalCount > 0;
+  const showSubHeader = !isManagerOrAdmin && dashboardProjects.length > 0;
   
    const bulkUpdateFields: {
         value: keyof Project;
@@ -613,3 +614,5 @@ function Dashboard({ user, error }: DashboardProps) {
 }
 
 export default Dashboard;
+
+    
