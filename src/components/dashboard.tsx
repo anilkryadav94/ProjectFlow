@@ -62,7 +62,7 @@ function Dashboard({
   const fileInputRef = React.useRef<HTMLInputElement>(null);
   
   const [activeRole, setActiveRole] = React.useState<Role | null>(null);
-  const [projects, setProjects] = React.useState<Project[]>(initialProjects);
+  const [nonManagerProjects, setNonManagerProjects] = React.useState<Project[]>(initialProjects);
   const [search, setSearch] = React.useState('');
   const [searchColumn, setSearchColumn] = React.useState<SearchableColumn>('any');
   
@@ -104,7 +104,7 @@ function Dashboard({
     if (!activeRole || isManagerOrAdmin) return;
     try {
         const updatedProjects = await getProjectsForUser(user.name, user.roles);
-        setProjects(updatedProjects);
+        setNonManagerProjects(updatedProjects);
     } catch (error) {
         console.error("Failed to refresh projects:", error);
         toast({
@@ -133,10 +133,8 @@ function Dashboard({
   }, [user.roles, router, activeRole, searchParams]);
 
   React.useEffect(() => {
-    if (!isManagerOrAdmin) {
-        setProjects(initialProjects);
-    }
-  }, [isManagerOrAdmin, initialProjects]);
+    setNonManagerProjects(initialProjects);
+  }, [initialProjects]);
   
   const loadColumnLayout = (role: Role) => {
     const savedLayout = localStorage.getItem(`columnLayout-${role}`);
@@ -260,7 +258,7 @@ function Dashboard({
   }
 
   const dashboardProjects = React.useMemo(() => {
-    let baseProjects: Project[] = projects;
+    let baseProjects: Project[] = nonManagerProjects;
     
     if (!isManagerOrAdmin) {
         let filtered = baseProjects;
@@ -321,7 +319,7 @@ function Dashboard({
         return filtered;
     }
     return []; // Manager no longer shows table on main dashboard
-  }, [activeRole, user.name, projects, search, searchColumn, sort, clientNameFilter, processFilter, isManagerOrAdmin]);
+  }, [activeRole, user.name, nonManagerProjects, search, searchColumn, sort, clientNameFilter, processFilter, isManagerOrAdmin]);
 
   const clientWorkStatus = React.useMemo(() => {
     const statusByClient: Record<string, {
@@ -490,7 +488,7 @@ function Dashboard({
         )}
         <main className="flex flex-col flex-grow overflow-y-auto transition-opacity duration-300">
              {activeRole === 'Admin' ? (
-                <div className="flex-grow flex flex-col">
+                <div className="flex-grow flex flex-col p-4">
                     <UserManagementTable sessionUser={user} />
                 </div>
             ) : activeRole === 'Manager' ? (
@@ -601,7 +599,7 @@ function Dashboard({
                 </Accordion>
               </div>
             ) : (
-                 <div className="flex-grow flex flex-col">
+                 <div className="flex-grow flex flex-col p-4">
                      <DataTable 
                         data={dashboardProjects}
                         columns={columns}
@@ -621,3 +619,5 @@ function Dashboard({
 }
 
 export default Dashboard;
+
+    
