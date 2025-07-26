@@ -24,6 +24,7 @@ import { differenceInBusinessDays } from 'date-fns';
 import { ProjectInsights } from './project-insights';
 import { getUsers } from '@/lib/auth';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import { WorkStatusChart } from './work-status-chart';
 
 interface DashboardProps {
   user: User;
@@ -115,6 +116,7 @@ function Dashboard({ user, error }: DashboardProps) {
         return;
     };
     
+    setIsLoading(true);
     try {
         const result = await getPaginatedProjects({
             page: currentPage,
@@ -133,6 +135,8 @@ function Dashboard({ user, error }: DashboardProps) {
         toast({ title: "Error", description: `Could not fetch project data. ${error}`, variant: "destructive" });
         setProjects([]);
         setTotalCount(0);
+    } finally {
+        setIsLoading(false);
     }
   }, [user, toast]);
 
@@ -164,7 +168,7 @@ function Dashboard({ user, error }: DashboardProps) {
             });
 
             // Fetch initial project data for the determined role.
-            if (newActiveRole && newActiveRole !== 'Manager' && newActiveRole !== 'Admin') {
+            if (newActiveRole && !isManagerOrAdmin) {
                 await fetchPageData(newActiveRole, 1, sort, {});
             }
 
@@ -177,27 +181,32 @@ function Dashboard({ user, error }: DashboardProps) {
     };
     
     initializeDashboard();
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [user.roles, searchParams]); // Run only when user or params change
 
   // Fetch projects data when dependencies change
   React.useEffect(() => {
-    if (activeRole && !isLoading) { // Don't fetch if initial load is happening
-      if (isManagerOrAdmin) {
-        // Manager/Admin view doesn't load data initially. It waits for search.
+    // This effect should not run on initial render or when another primary fetch is in progress.
+    if (isLoading || !activeRole) return;
+    
+    // Manager/Admin view doesn't load data initially. It waits for search.
+    if (isManagerOrAdmin) {
         setProjects([]);
         setTotalCount(0);
         setTotalPages(1);
-      } else {
-        const filters = {
-            quickSearch: search,
-            searchColumn: searchColumn,
-            clientName: clientNameFilter,
-            process: processFilter
-        };
-        fetchPageData(activeRole, page, sort, filters);
-      }
+        return;
     }
-  }, [activeRole, page, sort, search, searchColumn, clientNameFilter, processFilter, isManagerOrAdmin, isLoading]);
+
+    const filters = {
+        quickSearch: search,
+        searchColumn: searchColumn,
+        clientName: clientNameFilter,
+        process: processFilter
+    };
+    fetchPageData(activeRole, page, sort, filters);
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [activeRole, page, sort, search, searchColumn, clientNameFilter, processFilter]);
+
 
   const saveColumnLayout = (role: Role) => {
     localStorage.setItem(`columnLayout-${role}`, JSON.stringify(visibleColumnKeys));
@@ -312,10 +321,6 @@ function Dashboard({ user, error }: DashboardProps) {
   }
 
   const dashboardProjects = React.useMemo(() => {
-    // For manager/admin and roles with server-side pagination, return data as is.
-    if (isManagerOrAdmin || totalPages > 1) return projects; 
-    
-    // For roles with client-side filtering (after fetching all their data)
     let filtered = [...projects];
 
     if (activeRole === 'Processor') {
@@ -330,30 +335,34 @@ function Dashboard({ user, error }: DashboardProps) {
     }
     
     return filtered;
-  }, [projects, activeRole, isManagerOrAdmin, totalPages]);
+  }, [projects, activeRole]);
 
 
   const sortedDashboardProjects = React.useMemo(() => {
-        const sorted = [...dashboardProjects];
-        sorted.sort((a, b) => {
-            const key = sort.key as keyof Project;
-            const aValue = a[key];
-            const bValue = b[key];
+    if (isManagerOrAdmin || totalPages > 1) {
+        return projects; // Server-side sorting is already applied
+    }
+    
+    const sorted = [...dashboardProjects];
+    sorted.sort((a, b) => {
+        const key = sort.key as keyof Project;
+        const aValue = a[key];
+        const bValue = b[key];
 
-            if (aValue === null || aValue === undefined) return 1;
-            if (bValue === null || bValue === undefined) return -1;
-            
-            let comparison = 0;
-            if (typeof aValue === 'string' && typeof bValue === 'string') {
-                comparison = aValue.localeCompare(bValue);
-            } else if (typeof aValue === 'number' && typeof bValue === 'number') {
-                comparison = aValue - bValue;
-            }
+        if (aValue === null || aValue === undefined) return 1;
+        if (bValue === null || bValue === undefined) return -1;
+        
+        let comparison = 0;
+        if (typeof aValue === 'string' && typeof bValue === 'string') {
+            comparison = aValue.localeCompare(bValue);
+        } else if (typeof aValue === 'number' && typeof bValue === 'number') {
+            comparison = aValue - bValue;
+        }
 
-            return sort.direction === 'asc' ? comparison : -comparison;
-        });
-        return sorted;
-    }, [dashboardProjects, sort]);
+        return sort.direction === 'asc' ? comparison : -comparison;
+    });
+    return sorted;
+  }, [dashboardProjects, sort, projects, isManagerOrAdmin, totalPages]);
 
 
   const caseManagerTatInfo = React.useMemo(() => {
@@ -539,6 +548,14 @@ function Dashboard({ user, error }: DashboardProps) {
                            </Card>
                         </AccordionContent>
                     </AccordionItem>
+                     <AccordionItem value="work-status" className="border-0 bg-muted/30 shadow-md mb-4 rounded-lg">
+                        <AccordionTrigger className="px-4 py-3 hover:no-underline">Work Status Overview</AccordionTrigger>
+                        <AccordionContent className="p-4 pt-0">
+                           <div>
+                             <WorkStatusChart />
+                           </div>
+                        </AccordionContent>
+                    </AccordionItem>
                       <AccordionItem value="ai-insights" className="border-0 bg-muted/30 shadow-md mb-4 rounded-lg">
                         <AccordionTrigger className="px-4 py-3 hover:no-underline">AI Project Insights</AccordionTrigger>
                         <AccordionContent className="p-4 pt-0">
@@ -615,5 +632,3 @@ function Dashboard({ user, error }: DashboardProps) {
 }
 
 export default Dashboard;
-
-    
