@@ -307,10 +307,12 @@ export async function getPaginatedProjects(options: {
     
     let queryConstraints: QueryConstraint[] = [];
     const dateFields = ['received_date', 'allocation_date', 'processing_date', 'qa_date', 'reportout_date', 'client_response_date'];
-    const textSearchableFields = ['row_number', 'ref_number', 'application_number', 'patent_number', 'client_name', 'process', 'processor', 'qa', 'case_manager', 'subject_line'];
+    
+    let isAdvancedFilterActive = false;
 
     // Apply advanced filters
     if (filters.advanced && filters.advanced.length > 0) {
+        const andConstraints: QueryConstraint[] = [];
         filters.advanced.forEach(criterion => {
             if (!criterion.field || !criterion.operator) return;
 
@@ -323,35 +325,39 @@ export async function getPaginatedProjects(options: {
             switch (criterion.operator) {
                 case 'equals':
                 case 'dateEquals':
-                    queryConstraints.push(where(criterion.field, '==', value));
+                    andConstraints.push(where(criterion.field, '==', value));
                     break;
                 case 'in':
                      const values = typeof value === 'string' ? value.split(',').map(s => s.trim()) : [];
                      if (values.length > 0) {
-                        queryConstraints.push(where(criterion.field, 'in', values));
+                        andConstraints.push(where(criterion.field, 'in', values));
                      }
                     break;
                 case 'startsWith':
-                    queryConstraints.push(where(criterion.field, '>=', value));
-                    queryConstraints.push(where(criterion.field, '<=', value + '\uf8ff'));
+                    andConstraints.push(where(criterion.field, '>=', value));
+                    andConstraints.push(where(criterion.field, '<=', value + '\uf8ff'));
                     break;
                 case 'contains':
                      // Firestore does not support 'contains' natively. Using startsWith as a workaround.
-                     queryConstraints.push(where(criterion.field, '>=', value));
-                     queryConstraints.push(where(criterion.field, '<=', value + '\uf8ff'));
+                     andConstraints.push(where(criterion.field, '>=', value));
+                     andConstraints.push(where(criterion.field, '<=', value + '\uf8ff'));
                     break;
                 case 'blank':
-                    queryConstraints.push(where(criterion.field, '==', null));
+                    andConstraints.push(where(criterion.field, '==', null));
                     break;
             }
         });
+
+        if (andConstraints.length > 0) {
+            isAdvancedFilterActive = true;
+            queryConstraints.push(...andConstraints); // Use spread instead of and() for multiple where on different fields
+        }
     }
     // Apply quick search filter if advanced filter is not active
     else if (filters.quickSearch && filters.searchColumn) {
         if (filters.searchColumn === 'any') {
-            // Firestore doesn't support OR queries on multiple fields efficiently without composite indexes.
             // This is a limitation. For a real "search anywhere" experience, a dedicated search service is needed.
-            // As a simple workaround, we will search on a primary field like 'row_number' or 'ref_number'.
+            // As a simple workaround, we will search on a primary field like 'row_number'.
             queryConstraints.push(where('row_number', '>=', filters.quickSearch));
             queryConstraints.push(where('row_number', '<=', filters.quickSearch + '\uf8ff'));
         } else {
@@ -361,10 +367,16 @@ export async function getPaginatedProjects(options: {
     }
     
     // Apply sorting
-    if (sort.key && sort.key !== 'id') { // 'id' is not a field in docs
+    if (isAdvancedFilterActive && filters.advanced && filters.advanced[0]?.field) {
+        // If there's an advanced filter, we MUST sort by the field we are filtering on to avoid needing a composite index.
+        // We will sort by the first filter criterion's field.
+        queryConstraints.push(orderBy(filters.advanced[0].field, sort.direction));
+    } else if (sort.key && sort.key !== 'id' && !isAdvancedFilterActive) {
+        // Only apply user-defined sort if no advanced filter is active.
         queryConstraints.push(orderBy(sort.key, sort.direction));
     } else {
-        queryConstraints.push(orderBy('row_number', 'desc')); // Default sort
+        // Default sort.
+        queryConstraints.push(orderBy('row_number', 'desc')); 
     }
 
     // Get total count for pagination based on the same filters
