@@ -19,7 +19,6 @@ import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from './
 import { EditProjectDialog } from './edit-project-dialog';
 import { AddRowsDialog } from './add-rows-dialog';
 import { getPaginatedProjects, addRows, getProjectsForExport } from '@/app/actions';
-import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from './ui/table';
 import { ColumnSelectDialog } from './column-select-dialog';
 import { differenceInBusinessDays } from 'date-fns';
 import { ProjectInsights } from './project-insights';
@@ -43,44 +42,43 @@ function Dashboard({ user, error }: DashboardProps) {
   const router = useRouter();
   const fileInputRef = React.useRef<HTMLInputElement>(null);
   
+  // Overall loading state for the entire component
+  const [isLoading, setIsLoading] = React.useState(true);
+  
+  // Role and UI states
   const [activeRole, setActiveRole] = React.useState<Role | null>(null);
   const [isSwitching, setIsSwitching] = React.useState(false);
   const [switchingToRole, setSwitchingToRole] = React.useState<Role | null>(null);
   
-  // States for server-side pagination and filtering
+  // Server-fetched data states
   const [projects, setProjects] = React.useState<Project[]>([]);
   const [totalCount, setTotalCount] = React.useState(0);
   const [totalPages, setTotalPages] = React.useState(1);
-  const [page, setPage] = React.useState(1);
-  const [isLoading, setIsLoading] = React.useState(true);
-  
-  // States for UI controls
-  const [sort, setSort] = React.useState<{ key: keyof Project; direction: 'asc' | 'desc' }>({ key: 'row_number', direction: 'desc' });
-  const [search, setSearch] = React.useState('');
-  const [searchColumn, setSearchColumn] = React.useState<SearchableColumn>('any');
-  const [clientNameFilter, setClientNameFilter] = React.useState('all');
-  const [processFilter, setProcessFilter] = React.useState<string | 'all'>('all');
-
-  const [rowSelection, setRowSelection] = React.useState<Record<string, boolean>>({});
-
-  const [selectedFile, setSelectedFile] = React.useState<File | null>(null);
-  const [isUploading, setIsUploading] = React.useState(false);
-  
-  const [isEditDialogOpen, setIsEditDialogOpen] = React.useState(false);
-  const [editingProject, setEditingProject] = React.useState<Project | null>(null);
-
-  const [isAddRowsDialogOpen, setIsAddRowsDialogOpen] = React.useState(false);
-  const [sourceProject, setSourceProject] = React.useState<Project | null>(null);
-  
-  // Dropdown options states
   const [clientNames, setClientNames] = React.useState<string[]>([]);
   const [processors, setProcessors] = React.useState<string[]>([]);
   const [qas, setQas] = React.useState<string[]>([]);
   const [caseManagers, setCaseManagers] = React.useState<string[]>([]);
   const [processes, setProcesses] = React.useState<ProcessType[]>([]);
 
+  // UI control states
+  const [page, setPage] = React.useState(1);
+  const [sort, setSort] = React.useState<{ key: keyof Project; direction: 'asc' | 'desc' }>({ key: 'row_number', direction: 'desc' });
+  const [search, setSearch] = React.useState('');
+  const [searchColumn, setSearchColumn] = React.useState<SearchableColumn>('any');
+  const [clientNameFilter, setClientNameFilter] = React.useState('all');
+  const [processFilter, setProcessFilter] = React.useState<string | 'all'>('all');
+  const [rowSelection, setRowSelection] = React.useState<Record<string, boolean>>({});
+  const [selectedFile, setSelectedFile] = React.useState<File | null>(null);
+  const [isUploading, setIsUploading] = React.useState(false);
+  
+  // Dialog states
+  const [isEditDialogOpen, setIsEditDialogOpen] = React.useState(false);
+  const [editingProject, setEditingProject] = React.useState<Project | null>(null);
+  const [isAddRowsDialogOpen, setIsAddRowsDialogOpen] = React.useState(false);
+  const [sourceProject, setSourceProject] = React.useState<Project | null>(null);
   const [isColumnSelectOpen, setIsColumnSelectOpen] = React.useState(false);
 
+  // Column visibility states
   const defaultProcessorQAColumns = [ 'actions', 'row_number', 'ref_number', 'client_name', 'process', 'processor', 'sender', 'subject_line', 'received_date', 'case_manager', 'allocation_date', 'processing_date', 'processing_status', 'qa_status', 'workflowStatus' ];
   const defaultCaseManagerColumns = [ 'actions', 'row_number', 'ref_number', 'application_number', 'country', 'patent_number', 'sender', 'subject_line', 'client_query_description', 'client_comments', 'clientquery_status', 'case_manager', 'qa_date', 'client_response_date' ];
   const defaultManagerAdminColumns = [ 'select', 'actions', 'row_number', 'ref_number', 'client_name', 'process', 'processor', 'qa', 'case_manager', 'workflowStatus', 'processing_status', 'qa_status', 'received_date', 'allocation_date', 'processing_date', 'qa_date' ];
@@ -90,10 +88,12 @@ function Dashboard({ user, error }: DashboardProps) {
   
   const isManagerOrAdmin = React.useMemo(() => activeRole === 'Manager' || activeRole === 'Admin', [activeRole]);
 
-  const fetchDropdownData = React.useCallback(async () => {
+  const fetchInitialData = React.useCallback(async () => {
     try {
-        const allUsers = await getUsers();
-        const projForDropDowns = await getPaginatedProjects({ page: 1, limit: 1000, filters: {}, sort: { key: 'client_name', direction: 'asc' }});
+        const [allUsers, projForDropDowns] = await Promise.all([
+            getUsers(),
+            getPaginatedProjects({ page: 1, limit: 1000, filters: {}, sort: { key: 'client_name', direction: 'asc' }})
+        ]);
 
         setClientNames([...new Set(projForDropDowns.projects.map(p => p.client_name).filter(Boolean))].sort());
         setProcesses([...new Set(projForDropDowns.projects.map(p => p.process).filter(Boolean))].sort() as ProcessType[]);
@@ -105,10 +105,11 @@ function Dashboard({ user, error }: DashboardProps) {
         toast({ title: "Error", description: "Could not load filter options.", variant: "destructive" });
     }
   }, [toast]);
-
+  
   const fetchProjects = React.useCallback(async (role: Role, currentPage: number, currentSort: typeof sort, currentFilters: any) => {
     if (!user || role === 'Admin') {
         setProjects([]);
+        setTotalCount(0);
         setIsLoading(false);
         return;
     };
@@ -123,12 +124,9 @@ function Dashboard({ user, error }: DashboardProps) {
             user,
         });
 
-        if (isManagerOrAdmin || result.totalPages > 1) { // Server-side pagination
-            setProjects(result.projects);
-            setTotalCount(result.totalCount);
-            setTotalPages(result.totalPages);
-        } else { // Client-side pagination/sorting for role views
-            const sortedProjects = result.projects.sort((a, b) => {
+        // For non-paginated role views, we sort client-side
+        if (result.totalPages === 1 && !isManagerOrAdmin) {
+            const sortedProjects = [...result.projects].sort((a, b) => {
                 const key = currentSort.key as keyof Project;
                 const aValue = a[key];
                 const bValue = b[key];
@@ -146,9 +144,11 @@ function Dashboard({ user, error }: DashboardProps) {
                 return currentSort.direction === 'asc' ? comparison : -comparison;
             });
             setProjects(sortedProjects);
-            setTotalCount(sortedProjects.length);
-            setTotalPages(1);
+        } else {
+             setProjects(result.projects);
         }
+        setTotalCount(result.totalCount);
+        setTotalPages(result.totalPages);
     } catch (error) {
         console.error("Failed to fetch projects:", error);
         toast({ title: "Error", description: `Could not fetch project data. ${error}`, variant: "destructive" });
@@ -159,6 +159,7 @@ function Dashboard({ user, error }: DashboardProps) {
     }
   }, [user, toast, isManagerOrAdmin]);
 
+  // Effect to set initial role and load initial dropdown data
   React.useEffect(() => {
     const highestRole = roleHierarchy.find(role => user.roles.includes(role)) || user.roles[0];
     const urlRole = searchParams.get('role') as Role | null;
@@ -166,19 +167,20 @@ function Dashboard({ user, error }: DashboardProps) {
 
     if (newActiveRole !== activeRole) {
         setActiveRole(newActiveRole);
-        setIsLoading(true);
         loadColumnLayout(newActiveRole);
-        if ((newActiveRole === 'Manager' || newActiveRole === 'Admin') || clientNames.length === 0) {
-          fetchDropdownData();
-        }
     }
-  }, [user.roles, searchParams, activeRole, fetchDropdownData, clientNames.length]);
+    
+    // Fetch dropdowns only once
+    if (clientNames.length === 0) {
+      fetchInitialData();
+    }
+  }, [user.roles, searchParams, activeRole, fetchInitialData, clientNames.length]);
 
-  // Fetch data when role, page, sort, or filters change
+  // Fetch projects data when dependencies change
   React.useEffect(() => {
     if (activeRole) {
       if (isManagerOrAdmin) {
-        // Manager/Admin view is handled differently (no initial data load)
+        // Manager/Admin view doesn't load data initially. It waits for search.
         setProjects([]);
         setTotalCount(0);
         setTotalPages(1);
@@ -214,14 +216,7 @@ function Dashboard({ user, error }: DashboardProps) {
   const handleRoleSwitch = (role: Role) => {
     setIsSwitching(true);
     setSwitchingToRole(role);
-    setPage(1); // Reset page on role switch
-    setSort({ key: 'row_number', direction: 'desc' }); // Reset sort
     router.push(`/?role=${role}`);
-    // A short delay isn't ideal, but it gives time for the push to take effect before re-render
-    setTimeout(() => {
-      setIsSwitching(false);
-      setSwitchingToRole(null);
-    }, 500);
   };
 
   const handleFileSelect = (event: React.ChangeEvent<HTMLInputElement>) => {
@@ -294,8 +289,7 @@ function Dashboard({ user, error }: DashboardProps) {
         params.set('searchColumn', searchColumn);
         router.push(`/search?${params.toString()}`);
     } else if (activeRole) {
-        // For other roles, just trigger a re-fetch with new search term
-        setPage(1); // Reset to page 1 for new search
+        setPage(1); 
         fetchProjects(activeRole, 1, sort, { quickSearch: search, searchColumn });
     }
   };
@@ -326,7 +320,6 @@ function Dashboard({ user, error }: DashboardProps) {
     document.body.removeChild(link);
   }
 
-  // Client-side status filtering for role-based views
   const dashboardProjects = React.useMemo(() => {
     if (isManagerOrAdmin || totalPages > 1) return projects; // Use server data directly for managers or paginated results
     
@@ -366,7 +359,7 @@ function Dashboard({ user, error }: DashboardProps) {
             process: processFilter,
             roleFilter: activeRole ? { role: activeRole, userName: user.name } : undefined
         };
-        // Fetch ALL projects for the role for export, not just the current page
+        
         const projectsToExport = await getProjectsForExport({ filters, sort, user });
         setIsLoading(false);
 
@@ -386,12 +379,16 @@ function Dashboard({ user, error }: DashboardProps) {
         document.body.removeChild(link);
   };
   
-  if (isLoading || !activeRole || isSwitching) {
+  if (isLoading || !activeRole) {
     return (
         <div className="flex h-screen w-full items-center justify-center bg-background">
             <div className="flex flex-col items-center gap-4">
                 <Loader2 className="h-12 w-12 animate-spin text-primary" />
-                {isSwitching && <p className="text-lg text-muted-foreground">Opening {switchingToRole} Dashboard...</p>}
+                {isSwitching ? (
+                  <p className="text-lg text-muted-foreground">Opening {switchingToRole} Dashboard...</p>
+                ) : (
+                  <p className="text-lg text-muted-foreground">Loading Dashboard...</p>
+                )}
             </div>
         </div>
     );
@@ -534,5 +531,3 @@ function Dashboard({ user, error }: DashboardProps) {
 }
 
 export default Dashboard;
-
-    

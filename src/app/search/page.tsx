@@ -25,15 +25,8 @@ interface SearchResultsState {
     projects: Project[];
     totalCount: number;
     totalPages: number;
-    user: User | null;
-    page: number;
     sort: { key: keyof Project, direction: 'asc' | 'desc' };
-    loading: boolean;
-    clientNames: string[];
-    processors: string[];
-    qas: string[];
-    caseManagers: string[];
-    processes: ProcessType[];
+    page: number;
 }
 
 export default function SearchResultsPage() {
@@ -41,40 +34,40 @@ export default function SearchResultsPage() {
     const router = useRouter();
     const { toast } = useToast();
 
-    const [state, setState] = React.useState<SearchResultsState>({
-        projects: [],
-        totalCount: 0,
-        totalPages: 1,
-        user: null,
-        page: 1,
-        sort: { key: 'row_number', direction: 'desc' },
-        loading: true,
-        clientNames: [],
-        processors: [],
-        qas: [],
-        caseManagers: [],
-        processes: [],
-    });
-    
-    const [isDownloading, setIsDownloading] = React.useState(false);
-    
-    const [rowSelection, setRowSelection] = React.useState<Record<string, boolean>>({});
-    const [isColumnSelectOpen, setIsColumnSelectOpen] = React.useState(false);
-    const [visibleColumnKeys, setVisibleColumnKeys] = React.useState<string[]>([]);
-    
-    const [isEditDialogOpen, setIsEditDialogOpen] = React.useState(false);
-    const [editingProject, setEditingProject] = React.useState<Project | null>(null);
-
-    const [isAddRowsDialogOpen, setIsAddRowsDialogOpen] = React.useState(false);
-    const [sourceProject, setSourceProject] = React.useState<Project | null>(null);
-    
-    const [bulkUpdateField, setBulkUpdateField] = React.useState<keyof Project>('processor');
-    const [bulkUpdateValue, setBulkUpdateValue] = React.useState('');
-    const [isBulkUpdating, setIsBulkUpdating] = React.useState(false);
-
+    // Consolidated loading state
+    const [isLoading, setIsLoading] = React.useState(true);
     const [isSwitching, setIsSwitching] = React.useState(false);
     const [switchingToRole, setSwitchingToRole] = React.useState<Role | null>(null);
 
+    // Data state
+    const [user, setUser] = React.useState<User | null>(null);
+    const [dataState, setDataState] = React.useState<SearchResultsState>({
+        projects: [],
+        totalCount: 0,
+        totalPages: 1,
+        page: 1,
+        sort: { key: 'row_number', direction: 'desc' },
+    });
+    const [dropdownOptions, setDropdownOptions] = React.useState({
+        clientNames: [] as string[],
+        processors: [] as string[],
+        qas: [] as string[],
+        caseManagers: [] as string[],
+        processes: [] as ProcessType[],
+    });
+
+    // UI state
+    const [isDownloading, setIsDownloading] = React.useState(false);
+    const [rowSelection, setRowSelection] = React.useState<Record<string, boolean>>({});
+    const [isColumnSelectOpen, setIsColumnSelectOpen] = React.useState(false);
+    const [visibleColumnKeys, setVisibleColumnKeys] = React.useState<string[]>([]);
+    const [isEditDialogOpen, setIsEditDialogOpen] = React.useState(false);
+    const [editingProject, setEditingProject] = React.useState<Project | null>(null);
+    const [isAddRowsDialogOpen, setIsAddRowsDialogOpen] = React.useState(false);
+    const [sourceProject, setSourceProject] = React.useState<Project | null>(null);
+    const [bulkUpdateField, setBulkUpdateField] = React.useState<keyof Project>('processor');
+    const [bulkUpdateValue, setBulkUpdateValue] = React.useState('');
+    const [isBulkUpdating, setIsBulkUpdating] = React.useState(false);
 
     const loadColumnLayout = (role: Role) => {
         const savedLayout = localStorage.getItem(`columnLayout-${role}`);
@@ -88,7 +81,7 @@ export default function SearchResultsPage() {
     };
 
     const saveColumnLayout = () => {
-        if (state.user?.roles.includes('Manager')) {
+        if (user?.roles.includes('Manager')) {
             localStorage.setItem(`columnLayout-Manager`, JSON.stringify(visibleColumnKeys));
             toast({
                 title: "Layout Saved",
@@ -97,8 +90,8 @@ export default function SearchResultsPage() {
         }
     };
 
-    const fetchPageData = React.useCallback(async (user: User) => {
-        setState(s => ({ ...s, loading: true }));
+    const fetchPageData = React.useCallback(async () => {
+        setIsLoading(true);
         try {
             const page = parseInt(searchParams.get('page') || '1', 10);
             const sortKey = (searchParams.get('sort') || 'row_number') as keyof Project;
@@ -121,31 +114,26 @@ export default function SearchResultsPage() {
                 getUsers()
             ]);
             
-            const clientNames = [...new Set(allUsers.map(u => u.name).filter(Boolean))].sort();
-            const processors = allUsers.filter(u => u.roles.includes('Processor')).map(u => u.name).sort();
-            const qas = allUsers.filter(u => u.roles.includes('QA')).map(u => u.name).sort();
-            const caseManagers = allUsers.filter(u => u.roles.includes('Case Manager')).map(u => u.name).sort();
-            const processes = ['Patent', 'TM', 'IDS', 'Project'] as ProcessType[];
+            setDropdownOptions({
+                clientNames: [...new Set(allUsers.map(u => u.name).filter(Boolean))].sort(),
+                processors: allUsers.filter(u => u.roles.includes('Processor')).map(u => u.name).sort(),
+                qas: allUsers.filter(u => u.roles.includes('QA')).map(u => u.name).sort(),
+                caseManagers: allUsers.filter(u => u.roles.includes('Case Manager')).map(u => u.name).sort(),
+                processes: ['Patent', 'TM', 'IDS', 'Project'] as ProcessType[],
+            });
 
-            setState({
+            setDataState({
                 projects,
                 totalCount,
                 totalPages,
-                user,
                 page,
                 sort: { key: sortKey, direction: sortDir },
-                loading: false,
-                clientNames,
-                processors,
-                qas,
-                caseManagers,
-                processes,
             });
-
         } catch (err) {
             console.error("Error fetching search results:", err);
             toast({ title: "Error", description: "Could not load search results.", variant: "destructive" });
-            setState(s => ({ ...s, loading: false }));
+        } finally {
+            setIsLoading(false);
         }
     }, [searchParams, toast]);
     
@@ -154,9 +142,9 @@ export default function SearchResultsPage() {
             if (fbUser) {
                 const session = await getSession();
                 if (session) {
-                    setState(s => ({...s, user: session.user}));
-                    loadColumnLayout('Manager');
-                    fetchPageData(session.user);
+                    setUser(session.user);
+                    loadColumnLayout('Manager'); // Search page is a Manager view
+                    fetchPageData();
                 } else {
                     router.push('/login');
                 }
@@ -229,7 +217,7 @@ export default function SearchResultsPage() {
             const result = await bulkUpdateProjects({ projectIds, field: bulkUpdateField, value: bulkUpdateValue });
             if (result.success) {
                 toast({ title: "Success", description: `${projectIds.length} projects have been updated.` });
-                if(state.user) fetchPageData(state.user); // Refresh data
+                fetchPageData(); // Refresh data
                 setRowSelection({});
                 setBulkUpdateValue('');
             } else {
@@ -264,24 +252,26 @@ export default function SearchResultsPage() {
         options: readonly string[] | string[];
         type: 'select';
       }[] = [
-        { value: 'processor', label: 'Processor', options: state.processors, type: 'select' },
-        { value: 'qa', label: 'QA', options: state.qas, type: 'select' },
-        { value: 'case_manager', label: 'Case Manager', options: state.caseManagers, type: 'select' },
-        { value: 'client_name', label: 'Client Name', options: state.clientNames, type: 'select' },
-        { value: 'process', label: 'Process', options: state.processes, type: 'select' },
+        { value: 'processor', label: 'Processor', options: dropdownOptions.processors, type: 'select' },
+        { value: 'qa', label: 'QA', options: dropdownOptions.qas, type: 'select' },
+        { value: 'case_manager', label: 'Case Manager', options: dropdownOptions.caseManagers, type: 'select' },
+        { value: 'client_name', label: 'Client Name', options: dropdownOptions.clientNames, type: 'select' },
+        { value: 'process', label: 'Process', options: dropdownOptions.processes, type: 'select' },
       ];
     const selectedBulkUpdateField = bulkUpdateFields.find(f => f.value === bulkUpdateField);
 
 
-    if (state.loading || !state.user || visibleColumnKeys.length === 0 || isSwitching) {
+    if (isLoading || !user || visibleColumnKeys.length === 0) {
         return (
             <div className="flex h-screen w-full items-center justify-center bg-background">
                 <div className="flex flex-col items-center gap-4">
                     <Loader2 className="h-12 w-12 animate-spin text-primary" />
-                    {isSwitching && (
+                    {isSwitching ? (
                          <p className="text-lg text-muted-foreground">
                             Opening {switchingToRole} Dashboard...
                         </p>
+                    ) : (
+                        <p className="text-lg text-muted-foreground">Loading Search Results...</p>
                     )}
                 </div>
             </div>
@@ -293,13 +283,13 @@ export default function SearchResultsPage() {
         'Manager',
         rowSelection, 
         setRowSelection, 
-        state.projects,
+        dataState.projects,
         handleOpenEditDialog,
         handleAddRowsDialog,
         visibleColumnKeys
     );
     
-    const showSubHeader = state.totalCount > 0;
+    const showSubHeader = dataState.totalCount > 0;
 
     return (
         <div className="flex flex-col h-screen bg-background w-full">
@@ -308,13 +298,13 @@ export default function SearchResultsPage() {
                     isOpen={isEditDialogOpen}
                     onOpenChange={setIsEditDialogOpen}
                     project={editingProject}
-                    onUpdateSuccess={() => { if(state.user) fetchPageData(state.user) }}
+                    onUpdateSuccess={fetchPageData}
                     userRole={'Manager'}
-                    clientNames={state.clientNames}
-                    processors={state.processors}
-                    qas={state.qas}
-                    caseManagers={state.caseManagers}
-                    processes={state.processes}
+                    clientNames={dropdownOptions.clientNames}
+                    processors={dropdownOptions.processors}
+                    qas={dropdownOptions.qas}
+                    caseManagers={dropdownOptions.caseManagers}
+                    processes={dropdownOptions.processes}
                 />
             )}
             {sourceProject && (
@@ -322,7 +312,7 @@ export default function SearchResultsPage() {
                 isOpen={isAddRowsDialogOpen}
                 onOpenChange={setIsAddRowsDialogOpen}
                 sourceProject={sourceProject}
-                onAddRowsSuccess={() => { if(state.user) fetchPageData(state.user) }}
+                onAddRowsSuccess={fetchPageData}
               />
             )}
             <ColumnSelectDialog
@@ -334,12 +324,12 @@ export default function SearchResultsPage() {
             />
 
             <Header 
-                user={state.user}
+                user={user}
                 activeRole="Manager"
                 setActiveRole={handleRoleSwitch}
                 isManagerOrAdmin={true}
-                clientNames={state.clientNames}
-                processes={state.processes}
+                clientNames={dropdownOptions.clientNames}
+                processes={dropdownOptions.processes}
                 showManagerSearch={false}
             />
             
@@ -361,7 +351,7 @@ export default function SearchResultsPage() {
                             variant="outline" 
                             className="h-7 px-2 text-xs" 
                             onClick={handleDownload} 
-                            disabled={state.totalCount === 0 || isDownloading}
+                            disabled={dataState.totalCount === 0 || isDownloading}
                             title="Download CSV"
                         >
                             {isDownloading ? <Loader2 className="mr-1.5 h-3.5 w-3.5 animate-spin" /> : <FileSpreadsheet className="mr-1.5 h-3.5 w-3.5" />}
@@ -411,19 +401,19 @@ export default function SearchResultsPage() {
                     )}
                     <div className="flex-grow">
                         <DataTable 
-                            data={state.projects}
+                            data={dataState.projects}
                             columns={columns}
-                            sort={state.sort}
-                            setSort={(newSort) => setState(s => ({ ...s, sort: newSort as any }))}
+                            sort={dataState.sort}
+                            setSort={(newSort) => setDataState(s => ({ ...s, sort: newSort as any }))}
                             rowSelection={rowSelection}
                             setRowSelection={setRowSelection}
                             isManagerOrAdmin={true}
-                            totalCount={state.totalCount}
+                            totalCount={dataState.totalCount}
                             activeRole="Manager"
-                            page={state.page}
-                            totalPages={state.totalPages}
+                            page={dataState.page}
+                            totalPages={dataState.totalPages}
                             onPageChange={handlePageChange}
-                            isFetching={state.loading}
+                            isFetching={isLoading}
                         />
                     </div>
                 </div>
@@ -431,5 +421,3 @@ export default function SearchResultsPage() {
         </div>
     );
 }
-
-    
