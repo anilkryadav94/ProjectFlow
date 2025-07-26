@@ -298,12 +298,25 @@ function buildFilterConstraints(
         advanced?: { field: string; operator: string; value: any }[] | null;
         clientName?: string;
         process?: string;
+        roleFilter?: { role: Role; userName: string };
     }
 ): QueryConstraint[] {
     const queryConstraints: QueryConstraint[] = [];
     const dateFields = ['received_date', 'allocation_date', 'processing_date', 'qa_date', 'reportout_date', 'client_response_date'];
     
     const andConstraints: QueryConstraint[] = [];
+
+    // --- Role-based filters ---
+    if (filters.roleFilter) {
+        const { role, userName } = filters.roleFilter;
+        if (role === 'Processor') {
+            andConstraints.push(where("processor", "==", userName));
+        } else if (role === 'QA') {
+            andConstraints.push(where("qa", "==", userName));
+        } else if (role === 'Case Manager') {
+            andConstraints.push(where("case_manager", "==", userName));
+        }
+    }
 
     // --- Client Name & Process filters (from header dropdowns) ---
     if (filters.clientName && filters.clientName !== 'all') {
@@ -370,7 +383,7 @@ function buildFilterConstraints(
     return queryConstraints;
 }
 
-// Server-side pagination and filtering
+// Server-side pagination and filtering for ALL roles
 export async function getPaginatedProjects(options: {
     page: number;
     limit: number;
@@ -383,43 +396,13 @@ export async function getPaginatedProjects(options: {
         process?: string;
     };
     sort: { key: string, direction: 'asc' | 'desc' };
-    user?: User;
 }) {
-    const { page, limit: pageSize, filters, sort, user } = options;
+    const { page, limit: pageSize, filters, sort } = options;
     const projectsCollection = collection(db, "projects");
 
-    const { roleFilter, ...otherFilters } = filters;
+    // Build all filter constraints together, including role filters
+    let queryConstraints = buildFilterConstraints(filters);
     
-    // For role-based views, we fetch ALL projects for that user and paginate/sort on the client
-    // This avoids complex composite indexes in Firestore.
-    if (roleFilter && user) {
-        let roleQueryConstraints: QueryConstraint[] = [];
-        const { role, userName } = roleFilter;
-        if (role === 'Processor') {
-            roleQueryConstraints.push(where("processor", "==", userName));
-        } else if (role === 'QA') {
-            roleQueryConstraints.push(where("qa", "==", userName));
-        } else if (role === 'Case Manager') {
-            roleQueryConstraints.push(where("case_manager", "==", userName));
-        }
-
-        const roleQuery = query(projectsCollection, ...roleQueryConstraints);
-        const snapshot = await getDocs(roleQuery);
-        const projectList = snapshot.docs.map(doc => ({
-            id: doc.id,
-            ...convertTimestampsToDates(doc.data())
-        } as Project));
-        
-        return {
-            projects: projectList,
-            totalCount: projectList.length,
-            totalPages: 1, // Client-side will handle actual pagination
-        };
-    }
-    
-    // For Manager/Admin/Search views, we use server-side pagination and sorting
-    let queryConstraints = buildFilterConstraints(otherFilters);
-
     // Get total count for pagination based on the same filters
     const countQuery = query(projectsCollection, ...queryConstraints);
     const totalCountSnapshot = await getCountFromServer(countQuery);
@@ -429,12 +412,16 @@ export async function getPaginatedProjects(options: {
     if (sort.key && sort.key !== 'id') {
         queryConstraints.push(orderBy(sort.key, sort.direction));
     } else {
+        // Default sort if none provided
         queryConstraints.push(orderBy('row_number', 'desc')); 
     }
 
     // --- Pagination ---
     if (page > 1) {
-        const tempPaginationQuery = query(projectsCollection, ...queryConstraints, limit((page - 1) * pageSize));
+        // To get the last document of the previous page, we create a query
+        // that includes all constraints up to this point and a limit
+        const paginationQueryConstraints = [...queryConstraints, limit((page - 1) * pageSize)];
+        const tempPaginationQuery = query(projectsCollection, ...paginationQueryConstraints);
         const lastVisibleSnapshot = await getDocs(tempPaginationQuery);
         if (lastVisibleSnapshot.docs.length > 0) {
             const lastVisible = lastVisibleSnapshot.docs[lastVisibleSnapshot.docs.length - 1];
@@ -442,6 +429,7 @@ export async function getPaginatedProjects(options: {
         }
     }
     
+    // Add the page size limit to the final query
     const finalQueryConstraints = [...queryConstraints, limit(pageSize)];
 
     // --- Final Query ---
@@ -476,22 +464,14 @@ export async function getProjectsForExport(options: {
     const { filters, sort, user } = options;
     const projectsCollection = collection(db, "projects");
     
-    const { roleFilter, ...otherFilters } = filters;
+    // Consolidate all filters, including role filters, into a single set of constraints.
+    const queryConstraints = buildFilterConstraints({
+        ...filters,
+        // Ensure roleFilter is passed if it exists
+        ...(filters.roleFilter && user ? { roleFilter: filters.roleFilter } : {})
+    });
     
-    let queryConstraints = buildFilterConstraints(otherFilters);
-    
-    if (roleFilter && user) {
-        const { role, userName } = roleFilter;
-        if (role === 'Processor') {
-            queryConstraints.push(where("processor", "==", userName));
-        } else if (role === 'QA') {
-            queryConstraints.push(where("qa", "==", userName));
-        } else if (role === 'Case Manager') {
-            queryConstraints.push(where("case_manager", "==", userName));
-        }
-    }
-    
-     if (sort.key && sort.key !== 'id') {
+    if (sort.key && sort.key !== 'id') {
         queryConstraints.push(orderBy(sort.key, sort.direction));
     } else {
         queryConstraints.push(orderBy('row_number', 'desc')); 
