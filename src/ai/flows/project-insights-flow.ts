@@ -27,7 +27,7 @@ export type InsightResponse = z.infer<typeof InsightResponseSchema>;
 const getProjectsTool = ai.defineTool(
   {
     name: 'getProjectsTool',
-    description: 'Fetches all project data from the database to answer a user query.',
+    description: "Fetches a comprehensive list of all projects from the database. The data includes fields like project ID, row number, client name, process, processor, QA, case manager, various dates (received, allocation, processing, QA), statuses, and more. Use this tool to answer any user query about projects, including counts, assignments, statuses, and timelines.",
     inputSchema: z.object({}),
     outputSchema: z.any(),
   },
