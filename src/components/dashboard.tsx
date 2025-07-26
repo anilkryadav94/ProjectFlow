@@ -24,7 +24,6 @@ import { differenceInBusinessDays } from 'date-fns';
 import { ProjectInsights } from './project-insights';
 import { getUsers } from '@/lib/auth';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { WorkStatusChart } from './work-status-chart';
 
 interface DashboardProps {
   user: User;
@@ -146,11 +145,10 @@ function Dashboard({ user, error }: DashboardProps) {
         
         try {
              const allUsers = await getUsers();
-             const projForDropDowns = await getPaginatedProjects({ page: 1, limit: 1000, filters: {}, sort: { key: 'client_name', direction: 'asc' }})
             
             setDropdownOptions({
-                clientNames: [...new Set(projForDropDowns.projects.map(p => p.client_name).filter(Boolean))].sort(),
-                processes: [...new Set(projForDropDowns.projects.map(p => p.process).filter(Boolean))].sort() as ProcessType[],
+                clientNames: [...new Set(allUsers.map(u => u.name).filter(Boolean))].sort(),
+                processes: ['Patent', 'TM', 'IDS', 'Project'] as ProcessType[],
                 processors: allUsers.filter(u => u.roles.includes('Processor')).map(u => u.name).sort(),
                 qas: allUsers.filter(u => u.roles.includes('QA')).map(u => u.name).sort(),
                 caseManagers: allUsers.filter(u => u.roles.includes('Case Manager')).map(u => u.name).sort(),
@@ -611,7 +609,5 @@ function Dashboard({ user, error }: DashboardProps) {
 }
 
 export default Dashboard;
-
-    
 
     
