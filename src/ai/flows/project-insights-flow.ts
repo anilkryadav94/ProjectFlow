@@ -56,21 +56,18 @@ const projectInsightsFlow = ai.defineFlow(
     outputSchema: InsightResponseSchema,
   },
   async (query) => {
-    // Await the prompt to get the full generation response.
     const response = await insightsPrompt(query);
-    
-    // In Genkit v1.x, the structured output is directly available in the .output property.
     const structuredOutput = response.output;
 
-    // Check if the AI returned a valid, structured output.
+    // Defensive check to prevent crash, as suggested.
     if (!structuredOutput) {
-       // This can happen if the model fails to follow instructions or if there's an issue.
-       // We can check the raw response for clues as a fallback.
-       const rawTextResponse = response.text;
-       if (rawTextResponse) {
-          // If we have raw text, return it so the user sees something.
-          return { responseType: 'text', data: `The AI returned an unexpected response. Raw text: ${rawTextResponse}` };
-       }
+      // This can happen if the model fails to follow instructions or if there's an issue.
+      // We can check the raw response for clues as a fallback.
+      const rawTextResponse = response.text;
+      if (rawTextResponse) {
+        // If we have raw text, return it so the user sees something.
+        return { responseType: 'text', data: `The AI returned an unexpected response. Raw text: ${rawTextResponse}` };
+      }
       // If there's no output and no raw text, throw a clear error.
       throw new Error('The AI failed to generate a valid structured response. Please try rephrasing your question.');
     }
