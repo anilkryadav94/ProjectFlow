@@ -56,24 +56,32 @@ const projectInsightsFlow = ai.defineFlow(
     outputSchema: InsightResponseSchema,
   },
   async (query) => {
+    // Generate the full response from the prompt.
     const response = await insightsPrompt(query);
+    
+    // The structured, schema-compliant output is in the `output` property.
     const structuredOutput = response.output;
 
-    // Defensive check to prevent crash, as suggested.
-    if (!structuredOutput) {
-      // This can happen if the model fails to follow instructions or if there's an issue.
-      // We can check the raw response for clues as a fallback.
-      const rawTextResponse = response.text;
-      if (rawTextResponse) {
-        // If we have raw text, return it so the user sees something.
-        return { responseType: 'text', data: `The AI returned an unexpected response. Raw text: ${rawTextResponse}` };
-      }
-      // If there's no output and no raw text, throw a clear error.
-      throw new Error('The AI failed to generate a valid structured response. Please try rephrasing your question.');
+    // Defensive check to prevent crashes. This is the most critical part of the fix.
+    if (structuredOutput) {
+      // If we have a valid structured output that matches our schema, return it.
+      return structuredOutput;
     }
 
-    // If we have a valid structured output, return it.
-    return structuredOutput;
+    // --- Fallback Logic ---
+    // If structuredOutput is null or undefined, it means the model didn't follow instructions.
+    // We'll try to return something helpful instead of crashing.
+
+    const rawTextResponse = response.text;
+    if (rawTextResponse) {
+      // If we have raw text, return it so the user sees something.
+      console.warn("AI returned unstructured text instead of the expected JSON object. Raw text:", rawTextResponse);
+      return { responseType: 'text', data: `The AI returned an unexpected response. Raw text: ${rawTextResponse}` };
+    }
+
+    // If there's no structured output and no raw text, throw a clear error.
+    console.error("AI failed to generate a valid structured response or any text output.", response);
+    throw new Error('The AI failed to generate a valid response. Please try rephrasing your question or check the server logs.');
   }
 );
 
