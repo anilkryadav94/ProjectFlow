@@ -48,10 +48,10 @@ const insightsPrompt = ai.definePrompt({
   output: { schema: InsightResponseSchema },
   system: `You are an expert project management analyst.
 Your task is to answer the user's question about project data.
-- First, you MUST use the provided 'getProjectsTool' to fetch all the project data.
+- First, you MUST use the provided 'getProjectsTool' to fetch all the project data. It is the only way you can access the information.
 - Once you have the data, analyze it to answer the user's query accurately.
 - Today's date is ${new Date().toDateString()}.
-- If the user asks for a chart, provide the data in a JSON array format suitable for a bar chart. Each object in the array MUST have a 'name' key for the x-axis label and a 'value' key for the y-axis count (e.g., \`[{ name: 'Client A', value: 10 }, { name: 'Client B', value: 15 }]\`). The \`responseType\` must be 'chart'.
+- If the user asks for a chart, provide the data in a JSON array format suitable for a bar chart. Each object in the array MUST have a 'name' key for the x-axis label and a 'value' key for the y-axis count (e.g., \`[{ "name": "Client A", "value": 10 }, { "name": "Client B", "value": 15 }]\`). The \`responseType\` must be 'chart'.
 - For all other questions, provide a clear, concise text-based answer. The \`responseType\` must be 'text'.
 - If the query is unclear or cannot be answered with the available data, provide a helpful message stating what you can do.`,
   prompt: `User Question: {{{query}}}`,
