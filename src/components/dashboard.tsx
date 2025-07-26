@@ -186,39 +186,21 @@ function Dashboard({ user, error }: DashboardProps) {
     }
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [user, searchParams]);
-
+  
   React.useEffect(() => {
     if (!activeRole || isLoading) return;
 
-    const handler = setTimeout(() => {
-        const currentFilters = {
-            quickSearch: search,
-            searchColumn: searchColumn,
-            clientName: clientNameFilter,
-            process: processFilter,
-        };
-        setPage(1);
-        fetchPageData(activeRole, 1, sort, currentFilters);
-    }, 500);
-
-    return () => {
-        clearTimeout(handler);
+    // Remove automatic search on filter change, search is now manual via button
+    const currentFilters = {
+      quickSearch: search,
+      searchColumn: searchColumn,
+      clientName: clientNameFilter,
+      process: processFilter,
     };
-    
-  // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [search, searchColumn, clientNameFilter, processFilter, activeRole]);
-
-  React.useEffect(() => {
-    if (!activeRole || isLoading) return;
-     const currentFilters = {
-        quickSearch: search,
-        searchColumn: searchColumn,
-        clientName: clientNameFilter,
-        process: processFilter,
-    };
+    // Fetch data only when page or sort changes.
+    // Filter changes will trigger a search via handleQuickSearch.
     fetchPageData(activeRole, page, sort, currentFilters);
-  // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [page, sort]);
+  }, [page, sort, activeRole]);
 
 
   const saveColumnLayout = (role: Role) => {
@@ -302,7 +284,14 @@ function Dashboard({ user, error }: DashboardProps) {
         params.set('searchColumn', searchColumn);
         router.push(`/search?${params.toString()}`);
     } else if (activeRole) {
-        // The useEffect hook for filters will handle this automatically
+        setPage(1); // Reset to first page on new search
+        const currentFilters = {
+            quickSearch: search,
+            searchColumn: searchColumn,
+            clientName: clientNameFilter,
+            process: processFilter,
+        };
+        fetchPageData(activeRole, 1, sort, currentFilters);
     }
   };
   
@@ -496,41 +485,47 @@ function Dashboard({ user, error }: DashboardProps) {
                     <AccordionItem value="work-allocation" className="border-0 bg-muted/30 shadow-md mb-4 rounded-lg">
                         <AccordionTrigger className="px-4 py-3 hover:no-underline">Work Allocation / Records Addition</AccordionTrigger>
                         <AccordionContent>
-                           <Card>
-                                <CardHeader>
-                                    <CardTitle>Bulk Upload Records</CardTitle>
-                                    <CardDescription>Upload a CSV file to add multiple new project records at once. Download the sample file for the correct format.</CardDescription>
-                                </CardHeader>
-                                <CardContent>
-                                    <div className="flex items-center gap-4">
-                                        <Button variant="outline" onClick={() => fileInputRef.current?.click()} disabled={isUploading}>
-                                            <Upload className="mr-2" /> Choose CSV File
+                           <div className="p-1">
+                               <Card>
+                                    <CardHeader>
+                                        <CardTitle>Bulk Upload Records</CardTitle>
+                                        <CardDescription>Upload a CSV file to add multiple new project records at once. Download the sample file for the correct format.</CardDescription>
+                                    </CardHeader>
+                                    <CardContent>
+                                        <div className="flex items-center gap-4">
+                                            <Button variant="outline" onClick={() => fileInputRef.current?.click()} disabled={isUploading}>
+                                                <Upload className="mr-2" /> Choose CSV File
+                                            </Button>
+                                            {selectedFile && <span className="text-sm text-muted-foreground">{selectedFile.name}</span>}
+                                            {selectedFile && <Button size="sm" variant="ghost" onClick={() => setSelectedFile(null)}><X /></Button>}
+                                        </div>
+                                    </CardContent>
+                                    <CardFooter className="gap-2">
+                                        <Button onClick={handleProcessUpload} disabled={!selectedFile || isUploading}>
+                                            {isUploading ? <Loader2 className="mr-2 animate-spin" /> : <FileUp className="mr-2" />} Process Upload
                                         </Button>
-                                        {selectedFile && <span className="text-sm text-muted-foreground">{selectedFile.name}</span>}
-                                        {selectedFile && <Button size="sm" variant="ghost" onClick={() => setSelectedFile(null)}><X /></Button>}
-                                    </div>
-                                </CardContent>
-                                <CardFooter className="gap-2">
-                                    <Button onClick={handleProcessUpload} disabled={!selectedFile || isUploading}>
-                                        {isUploading ? <Loader2 className="mr-2 animate-spin" /> : <FileUp className="mr-2" />} Process Upload
-                                    </Button>
-                                    <Button variant="secondary" onClick={handleDownloadSample}>
-                                        <FileDown className="mr-2" /> Download Sample CSV
-                                    </Button>
-                                </CardFooter>
-                           </Card>
+                                        <Button variant="secondary" onClick={handleDownloadSample}>
+                                            <FileDown className="mr-2" /> Download Sample CSV
+                                        </Button>
+                                    </CardFooter>
+                               </Card>
+                           </div>
                         </AccordionContent>
                     </AccordionItem>
                      <AccordionItem value="ai-insights" className="border-0 bg-muted/30 shadow-md mb-4 rounded-lg">
                         <AccordionTrigger className="px-4 py-3 hover:no-underline">AI Project Insights</AccordionTrigger>
                         <AccordionContent>
-                           <ProjectInsights />
+                           <div className="p-1">
+                             <ProjectInsights />
+                           </div>
                         </AccordionContent>
                     </AccordionItem>
                     <AccordionItem value="advanced-search" className="border-0 bg-muted/30 shadow-md mb-4 rounded-lg">
                         <AccordionTrigger className="px-4 py-3 hover:no-underline">Advanced Search</AccordionTrigger>
                         <AccordionContent>
-                           <AdvancedSearchForm onSearch={handleAdvancedSearch} initialCriteria={null} processors={dropdownOptions.processors} qas={dropdownOptions.qas} clientNames={dropdownOptions.clientNames} processes={dropdownOptions.processes} />
+                           <div className="p-1">
+                             <AdvancedSearchForm onSearch={handleAdvancedSearch} initialCriteria={null} processors={dropdownOptions.processors} qas={dropdownOptions.qas} clientNames={dropdownOptions.clientNames} processes={dropdownOptions.processes} />
+                           </div>
                         </AccordionContent>
                     </AccordionItem>
                 </Accordion>
@@ -595,3 +590,5 @@ function Dashboard({ user, error }: DashboardProps) {
 }
 
 export default Dashboard;
+
+    

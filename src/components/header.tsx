@@ -185,8 +185,7 @@ export function Header({
                             placeholder="Quick search..."
                             value={search}
                             onChange={(e) => setSearch(e.target.value)}
-                            onKeyDown={(e) => e.key === 'Enter' && onQuickSearch && onQuickSearch()}
-                            className="rounded-l-none focus-visible:ring-0 h-8 w-48 text-foreground text-xs"
+                            className="rounded-none focus-visible:ring-0 h-8 w-48 text-foreground text-xs"
                         />
                       </>
                     ) : (
@@ -197,11 +196,13 @@ export function Header({
                             placeholder="Quick search..."
                             value={search}
                             onChange={(e) => setSearch(e.target.value)}
-                            onKeyDown={(e) => e.key === 'Enter' && onQuickSearch && onQuickSearch()}
-                            className="focus-visible:ring-0 h-8 w-64 text-foreground pl-9"
+                            className="focus-visible:ring-0 h-8 w-64 text-foreground pl-9 rounded-r-none"
                         />
                       </>
                     )}
+                    <Button variant="outline" size="icon" className="h-8 w-8 rounded-l-none text-foreground" onClick={onQuickSearch}>
+                        <Search className="h-4 w-4" />
+                    </Button>
                 </div>
                 
                 {setClientNameFilter && setProcessFilter && activeRole !== 'Case Manager' && (
@@ -323,3 +324,5 @@ export function Header({
     </header>
   )
 }
+
+    
