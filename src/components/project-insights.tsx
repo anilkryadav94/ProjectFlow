@@ -7,15 +7,10 @@ import { Button } from "./ui/button";
 import { Textarea } from "./ui/textarea";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "./ui/card";
 import { askProjectInsights, type InsightResponse } from "@/ai/flows/project-insights-flow";
-import type { Project } from "@/lib/data";
 import { Bar, BarChart, CartesianGrid, XAxis, YAxis, ResponsiveContainer } from "recharts";
 import { ChartContainer, ChartTooltip, ChartTooltipContent } from "./ui/chart";
 
-interface ProjectInsightsProps {
-  projects: Project[];
-}
-
-export function ProjectInsights({ projects }: ProjectInsightsProps) {
+export function ProjectInsights() {
   const [query, setQuery] = React.useState("");
   const [isLoading, setIsLoading] = React.useState(false);
   const [response, setResponse] = React.useState<InsightResponse | null>(null);
@@ -23,10 +18,7 @@ export function ProjectInsights({ projects }: ProjectInsightsProps) {
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!query.trim() || !projects || projects.length === 0) {
-      if (!projects || projects.length === 0) {
-        setError("There is no project data available to analyze.");
-      }
+    if (!query.trim()) {
       return;
     }
 
@@ -35,8 +27,9 @@ export function ProjectInsights({ projects }: ProjectInsightsProps) {
     setError(null);
 
     try {
-      // Pass the query and the project data to the AI flow
-      const result = await askProjectInsights({ query, projects });
+      // Pass only the query to the AI flow.
+      // The flow will use its tool to fetch data from the server.
+      const result = await askProjectInsights({ query });
       setResponse(result);
     } catch (err) {
       console.error("AI Insight Error:", err);
@@ -90,7 +83,7 @@ export function ProjectInsights({ projects }: ProjectInsightsProps) {
       <CardHeader>
         <CardTitle>AI Project Insights</CardTitle>
         <CardDescription>
-          Ask questions about the project data currently loaded on your dashboard.
+          Ask questions about the entire project dataset.
           For example: "How many projects are assigned to Anil?" or "Show me a chart of projects by client name."
         </CardDescription>
       </CardHeader>

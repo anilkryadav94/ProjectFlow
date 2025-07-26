@@ -726,7 +726,7 @@ function Dashboard({
                              <AccordionItem value="ai-insights" className="border-0 bg-muted/30 shadow-md mb-4 rounded-lg">
                                 <AccordionTrigger className="px-4 py-3 hover:no-underline">AI Project Insights</AccordionTrigger>
                                 <AccordionContent className="p-4 pt-0">
-                                   <ProjectInsights projects={projects} />
+                                   <ProjectInsights />
                                 </AccordionContent>
                             </AccordionItem>
                             <AccordionItem value="advanced-search" className="border-0 bg-muted/30 shadow-md mb-4 rounded-lg">
