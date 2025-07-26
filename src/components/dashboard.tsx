@@ -93,9 +93,13 @@ function Dashboard({ user, error }: DashboardProps) {
   const fetchDropdownData = React.useCallback(async () => {
     try {
         const allUsers = await getUsers();
-        const allProjs = await getProjectsForExport({ filters: {}, sort: { key: 'row_number', direction: 'desc' }, user});
-        setClientNames([...new Set(allProjs.map(p => p.client_name).filter(Boolean))].sort());
-        setProcesses([...new Set(allProjs.map(p => p.process).filter(Boolean))].sort() as ProcessType[]);
+        // Since we are now doing server-side pagination for all views, we can't rely on a single client-side project list
+        // For now, we will fetch a small number of projects just to populate dropdowns, or ideally, have a dedicated function for it.
+        // Let's get a bigger batch for dropdowns initially
+        const projForDropDowns = await getPaginatedProjects({ page: 1, limit: 1000, filters: {}, sort: { key: 'client_name', direction: 'asc' }, user });
+
+        setClientNames([...new Set(projForDropDowns.projects.map(p => p.client_name).filter(Boolean))].sort());
+        setProcesses([...new Set(projForDropDowns.projects.map(p => p.process).filter(Boolean))].sort() as ProcessType[]);
         setProcessors(allUsers.filter(u => u.roles.includes('Processor')).map(u => u.name).sort());
         setQas(allUsers.filter(u => u.roles.includes('QA')).map(u => u.name).sort());
         setCaseManagers(allUsers.filter(u => u.roles.includes('Case Manager')).map(u => u.name).sort());
@@ -122,7 +126,7 @@ function Dashboard({ user, error }: DashboardProps) {
         setTotalPages(result.totalPages);
     } catch (error) {
         console.error("Failed to fetch projects:", error);
-        toast({ title: "Error", description: "Could not fetch project data.", variant: "destructive" });
+        toast({ title: "Error", description: `Could not fetch project data. ${error}`, variant: "destructive" });
     } finally {
         setIsLoading(false);
     }
@@ -136,13 +140,23 @@ function Dashboard({ user, error }: DashboardProps) {
     if (newActiveRole !== activeRole) {
         setActiveRole(newActiveRole);
         loadColumnLayout(newActiveRole);
-        if (newActiveRole === 'Manager' || newActiveRole === 'Admin') fetchDropdownData();
+        // Only fetch dropdown data for Manager/Admin, or if they haven't been fetched yet
+        if ((newActiveRole === 'Manager' || newActiveRole === 'Admin') || clientNames.length === 0) {
+          fetchDropdownData();
+        }
     }
-  }, [user.roles, searchParams, activeRole, fetchDropdownData]);
+  }, [user.roles, searchParams, activeRole, fetchDropdownData, clientNames.length]);
 
   // Fetch data when role, page, sort, or filters change
   React.useEffect(() => {
-    if (activeRole && !isManagerOrAdmin) {
+    if (activeRole) {
+      if (isManagerOrAdmin) {
+        // Manager/Admin view is handled differently (no initial data load)
+        setProjects([]);
+        setTotalCount(0);
+        setTotalPages(1);
+        setIsLoading(false);
+      } else {
         const filters = {
             quickSearch: search,
             searchColumn: searchColumn,
@@ -150,12 +164,7 @@ function Dashboard({ user, error }: DashboardProps) {
             process: processFilter
         };
         fetchProjects(activeRole, page, sort, filters);
-    } else {
-        // Clear data for Manager/Admin
-        setProjects([]);
-        setTotalCount(0);
-        setTotalPages(1);
-        setIsLoading(false);
+      }
     }
   }, [activeRole, page, sort, search, searchColumn, clientNameFilter, processFilter, fetchProjects, isManagerOrAdmin]);
 
@@ -289,12 +298,31 @@ function Dashboard({ user, error }: DashboardProps) {
     document.body.removeChild(link);
   }
 
- const clientSideFilteredProjects = React.useMemo(() => {
-    if (isManagerOrAdmin) return [];
-    if (!projects) return [];
+  // Client-side sorting for role-based views
+  const dashboardProjects = React.useMemo(() => {
+    if (isManagerOrAdmin) return []; // Manager view doesn't display initial projects
+    
+    const sortedProjects = [...projects].sort((a, b) => {
+        const key = sort.key as keyof Project;
+        const aValue = a[key];
+        const bValue = b[key];
 
-    let filtered = [...projects];
+        if (aValue === null || aValue === undefined) return 1;
+        if (bValue === null || bValue === undefined) return -1;
+        
+        let comparison = 0;
+        if (typeof aValue === 'string' && typeof bValue === 'string') {
+            comparison = aValue.localeCompare(bValue);
+        } else if (typeof aValue === 'number' && typeof bValue === 'number') {
+            comparison = aValue - bValue;
+        }
 
+        return sort.direction === 'asc' ? comparison : -comparison;
+    });
+
+    let filtered = sortedProjects;
+
+    // Apply client-side status filtering AFTER server-side fetching and sorting
     if (activeRole === 'Processor') {
         filtered = filtered.filter(p => processorActionableStatuses.includes(p.processing_status));
     } else if (activeRole === 'QA') {
@@ -305,19 +333,20 @@ function Dashboard({ user, error }: DashboardProps) {
     } else if (activeRole === 'Case Manager') {
         filtered = filtered.filter(p => p.qa_status === 'Client Query' && p.clientquery_status === null);
     }
+    
     return filtered;
- }, [projects, activeRole, isManagerOrAdmin]);
+  }, [projects, activeRole, isManagerOrAdmin, sort]);
 
 
   const caseManagerTatInfo = React.useMemo(() => {
     if (activeRole !== 'Case Manager') return null;
-    const outsideTatCount = clientSideFilteredProjects.filter(p => {
+    const outsideTatCount = dashboardProjects.filter(p => {
         if (!p.qa_date) return false;
         return differenceInBusinessDays(new Date(), new Date(p.qa_date)) > 3;
     }).length;
     const greeting = new Date().getHours() < 17 ? "Good Morning" : "Good Evening";
     return { count: outsideTatCount, greeting: `Hi ${user.name}, ${greeting}!`, plural: outsideTatCount === 1 ? 'Email' : 'Emails' };
-  }, [activeRole, clientSideFilteredProjects, user.name]);
+  }, [activeRole, dashboardProjects, user.name]);
 
   const handleNonManagerDownload = async () => {
         setIsLoading(true);
@@ -328,6 +357,7 @@ function Dashboard({ user, error }: DashboardProps) {
             process: processFilter,
             roleFilter: activeRole ? { role: activeRole, userName: user.name } : undefined
         };
+        // Fetch ALL projects for the role for export, not just the current page
         const projectsToExport = await getProjectsForExport({ filters, sort, user });
         setIsLoading(false);
 
@@ -368,7 +398,7 @@ function Dashboard({ user, error }: DashboardProps) {
              <EditProjectDialog
                 isOpen={isEditDialogOpen} onOpenChange={setIsEditDialogOpen} project={editingProject}
                 onUpdateSuccess={() => {if(activeRole) fetchProjects(activeRole, page, sort, {})}}
-                userRole={activeRole} projectQueue={clientSideFilteredProjects} onNavigate={setEditingProject}
+                userRole={activeRole} projectQueue={dashboardProjects} onNavigate={setEditingProject}
                 clientNames={clientNames} processors={processors} qas={qas} caseManagers={caseManagers} processes={processes}
             />
         )}
@@ -473,7 +503,7 @@ function Dashboard({ user, error }: DashboardProps) {
             ) : (
                  <div className="flex-grow flex flex-col">
                      <DataTable 
-                        data={clientSideFilteredProjects}
+                        data={dashboardProjects}
                         columns={columns}
                         sort={sort}
                         setSort={setSort}
@@ -495,5 +525,3 @@ function Dashboard({ user, error }: DashboardProps) {
 }
 
 export default Dashboard;
-
-    
