@@ -43,13 +43,11 @@ function Dashboard({ user, error }: DashboardProps) {
   const router = useRouter();
   const fileInputRef = React.useRef<HTMLInputElement>(null);
   
-  // Overall loading state for the entire component
   const [isLoading, setIsLoading] = React.useState(true);
   const [isSwitching, setIsSwitching] = React.useState(false);
   const [switchingToRole, setSwitchingToRole] = React.useState<Role | null>(null);
   const [activeRole, setActiveRole] = React.useState<Role | null>(null);
   
-  // Server-fetched data states
   const [projects, setProjects] = React.useState<Project[]>([]);
   const [totalCount, setTotalCount] = React.useState(0);
   const [totalPages, setTotalPages] = React.useState(1);
@@ -61,7 +59,6 @@ function Dashboard({ user, error }: DashboardProps) {
       processes: [] as ProcessType[],
   });
 
-  // UI control states
   const [page, setPage] = React.useState(1);
   const [sort, setSort] = React.useState<{ key: keyof Project; direction: 'asc' | 'desc' }>({ key: 'row_number', direction: 'desc' });
   const [search, setSearch] = React.useState('');
@@ -72,20 +69,16 @@ function Dashboard({ user, error }: DashboardProps) {
   const [selectedFile, setSelectedFile] = React.useState<File | null>(null);
   const [isUploading, setIsUploading] = React.useState(false);
   
-  // Dialog states
   const [isEditDialogOpen, setIsEditDialogOpen] = React.useState(false);
   const [editingProject, setEditingProject] = React.useState<Project | null>(null);
   const [isAddRowsDialogOpen, setIsAddRowsDialogOpen] = React.useState(false);
   const [sourceProject, setSourceProject] = React.useState<Project | null>(null);
   const [isColumnSelectOpen, setIsColumnSelectOpen] = React.useState(false);
 
-  // Bulk update states
   const [bulkUpdateField, setBulkUpdateField] = React.useState<keyof Project>('processor');
   const [bulkUpdateValue, setBulkUpdateValue] = React.useState('');
   const [isBulkUpdating, setIsBulkUpdating] = React.useState(false);
 
-
-  // Column visibility states
   const defaultProcessorQAColumns = [ 'actions', 'row_number', 'ref_number', 'client_name', 'process', 'processor', 'sender', 'subject_line', 'received_date', 'case_manager', 'allocation_date', 'processing_date', 'processing_status', 'qa_status', 'workflowStatus' ];
   const defaultCaseManagerColumns = [ 'actions', 'row_number', 'ref_number', 'application_number', 'country', 'patent_number', 'sender', 'subject_line', 'client_query_description', 'client_comments', 'clientquery_status', 'case_manager', 'qa_date', 'client_response_date' ];
   const defaultManagerAdminColumns = [ 'select', 'actions', 'row_number', 'ref_number', 'client_name', 'process', 'processor', 'qa', 'case_manager', 'workflowStatus', 'processing_status', 'qa_status', 'received_date', 'allocation_date', 'processing_date', 'qa_date' ];
@@ -138,7 +131,6 @@ function Dashboard({ user, error }: DashboardProps) {
     }
   }, [user, toast]);
 
-  // Effect to set initial role and load initial dropdown data
   React.useEffect(() => {
     const initializeDashboard = async () => {
         setIsLoading(true);
@@ -154,7 +146,6 @@ function Dashboard({ user, error }: DashboardProps) {
         
         try {
              const allUsers = await getUsers();
-             // For dropdowns, we still fetch all projects but can limit fields later for optimization
              const projForDropDowns = await getPaginatedProjects({ page: 1, limit: 1000, filters: {}, sort: { key: 'client_name', direction: 'asc' }})
             
             setDropdownOptions({
@@ -165,11 +156,10 @@ function Dashboard({ user, error }: DashboardProps) {
                 caseManagers: allUsers.filter(u => u.roles.includes('Case Manager')).map(u => u.name).sort(),
             });
 
-            // Fetch initial project data for the determined role.
             if (newActiveRole && newActiveRole !== 'Manager' && newActiveRole !== 'Admin') {
                 await fetchPageData(newActiveRole, 1, { key: 'row_number', direction: 'desc' }, {});
             } else {
-                 setIsLoading(false); // For Manager/Admin, we finish loading here
+                 setIsLoading(false);
             }
 
         } catch(e) {
@@ -183,9 +173,8 @@ function Dashboard({ user, error }: DashboardProps) {
         initializeDashboard();
     }
   // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [user, searchParams]); // Run only when user or params change
+  }, [user, searchParams]);
 
-  // Fetch projects data when dependencies change for non-manager roles
   React.useEffect(() => {
     if (!activeRole || isManagerOrAdmin) return;
     
@@ -336,7 +325,7 @@ function Dashboard({ user, error }: DashboardProps) {
 
   const sortedDashboardProjects = React.useMemo(() => {
     if (totalPages > 1) {
-        return dashboardProjects; // Server-side sorting is already applied
+        return dashboardProjects;
     }
     
     const sorted = [...dashboardProjects];
@@ -410,7 +399,7 @@ function Dashboard({ user, error }: DashboardProps) {
             const result = await bulkUpdateProjects({ projectIds, field: bulkUpdateField, value: bulkUpdateValue });
             if (result.success) {
                 toast({ title: "Success", description: `${projectIds.length} projects have been updated.` });
-                if (activeRole) fetchPageData(activeRole, page, sort, {}); // Refresh data
+                if (activeRole) fetchPageData(activeRole, page, sort, {});
                 setRowSelection({});
                 setBulkUpdateValue('');
             } else {
