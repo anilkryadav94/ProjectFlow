@@ -93,10 +93,7 @@ function Dashboard({ user, error }: DashboardProps) {
   const fetchDropdownData = React.useCallback(async () => {
     try {
         const allUsers = await getUsers();
-        // Since we are now doing server-side pagination for all views, we can't rely on a single client-side project list
-        // For now, we will fetch a small number of projects just to populate dropdowns, or ideally, have a dedicated function for it.
-        // Let's get a bigger batch for dropdowns initially
-        const projForDropDowns = await getPaginatedProjects({ page: 1, limit: 1000, filters: {}, sort: { key: 'client_name', direction: 'asc' }, user });
+        const projForDropDowns = await getPaginatedProjects({ page: 1, limit: 1000, filters: {}, sort: { key: 'client_name', direction: 'asc' }});
 
         setClientNames([...new Set(projForDropDowns.projects.map(p => p.client_name).filter(Boolean))].sort());
         setProcesses([...new Set(projForDropDowns.projects.map(p => p.process).filter(Boolean))].sort() as ProcessType[]);
@@ -107,10 +104,14 @@ function Dashboard({ user, error }: DashboardProps) {
         console.error("Failed to fetch dropdown data", e);
         toast({ title: "Error", description: "Could not load filter options.", variant: "destructive" });
     }
-  }, [user, toast]);
+  }, [toast]);
 
   const fetchProjects = React.useCallback(async (role: Role, currentPage: number, currentSort: typeof sort, currentFilters: any) => {
-    if (!user || role === 'Admin') return;
+    if (!user || role === 'Admin') {
+        setProjects([]);
+        setIsLoading(false);
+        return;
+    };
     setIsLoading(true);
 
     try {
@@ -121,16 +122,42 @@ function Dashboard({ user, error }: DashboardProps) {
             filters: { ...currentFilters, roleFilter: { role, userName: user.name } },
             user,
         });
-        setProjects(result.projects);
-        setTotalCount(result.totalCount);
-        setTotalPages(result.totalPages);
+
+        if (isManagerOrAdmin || result.totalPages > 1) { // Server-side pagination
+            setProjects(result.projects);
+            setTotalCount(result.totalCount);
+            setTotalPages(result.totalPages);
+        } else { // Client-side pagination/sorting for role views
+            const sortedProjects = result.projects.sort((a, b) => {
+                const key = currentSort.key as keyof Project;
+                const aValue = a[key];
+                const bValue = b[key];
+        
+                if (aValue === null || aValue === undefined) return 1;
+                if (bValue === null || bValue === undefined) return -1;
+                
+                let comparison = 0;
+                if (typeof aValue === 'string' && typeof bValue === 'string') {
+                    comparison = aValue.localeCompare(bValue);
+                } else if (typeof aValue === 'number' && typeof bValue === 'number') {
+                    comparison = aValue - bValue;
+                }
+        
+                return currentSort.direction === 'asc' ? comparison : -comparison;
+            });
+            setProjects(sortedProjects);
+            setTotalCount(sortedProjects.length);
+            setTotalPages(1);
+        }
     } catch (error) {
         console.error("Failed to fetch projects:", error);
         toast({ title: "Error", description: `Could not fetch project data. ${error}`, variant: "destructive" });
+        setProjects([]);
+        setTotalCount(0);
     } finally {
         setIsLoading(false);
     }
-  }, [user, toast]);
+  }, [user, toast, isManagerOrAdmin]);
 
   React.useEffect(() => {
     const highestRole = roleHierarchy.find(role => user.roles.includes(role)) || user.roles[0];
@@ -139,8 +166,8 @@ function Dashboard({ user, error }: DashboardProps) {
 
     if (newActiveRole !== activeRole) {
         setActiveRole(newActiveRole);
+        setIsLoading(true);
         loadColumnLayout(newActiveRole);
-        // Only fetch dropdown data for Manager/Admin, or if they haven't been fetched yet
         if ((newActiveRole === 'Manager' || newActiveRole === 'Admin') || clientNames.length === 0) {
           fetchDropdownData();
         }
@@ -190,6 +217,7 @@ function Dashboard({ user, error }: DashboardProps) {
     setPage(1); // Reset page on role switch
     setSort({ key: 'row_number', direction: 'desc' }); // Reset sort
     router.push(`/?role=${role}`);
+    // A short delay isn't ideal, but it gives time for the push to take effect before re-render
     setTimeout(() => {
       setIsSwitching(false);
       setSwitchingToRole(null);
@@ -298,31 +326,12 @@ function Dashboard({ user, error }: DashboardProps) {
     document.body.removeChild(link);
   }
 
-  // Client-side sorting for role-based views
+  // Client-side status filtering for role-based views
   const dashboardProjects = React.useMemo(() => {
-    if (isManagerOrAdmin) return []; // Manager view doesn't display initial projects
+    if (isManagerOrAdmin || totalPages > 1) return projects; // Use server data directly for managers or paginated results
     
-    const sortedProjects = [...projects].sort((a, b) => {
-        const key = sort.key as keyof Project;
-        const aValue = a[key];
-        const bValue = b[key];
+    let filtered = projects;
 
-        if (aValue === null || aValue === undefined) return 1;
-        if (bValue === null || bValue === undefined) return -1;
-        
-        let comparison = 0;
-        if (typeof aValue === 'string' && typeof bValue === 'string') {
-            comparison = aValue.localeCompare(bValue);
-        } else if (typeof aValue === 'number' && typeof bValue === 'number') {
-            comparison = aValue - bValue;
-        }
-
-        return sort.direction === 'asc' ? comparison : -comparison;
-    });
-
-    let filtered = sortedProjects;
-
-    // Apply client-side status filtering AFTER server-side fetching and sorting
     if (activeRole === 'Processor') {
         filtered = filtered.filter(p => processorActionableStatuses.includes(p.processing_status));
     } else if (activeRole === 'QA') {
@@ -335,7 +344,7 @@ function Dashboard({ user, error }: DashboardProps) {
     }
     
     return filtered;
-  }, [projects, activeRole, isManagerOrAdmin, sort]);
+  }, [projects, activeRole, isManagerOrAdmin, totalPages]);
 
 
   const caseManagerTatInfo = React.useMemo(() => {
@@ -377,7 +386,7 @@ function Dashboard({ user, error }: DashboardProps) {
         document.body.removeChild(link);
   };
   
-  if (!activeRole || isSwitching) {
+  if (isLoading || !activeRole || isSwitching) {
     return (
         <div className="flex h-screen w-full items-center justify-center bg-background">
             <div className="flex flex-col items-center gap-4">
@@ -525,3 +534,5 @@ function Dashboard({ user, error }: DashboardProps) {
 }
 
 export default Dashboard;
+
+    

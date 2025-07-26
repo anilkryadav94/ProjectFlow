@@ -20,7 +20,6 @@ import { cn } from '@/lib/utils';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { EditProjectDialog } from '@/components/edit-project-dialog';
 import { AddRowsDialog } from '@/components/add-rows-dialog';
-import type { SearchableColumn } from '@/components/dashboard';
 
 interface SearchResultsState {
     projects: Project[];
@@ -274,22 +273,16 @@ export default function SearchResultsPage() {
     const selectedBulkUpdateField = bulkUpdateFields.find(f => f.value === bulkUpdateField);
 
 
-    if (!state.user || visibleColumnKeys.length === 0) {
-        return (
-            <div className="flex h-screen w-full items-center justify-center bg-background">
-                <Loader2 className="h-12 w-12 animate-spin text-primary" />
-            </div>
-        );
-    }
-
-    if (isSwitching) {
+    if (state.loading || !state.user || visibleColumnKeys.length === 0 || isSwitching) {
         return (
             <div className="flex h-screen w-full items-center justify-center bg-background">
                 <div className="flex flex-col items-center gap-4">
                     <Loader2 className="h-12 w-12 animate-spin text-primary" />
-                    <p className="text-lg text-muted-foreground">
-                        Opening {switchingToRole} Dashboard...
-                    </p>
+                    {isSwitching && (
+                         <p className="text-lg text-muted-foreground">
+                            Opening {switchingToRole} Dashboard...
+                        </p>
+                    )}
                 </div>
             </div>
         );
@@ -306,7 +299,7 @@ export default function SearchResultsPage() {
         visibleColumnKeys
     );
     
-    const showSubHeader = state.projects.length > 0;
+    const showSubHeader = state.totalCount > 0;
 
     return (
         <div className="flex flex-col h-screen bg-background w-full">
@@ -438,3 +431,5 @@ export default function SearchResultsPage() {
         </div>
     );
 }
+
+    

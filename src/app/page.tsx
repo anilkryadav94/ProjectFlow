@@ -3,8 +3,8 @@
 
 import * as React from 'react';
 import { DashboardWrapper } from '@/components/dashboard';
-import type { User, Role } from '@/lib/data';
-import { onAuthChanged, getSession, logout, getUsers } from '@/lib/auth';
+import type { User } from '@/lib/data';
+import { onAuthChanged, getSession } from '@/lib/auth';
 import { useRouter } from 'next/navigation';
 import { Loader2 } from 'lucide-react';
 
@@ -18,21 +18,19 @@ export default function Home() {
   React.useEffect(() => {
     const unsubscribe = onAuthChanged(async (user) => {
       if (user) {
-        let sessionData = await getSession();
-        if (!sessionData) {
-            console.log("Initial session fetch failed, retrying in 1s...");
-            await new Promise(resolve => setTimeout(resolve, 1000));
-            sessionData = await getSession();
-        }
-
-        if (sessionData) {
-            setSession(sessionData);
+        try {
+            const sessionData = await getSession();
+            if (sessionData) {
+                setSession(sessionData);
+            } else {
+               throw new Error("User authenticated but no session data found in Firestore.");
+            }
+        } catch(err) {
+            console.error(err);
+            setError("Your user profile is not configured correctly. Please contact an admin.");
+            router.push('/login'); // Redirect to login on session error
+        } finally {
             setLoading(false);
-        } else {
-           console.error("User authenticated but no session data found in Firestore after retry. Logging out.");
-           setError("Your user profile is not configured correctly. Please contact an admin.");
-           await logout();
-           router.push('/login');
         }
       } else {
         setLoading(false);
@@ -56,11 +54,12 @@ export default function Home() {
   }
   
   if (!session) {
-      return (
+    // This case should ideally not be hit if logic is correct, but as a fallback
+    return (
         <div className="flex h-screen w-full items-center justify-center bg-background">
             <div className="flex flex-col items-center gap-4">
                 <Loader2 className="h-12 w-12 animate-spin text-primary" />
-                <p className="text-lg text-muted-foreground">Finalizing session...</p>
+                <p className="text-lg text-muted-foreground">Redirecting to login...</p>
             </div>
         </div>
     );
@@ -75,3 +74,5 @@ export default function Home() {
     </main>
   );
 }
+
+    
