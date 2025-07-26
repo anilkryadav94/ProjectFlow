@@ -162,6 +162,12 @@ function Dashboard({ user, error }: DashboardProps) {
                 qas: allUsers.filter(u => u.roles.includes('QA')).map(u => u.name).sort(),
                 caseManagers: allUsers.filter(u => u.roles.includes('Case Manager')).map(u => u.name).sort(),
             });
+
+            // Fetch initial project data for the determined role.
+            if (newActiveRole && newActiveRole !== 'Manager' && newActiveRole !== 'Admin') {
+                await fetchPageData(newActiveRole, 1, sort, {});
+            }
+
         } catch(e) {
             console.error("Failed to fetch dropdown data", e);
             toast({ title: "Error", description: "Could not load filter options.", variant: "destructive" });
@@ -306,8 +312,10 @@ function Dashboard({ user, error }: DashboardProps) {
   }
 
   const dashboardProjects = React.useMemo(() => {
+    // For manager/admin and roles with server-side pagination, return data as is.
     if (isManagerOrAdmin || totalPages > 1) return projects; 
     
+    // For roles with client-side filtering (after fetching all their data)
     let filtered = [...projects];
 
     if (activeRole === 'Processor') {
@@ -534,7 +542,9 @@ function Dashboard({ user, error }: DashboardProps) {
                       <AccordionItem value="ai-insights" className="border-0 bg-muted/30 shadow-md mb-4 rounded-lg">
                         <AccordionTrigger className="px-4 py-3 hover:no-underline">AI Project Insights</AccordionTrigger>
                         <AccordionContent className="p-4 pt-0">
-                            <ProjectInsights />
+                           <div>
+                             <ProjectInsights />
+                           </div>
                         </AccordionContent>
                     </AccordionItem>
                     <AccordionItem value="advanced-search" className="border-0 bg-muted/30 shadow-md mb-4 rounded-lg">
@@ -605,3 +615,5 @@ function Dashboard({ user, error }: DashboardProps) {
 }
 
 export default Dashboard;
+
+    
