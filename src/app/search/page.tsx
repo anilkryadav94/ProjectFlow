@@ -9,7 +9,7 @@ import Papa from "papaparse";
 
 import type { Project, Role, User, ProcessType } from '@/lib/data';
 import { getSession, onAuthChanged, getUsers } from '@/lib/auth';
-import { getPaginatedProjects, bulkUpdateProjects } from '@/app/actions';
+import { getPaginatedProjects, bulkUpdateProjects, getProjectsForExport } from '@/app/actions';
 import { SearchCriteria } from '@/components/advanced-search-form';
 import { allColumns, getColumns } from '@/components/columns';
 import { ColumnSelectDialog } from '@/components/column-select-dialog';
@@ -56,7 +56,8 @@ export default function SearchResultsPage() {
         caseManagers: [],
         processes: [],
     });
-
+    
+    const [isDownloading, setIsDownloading] = React.useState(false);
     const [quickSearchTerm, setQuickSearchTerm] = React.useState(searchParams.get('quickSearch') || '');
     const [searchColumn, setSearchColumn] = React.useState<SearchableColumn>((searchParams.get('searchColumn') || 'any') as SearchableColumn);
 
@@ -184,21 +185,44 @@ export default function SearchResultsPage() {
         router.push(`/search?${params.toString()}`);
     };
 
-    const handleDownload = () => {
-        if (state.projects.length === 0) {
-          toast({ title: "No data to export", variant: "destructive" });
-          return;
+    const handleDownload = async () => {
+        setIsDownloading(true);
+        try {
+            const sortKey = (searchParams.get('sort') || 'row_number') as keyof Project;
+            const sortDir = (searchParams.get('dir') || 'desc') as 'asc' | 'desc';
+            const quickSearch = searchParams.get('quickSearch') || '';
+            const searchColumnParam = searchParams.get('searchColumn') || 'any';
+            let advancedCriteria: SearchCriteria | null = null;
+            if (searchParams.get('advanced') === 'true') {
+                advancedCriteria = JSON.parse(searchParams.get('criteria') || '[]');
+            }
+
+            const projectsToExport = await getProjectsForExport({
+                filters: { quickSearch, searchColumn: searchColumnParam, advanced: advancedCriteria },
+                sort: { key: sortKey, direction: sortDir },
+            });
+
+            if (projectsToExport.length === 0) {
+                toast({ title: "No data to export", variant: "destructive" });
+                return;
+            }
+
+            const csv = Papa.unparse(projectsToExport);
+            const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
+            const link = document.createElement("a");
+            const url = URL.createObjectURL(blob);
+            link.setAttribute("href", url);
+            link.setAttribute("download", `projects_export_${new Date().toISOString().split('T')[0]}.csv`);
+            link.style.visibility = 'hidden';
+            document.body.appendChild(link);
+            link.click();
+            document.body.removeChild(link);
+        } catch (err) {
+            console.error("Error exporting data:", err);
+            toast({ title: "Export Error", description: "Could not export project data.", variant: "destructive" });
+        } finally {
+            setIsDownloading(false);
         }
-        const csv = Papa.unparse(state.projects);
-        const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
-        const link = document.createElement("a");
-        const url = URL.createObjectURL(blob);
-        link.setAttribute("href", url);
-        link.setAttribute("download", `projects_export_${new Date().toISOString().split('T')[0]}.csv`);
-        link.style.visibility = 'hidden';
-        document.body.appendChild(link);
-        link.click();
-        document.body.removeChild(link);
     };
     
     const handleBulkUpdate = async () => {
@@ -270,7 +294,7 @@ export default function SearchResultsPage() {
         visibleColumnKeys
     );
     
-    const showSubHeader = state.projects.length > 0 && !state.loading;
+    const showSubHeader = (state.projects.length > 0 || state.loading) && !state.loading;
 
     return (
         <div className="flex flex-col h-screen bg-background w-full">
@@ -337,10 +361,10 @@ export default function SearchResultsPage() {
                             variant="outline" 
                             className="h-7 px-2 text-xs" 
                             onClick={handleDownload} 
-                            disabled={state.projects.length === 0}
+                            disabled={state.totalCount === 0 || isDownloading}
                             title="Download CSV"
                         >
-                            <FileSpreadsheet className="h-3.5 w-3.5" />
+                            {isDownloading ? <Loader2 className="mr-1.5 h-3.5 w-3.5 animate-spin" /> : <FileSpreadsheet className="h-3.5 w-3.5" />}
                         </Button>
                     </div>
                 </div>
@@ -384,21 +408,23 @@ export default function SearchResultsPage() {
                             </Button>
                         </div>
                     )}
-                    <DataTable 
-                        data={state.projects}
-                        columns={columns}
-                        sort={state.sort}
-                        setSort={(newSort) => setState(s => ({ ...s, sort: newSort as any }))}
-                        rowSelection={rowSelection}
-                        setRowSelection={setRowSelection}
-                        isManagerOrAdmin={true}
-                        totalCount={state.totalCount}
-                        activeRole="Manager"
-                        page={state.page}
-                        totalPages={state.totalPages}
-                        onPageChange={handlePageChange}
-                        isFetching={state.loading}
-                    />
+                    <div className="flex-grow">
+                        <DataTable 
+                            data={state.projects}
+                            columns={columns}
+                            sort={state.sort}
+                            setSort={(newSort) => setState(s => ({ ...s, sort: newSort as any }))}
+                            rowSelection={rowSelection}
+                            setRowSelection={setRowSelection}
+                            isManagerOrAdmin={true}
+                            totalCount={state.totalCount}
+                            activeRole="Manager"
+                            page={state.page}
+                            totalPages={state.totalPages}
+                            onPageChange={handlePageChange}
+                            isFetching={state.loading}
+                        />
+                    </div>
                 </div>
             </main>
         </div>
