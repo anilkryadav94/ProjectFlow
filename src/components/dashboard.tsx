@@ -266,67 +266,79 @@ function Dashboard({
   }
 
   const dashboardProjects = React.useMemo(() => {
-    let baseProjects: Project[] = nonManagerProjects;
+    if (isManagerOrAdmin) {
+        return []; // Manager no longer shows table on main dashboard
+    }
     
-    if (!isManagerOrAdmin) {
-        let filtered = baseProjects;
-        
-        if (activeRole === 'Processor') {
-            filtered = filtered.filter(p => 
-                p.processor === user.name && 
-                (['Pending', 'Re-Work', 'On Hold'].includes(p.processing_status) || !p.processing_status)
-            );
-        } else if (activeRole === 'QA') {
-            filtered = filtered.filter(p => 
-                p.qa === user.name &&
-                ['Processed', 'Already Processed', 'NTP', 'Client Query'].includes(p.processing_status) &&
-                (['Pending', 'On Hold'].includes(p.qa_status) || !p.qa_status)
-            );
-        } else if (activeRole === 'Case Manager') {
-            filtered = filtered.filter(p =>
-                p.case_manager === user.name &&
-                p.qa_status === 'Client Query' &&
-                p.clientquery_status === null
-            );
-        }
+    let filtered: Project[] = nonManagerProjects;
+    
+    if (activeRole === 'Processor') {
+        filtered = filtered.filter(p => 
+            p.processor === user.name && 
+            (['Pending', 'Re-Work', 'On Hold'].includes(p.processing_status) || !p.processing_status)
+        );
+    } else if (activeRole === 'QA') {
+        filtered = filtered.filter(p => 
+            p.qa === user.name &&
+            ['Processed', 'Already Processed', 'NTP', 'Client Query'].includes(p.processing_status) &&
+            (['Pending', 'On Hold'].includes(p.qa_status) || !p.qa_status)
+        );
+    } else if (activeRole === 'Case Manager') {
+        filtered = filtered.filter(p =>
+            p.case_manager === user.name &&
+            p.qa_status === 'Client Query' &&
+            p.clientquery_status === null
+        );
+    }
 
-        if (search) {
-            const effectiveSearchColumn = activeRole === 'Case Manager' ? 'any' : searchColumn;
-            const lowercasedSearch = search.toLowerCase();
-            
-            if (effectiveSearchColumn === 'any') {
-                filtered = filtered.filter(p => 
-                    Object.values(p).some(val => String(val).toLowerCase().includes(lowercasedSearch))
-                );
-            } else {
-                filtered = filtered.filter(p => 
-                    (p[effectiveSearchColumn] as string)?.toString().toLowerCase().includes(lowercasedSearch)
-                );
-            }
+    if (search) {
+        const effectiveSearchColumn = activeRole === 'Case Manager' ? 'any' : searchColumn;
+        const lowercasedSearch = search.toLowerCase();
+        
+        if (effectiveSearchColumn === 'any') {
+            filtered = filtered.filter(p => 
+                Object.values(p).some(val => String(val).toLowerCase().includes(lowercasedSearch))
+            );
+        } else {
+            filtered = filtered.filter(p => 
+                (p[effectiveSearchColumn] as string)?.toString().toLowerCase().includes(lowercasedSearch)
+            );
         }
+    }
 
-        if (clientNameFilter !== 'all') {
-            filtered = filtered.filter(p => p.client_name === clientNameFilter);
-        }
-        
-        if (processFilter !== 'all') {
-            filtered = filtered.filter(p => p.process === processFilter);
-        }
-        
-        if (sort && filtered) {
-          [...filtered].sort((a, b) => {
+    if (clientNameFilter !== 'all') {
+        filtered = filtered.filter(p => p.client_name === clientNameFilter);
+    }
+    
+    if (processFilter !== 'all') {
+        filtered = filtered.filter(p => p.process === processFilter);
+    }
+    
+    if (sort && filtered) {
+        const sorted = [...filtered].sort((a, b) => {
             const valA = a[sort.key];
             const valB = b[sort.key];
             if (valA === null || valA === undefined) return 1; 
             if (valB === null || valB === undefined) return -1;
+            
+            // Handle numeric or date sorting if needed, for now assume string comparison
+            if (typeof valA === 'string' && typeof valB === 'string') {
+                 if (sort.direction === 'asc') {
+                    return valA.localeCompare(valB, undefined, {numeric: true});
+                 } else {
+                    return valB.localeCompare(valA, undefined, {numeric: true});
+                 }
+            }
+            
             if (valA < valB) return sort.direction === 'asc' ? -1 : 1;
             if (valA > valB) return sort.direction === 'asc' ? 1 : -1;
             return 0;
-          });
-        }
-        return filtered;
+        });
+        return sorted;
     }
-    return []; // Manager no longer shows table on main dashboard
+
+    return filtered;
+
   }, [activeRole, user.name, nonManagerProjects, search, searchColumn, sort, clientNameFilter, processFilter, isManagerOrAdmin]);
 
   const clientWorkStatus = React.useMemo(() => {
