@@ -113,6 +113,7 @@ function Dashboard({ user, error }: DashboardProps) {
     if (!user || role === 'Admin') {
         setProjects([]);
         setTotalCount(0);
+        setIsLoading(false);
         return;
     };
     
@@ -144,6 +145,7 @@ function Dashboard({ user, error }: DashboardProps) {
   React.useEffect(() => {
     const initializeDashboard = async () => {
         setIsLoading(true);
+        
         const highestRole = roleHierarchy.find(role => user.roles.includes(role)) || user.roles[0];
         const urlRole = searchParams.get('role') as Role | null;
         const newActiveRole = urlRole && user.roles.includes(urlRole) ? urlRole : highestRole;
@@ -154,11 +156,10 @@ function Dashboard({ user, error }: DashboardProps) {
         }
         
         try {
-            const [allUsers, projForDropDowns] = await Promise.all([
-                getUsers(),
-                getPaginatedProjects({ page: 1, limit: 1000, filters: {}, sort: { key: 'client_name', direction: 'asc' }})
-            ]);
-
+             const allUsers = await getUsers();
+             // For dropdowns, we still fetch all projects but can limit fields later for optimization
+             const projForDropDowns = await getPaginatedProjects({ page: 1, limit: 1000, filters: {}, sort: { key: 'client_name', direction: 'asc' }})
+            
             setDropdownOptions({
                 clientNames: [...new Set(projForDropDowns.projects.map(p => p.client_name).filter(Boolean))].sort(),
                 processes: [...new Set(projForDropDowns.projects.map(p => p.process).filter(Boolean))].sort() as ProcessType[],
@@ -168,35 +169,29 @@ function Dashboard({ user, error }: DashboardProps) {
             });
 
             // Fetch initial project data for the determined role.
-            if (newActiveRole && !isManagerOrAdmin) {
-                await fetchPageData(newActiveRole, 1, sort, {});
+            if (newActiveRole && newActiveRole !== 'Manager' && newActiveRole !== 'Admin') {
+                await fetchPageData(newActiveRole, 1, { key: 'row_number', direction: 'desc' }, {});
+            } else {
+                 setIsLoading(false); // For Manager/Admin, we finish loading here
             }
 
         } catch(e) {
             console.error("Failed to fetch dropdown data", e);
             toast({ title: "Error", description: "Could not load filter options.", variant: "destructive" });
-        } finally {
             setIsLoading(false);
         }
     };
     
-    initializeDashboard();
-  // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [user.roles, searchParams]); // Run only when user or params change
-
-  // Fetch projects data when dependencies change
-  React.useEffect(() => {
-    // This effect should not run on initial render or when another primary fetch is in progress.
-    if (isLoading || !activeRole) return;
-    
-    // Manager/Admin view doesn't load data initially. It waits for search.
-    if (isManagerOrAdmin) {
-        setProjects([]);
-        setTotalCount(0);
-        setTotalPages(1);
-        return;
+    if (user) {
+        initializeDashboard();
     }
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [user, searchParams]); // Run only when user or params change
 
+  // Fetch projects data when dependencies change for non-manager roles
+  React.useEffect(() => {
+    if (isLoading || !activeRole || isManagerOrAdmin) return;
+    
     const filters = {
         quickSearch: search,
         searchColumn: searchColumn,
@@ -205,7 +200,7 @@ function Dashboard({ user, error }: DashboardProps) {
     };
     fetchPageData(activeRole, page, sort, filters);
   // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [activeRole, page, sort, search, searchColumn, clientNameFilter, processFilter]);
+  }, [page, sort, search, searchColumn, clientNameFilter, processFilter]);
 
 
   const saveColumnLayout = (role: Role) => {
@@ -290,7 +285,7 @@ function Dashboard({ user, error }: DashboardProps) {
         router.push(`/search?${params.toString()}`);
     } else if (activeRole) {
         setPage(1); 
-        fetchPageData(activeRole, 1, sort, { quickSearch: search, searchColumn });
+        // Refetch is handled by useEffect
     }
   };
   
@@ -321,6 +316,10 @@ function Dashboard({ user, error }: DashboardProps) {
   }
 
   const dashboardProjects = React.useMemo(() => {
+    if (isManagerOrAdmin) {
+        return projects;
+    }
+    
     let filtered = [...projects];
 
     if (activeRole === 'Processor') {
@@ -335,12 +334,12 @@ function Dashboard({ user, error }: DashboardProps) {
     }
     
     return filtered;
-  }, [projects, activeRole]);
+  }, [projects, activeRole, isManagerOrAdmin]);
 
 
   const sortedDashboardProjects = React.useMemo(() => {
-    if (isManagerOrAdmin || totalPages > 1) {
-        return projects; // Server-side sorting is already applied
+    if (totalPages > 1) {
+        return dashboardProjects; // Server-side sorting is already applied
     }
     
     const sorted = [...dashboardProjects];
@@ -362,7 +361,7 @@ function Dashboard({ user, error }: DashboardProps) {
         return sort.direction === 'asc' ? comparison : -comparison;
     });
     return sorted;
-  }, [dashboardProjects, sort, projects, isManagerOrAdmin, totalPages]);
+  }, [dashboardProjects, sort, totalPages]);
 
 
   const caseManagerTatInfo = React.useMemo(() => {
@@ -567,7 +566,9 @@ function Dashboard({ user, error }: DashboardProps) {
                     <AccordionItem value="advanced-search" className="border-0 bg-muted/30 shadow-md mb-4 rounded-lg">
                         <AccordionTrigger className="px-4 py-3 hover:no-underline">Advanced Search</AccordionTrigger>
                         <AccordionContent className="p-4 pt-0">
-                        <AdvancedSearchForm onSearch={handleAdvancedSearch} initialCriteria={null} processors={dropdownOptions.processors} qas={dropdownOptions.qas} clientNames={dropdownOptions.clientNames} processes={dropdownOptions.processes} />
+                          <div>
+                            <AdvancedSearchForm onSearch={handleAdvancedSearch} initialCriteria={null} processors={dropdownOptions.processors} qas={dropdownOptions.qas} clientNames={dropdownOptions.clientNames} processes={dropdownOptions.processes} />
+                          </div>
                         </AccordionContent>
                     </AccordionItem>
                 </Accordion>
