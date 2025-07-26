@@ -533,15 +533,7 @@ function Dashboard({ user, error }: DashboardProps) {
                            </Card>
                         </AccordionContent>
                     </AccordionItem>
-                     <AccordionItem value="work-status" className="border-0 bg-muted/30 shadow-md mb-4 rounded-lg">
-                        <AccordionTrigger className="px-4 py-3 hover:no-underline">Work Status Overview</AccordionTrigger>
-                        <AccordionContent className="p-4 pt-0">
-                           <div>
-                             <WorkStatusChart />
-                           </div>
-                        </AccordionContent>
-                    </AccordionItem>
-                      <AccordionItem value="ai-insights" className="border-0 bg-muted/30 shadow-md mb-4 rounded-lg">
+                     <AccordionItem value="ai-insights" className="border-0 bg-muted/30 shadow-md mb-4 rounded-lg">
                         <AccordionTrigger className="px-4 py-3 hover:no-underline">AI Project Insights</AccordionTrigger>
                         <AccordionContent className="p-4 pt-0">
                            <div>
@@ -619,5 +611,7 @@ function Dashboard({ user, error }: DashboardProps) {
 }
 
 export default Dashboard;
+
+    
 
     

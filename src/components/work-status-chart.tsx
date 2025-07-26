@@ -34,10 +34,12 @@ interface Stats {
 export function WorkStatusChart() {
   const [stats, setStats] = React.useState<Stats | null>(null);
   const [isLoading, setIsLoading] = React.useState(true);
+  const [error, setError] = React.useState<string | null>(null);
 
   React.useEffect(() => {
     const fetchAndProcessData = async () => {
       setIsLoading(true);
+      setError(null);
       try {
         const projects = await getAllProjects();
         const newStats: Stats = {
@@ -86,6 +88,7 @@ export function WorkStatusChart() {
         setStats(newStats);
       } catch (error) {
         console.error("Failed to fetch or process project stats:", error);
+        setError("Failed to load work status data. This may be due to exceeding the data fetching quota.");
       } finally {
         setIsLoading(false);
       }
@@ -100,6 +103,10 @@ export function WorkStatusChart() {
         <Loader2 className="h-8 w-8 animate-spin text-primary" />
       </div>
     );
+  }
+
+  if (error) {
+     return <p className="text-destructive text-sm p-4 text-center">{error}</p>;
   }
 
   if (!stats) {
@@ -210,3 +217,5 @@ export function WorkStatusChart() {
     </div>
   );
 }
+
+    
