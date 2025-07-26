@@ -20,7 +20,7 @@ import { cn } from '@/lib/utils';
 import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from './ui/accordion';
 import { EditProjectDialog } from './edit-project-dialog';
 import { AddRowsDialog } from './add-rows-dialog';
-import { getProjectsForUser, bulkUpdateProjects, addRows, getPaginatedProjects } from '@/app/actions';
+import { getProjectsForUser, addRows } from '@/app/actions';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from './ui/table';
 import { ColumnSelectDialog } from './column-select-dialog';
 import { differenceInBusinessDays } from 'date-fns';
@@ -149,6 +149,14 @@ function Dashboard({
             setVisibleColumnKeys(defaultManagerAdminColumns);
         }
     }
+  };
+
+  const saveColumnLayout = (role: Role) => {
+    localStorage.setItem(`columnLayout-${role}`, JSON.stringify(visibleColumnKeys));
+    toast({
+        title: "Layout Saved",
+        description: `Your column layout for the ${role} role has been saved.`,
+    });
   };
 
   const handleFileSelect = (event: React.ChangeEvent<HTMLInputElement>) => {
@@ -408,7 +416,7 @@ function Dashboard({
       visibleColumnKeys
   );
 
-  const showSubHeader = activeRole === 'Case Manager' && dashboardProjects.length > 0;
+  const showSubHeader = !isManagerOrAdmin || (activeRole === 'Case Manager' && dashboardProjects.length > 0);
 
   return (
     <div className="flex flex-col h-screen bg-background w-full">
@@ -470,7 +478,7 @@ function Dashboard({
         />
         {showSubHeader && (
             <div className="flex-shrink-0 border-b bg-muted">
-                <div className="flex items-center justify-end gap-2 px-4 py-2.5">
+                <div className="flex items-center justify-end gap-2 px-4 py-1">
                      {activeRole === 'Case Manager' ? (
                         <div className="flex-grow text-left text-sm font-semibold text-muted-foreground">
                             {dashboardProjects.length > 0 && caseManagerTatInfo && (
@@ -482,7 +490,20 @@ function Dashboard({
                                 </>
                             )}
                         </div>
-                    ) : null}
+                    ) : <div className="flex-grow" />}
+
+                    {!isManagerOrAdmin && (
+                        <>
+                           <Button variant="outline" className="h-7 px-2 text-xs" onClick={() => setIsColumnSelectOpen(true)}>
+                                <Rows className="mr-1.5 h-3.5 w-3.5" />
+                                Select Columns
+                            </Button>
+                            <Button variant="outline" className="h-7 px-2 text-xs" onClick={() => saveColumnLayout(activeRole)}>
+                                <Save className="mr-1.5 h-3.5 w-3.5" />
+                                Save Layout
+                            </Button>
+                        </>
+                    )}
                 </div>
             </div>
         )}
@@ -599,7 +620,7 @@ function Dashboard({
                 </Accordion>
               </div>
             ) : (
-                 <div className="flex-grow flex flex-col p-4">
+                 <div className="flex-grow flex flex-col">
                      <DataTable 
                         data={dashboardProjects}
                         columns={columns}
