@@ -297,6 +297,7 @@ export async function getPaginatedProjects(options: {
     limit: number;
     filters: {
         quickSearch?: string;
+        searchColumn?: string;
         advanced?: { field: string; operator: string; value: any }[] | null;
     };
     sort: { key: string, direction: 'asc' | 'desc' };
@@ -305,11 +306,11 @@ export async function getPaginatedProjects(options: {
     const projectsCollection = collection(db, "projects");
     
     let queryConstraints: QueryConstraint[] = [];
-    const dateFields = ['received_date', 'allocation_date', 'processing_date', 'qa_date'];
+    const dateFields = ['received_date', 'allocation_date', 'processing_date', 'qa_date', 'reportout_date', 'client_response_date'];
+    const textSearchableFields = ['row_number', 'ref_number', 'application_number', 'patent_number', 'client_name', 'process', 'processor', 'qa', 'case_manager', 'subject_line'];
 
     // Apply advanced filters
     if (filters.advanced && filters.advanced.length > 0) {
-        const andConstraints: QueryConstraint[] = [];
         filters.advanced.forEach(criterion => {
             if (!criterion.field || !criterion.operator) return;
 
@@ -322,39 +323,41 @@ export async function getPaginatedProjects(options: {
             switch (criterion.operator) {
                 case 'equals':
                 case 'dateEquals':
-                    andConstraints.push(where(criterion.field, '==', value));
+                    queryConstraints.push(where(criterion.field, '==', value));
                     break;
                 case 'in':
                      const values = typeof value === 'string' ? value.split(',').map(s => s.trim()) : [];
                      if (values.length > 0) {
-                        andConstraints.push(where(criterion.field, 'in', values));
+                        queryConstraints.push(where(criterion.field, 'in', values));
                      }
                     break;
                 case 'startsWith':
-                    andConstraints.push(where(criterion.field, '>=', value));
-                    andConstraints.push(where(criterion.field, '<=', value + '\uf8ff'));
+                    queryConstraints.push(where(criterion.field, '>=', value));
+                    queryConstraints.push(where(criterion.field, '<=', value + '\uf8ff'));
                     break;
                 case 'contains':
                      // Firestore does not support 'contains' natively. Using startsWith as a workaround.
-                     andConstraints.push(where(criterion.field, '>=', value));
-                     andConstraints.push(where(criterion.field, '<=', value + '\uf8ff'));
+                     queryConstraints.push(where(criterion.field, '>=', value));
+                     queryConstraints.push(where(criterion.field, '<=', value + '\uf8ff'));
                     break;
                 case 'blank':
-                    andConstraints.push(where(criterion.field, '==', null));
+                    queryConstraints.push(where(criterion.field, '==', null));
                     break;
             }
         });
-        if (andConstraints.length > 0) {
-             queryConstraints.push(...andConstraints);
-        }
     }
     // Apply quick search filter if advanced filter is not active
-    else if (filters.quickSearch) {
-        // This is a very basic "search anywhere" which is inefficient.
-        // A dedicated search service like Algolia/Typesense is better.
-        // For now, it's disabled in favor of advanced search.
-        // If you need it, you would typically query multiple fields.
-        console.warn("Quick search is not fully implemented for server-side search due to Firestore limitations.");
+    else if (filters.quickSearch && filters.searchColumn) {
+        if (filters.searchColumn === 'any') {
+            // Firestore doesn't support OR queries on multiple fields efficiently without composite indexes.
+            // This is a limitation. For a real "search anywhere" experience, a dedicated search service is needed.
+            // As a simple workaround, we will search on a primary field like 'row_number' or 'ref_number'.
+            queryConstraints.push(where('row_number', '>=', filters.quickSearch));
+            queryConstraints.push(where('row_number', '<=', filters.quickSearch + '\uf8ff'));
+        } else {
+             queryConstraints.push(where(filters.searchColumn, '>=', filters.quickSearch));
+             queryConstraints.push(where(filters.searchColumn, '<=', filters.quickSearch + '\uf8ff'));
+        }
     }
     
     // Apply sorting
@@ -369,19 +372,22 @@ export async function getPaginatedProjects(options: {
     const totalCountSnapshot = await getCountFromServer(countQuery);
     const totalCount = totalCountSnapshot.data().count;
 
+    let finalQueryConstraints = [...queryConstraints];
+
     // Apply pagination
     if (page > 1) {
-        const lastVisibleQuery = query(countQuery, limit((page - 1) * pageSize));
+        // To get the last document of the previous page, we need to re-query
+        const lastVisibleQuery = query(projectsCollection, ...queryConstraints, limit((page - 1) * pageSize));
         const lastVisibleSnapshot = await getDocs(lastVisibleQuery);
-        const lastVisible = lastVisibleSnapshot.docs[lastVisibleSnapshot.docs.length - 1];
-        if (lastVisible) {
-            queryConstraints.push(startAfter(lastVisible));
+        if (lastVisibleSnapshot.docs.length > 0) {
+            const lastVisible = lastVisibleSnapshot.docs[lastVisibleSnapshot.docs.length - 1];
+            finalQueryConstraints.push(startAfter(lastVisible));
         }
     }
-    queryConstraints.push(limit(pageSize));
+    finalQueryConstraints.push(limit(pageSize));
 
     // Final query
-    const finalQuery = query(projectsCollection, ...queryConstraints);
+    const finalQuery = query(projectsCollection, ...finalQueryConstraints);
     const projectSnapshot = await getDocs(finalQuery);
 
     const projectList = projectSnapshot.docs.map(doc => {

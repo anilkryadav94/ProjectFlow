@@ -103,6 +103,7 @@ export default function SearchResultsPage() {
             const sortDir = (searchParams.get('dir') || 'desc') as 'asc' | 'desc';
             
             const quickSearch = searchParams.get('quickSearch') || '';
+            const searchColumnParam = searchParams.get('searchColumn') || 'any';
             let advancedCriteria: SearchCriteria | null = null;
             if (searchParams.get('advanced') === 'true') {
                 advancedCriteria = JSON.parse(searchParams.get('criteria') || '[]');
@@ -112,7 +113,7 @@ export default function SearchResultsPage() {
                  getPaginatedProjects({
                     page,
                     limit: 50,
-                    filters: { quickSearch, advanced: advancedCriteria },
+                    filters: { quickSearch, searchColumn: searchColumnParam, advanced: advancedCriteria },
                     sort: { key: sortKey, direction: sortDir },
                 }),
                 getUsers()
@@ -403,4 +404,3 @@ export default function SearchResultsPage() {
         </div>
     );
 }
-
