@@ -23,8 +23,8 @@ interface DataTableProps {
     header: React.ReactNode;
     render?: (project: Project) => React.ReactNode;
   }[];
-  sort: { key: keyof Project; direction: 'asc' | 'desc' } | null;
-  setSort: (sort: { key: keyof Project; direction: 'asc' | 'desc' } | null) => void;
+  sort: { key: keyof Project; direction: 'asc' | 'desc' };
+  setSort: (sort: { key: keyof Project; direction: 'asc' | 'desc' }) => void;
   rowSelection: Record<string, boolean>;
   setRowSelection: (selection: Record<string, boolean>) => void;
   isManagerOrAdmin: boolean;
@@ -56,7 +56,8 @@ export function DataTable({
   const searchParams = useSearchParams();
 
   const handleSort = (key: string) => {
-    if (key === 'select' || key === 'actions' || !isManagerOrAdmin) return;
+    if (key === 'select' || key === 'actions') return;
+
     const projectKey = key as keyof Project;
 
     const newSort = {
@@ -181,3 +182,5 @@ export function DataTable({
     </div>
   )
 }
+
+    

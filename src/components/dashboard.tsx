@@ -66,7 +66,7 @@ function Dashboard({
   const [search, setSearch] = React.useState('');
   const [searchColumn, setSearchColumn] = React.useState<SearchableColumn>('any');
   
-  const [sort, setSort] = React.useState<{ key: keyof Project; direction: 'asc' | 'desc' } | null>({ key: 'id', direction: 'asc' });
+  const [sort, setSort] = React.useState<{ key: keyof Project; direction: 'asc' | 'desc' }>({ key: 'row_number', direction: 'desc' });
   
   const [rowSelection, setRowSelection] = React.useState<Record<string, boolean>>({});
 
@@ -314,7 +314,7 @@ function Dashboard({
         }
         
         if (sort && filtered) {
-          filtered.sort((a, b) => {
+          [...filtered].sort((a, b) => {
             const valA = a[sort.key];
             const valB = b[sort.key];
             if (valA === null || valA === undefined) return 1; 
