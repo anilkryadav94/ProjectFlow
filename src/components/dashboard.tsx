@@ -35,7 +35,6 @@ export function DashboardWrapper(props: DashboardProps) {
     return <Dashboard {...props} />;
 }
 
-
 export type SearchableColumn = 'any' | 'row_number' | 'ref_number' | 'application_number' | 'patent_number' | 'subject_line' | 'processing_status' | 'qa_status' | 'workflowStatus' | 'allocation_date' | 'received_date';
 
 
@@ -48,6 +47,7 @@ function Dashboard({ user, error }: DashboardProps) {
   const [isLoading, setIsLoading] = React.useState(true);
   const [isSwitching, setIsSwitching] = React.useState(false);
   const [switchingToRole, setSwitchingToRole] = React.useState<Role | null>(null);
+  const [activeRole, setActiveRole] = React.useState<Role | null>(null);
   
   // Server-fetched data states
   const [projects, setProjects] = React.useState<Project[]>([]);
