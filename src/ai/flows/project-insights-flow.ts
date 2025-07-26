@@ -2,76 +2,66 @@
 'use server';
 
 /**
- * @fileOverview An AI flow for querying project data using natural language.
+ * @fileOverview An AI flow for querying a given set of project data using natural language.
  *
  * - askProjectInsights - The main function to ask a question about projects.
  */
 
 import { ai } from '@/ai/genkit';
 import { z } from 'zod';
-import { getAllProjects } from '@/services/project-service';
 import { googleAI } from '@genkit-ai/googleai';
+import type { Project } from '@/lib/data';
+
+// Define the schema for the input, which now includes the project data.
+const InsightRequestSchema = z.object({
+  query: z.string().describe("The user's natural language question about the projects."),
+  projects: z.any().describe("A JSON array of project objects to be analyzed."),
+});
+export type InsightRequest = z.infer<typeof InsightRequestSchema>;
 
 // Define the schema for the expected structured output from the AI.
 const InsightResponseSchema = z.object({
   responseType: z.enum(['text', 'chart']).describe("The type of response to render. Use 'chart' for data visualizations and 'text' for all other answers."),
   data: z.any().describe("The data for the response. For 'text', this is a string. For 'chart', this is a JSON array of objects, typically with 'name' and 'value' keys."),
 });
-
-// Define the TypeScript type from the Zod schema for use within this file.
 export type InsightResponse = z.infer<typeof InsightResponseSchema>;
 
-const getProjectsTool = ai.defineTool(
-  {
-    name: 'getAllProjects',
-    description: 'Retrieves all project data from the database. Use this tool to answer any user question about project data, statuses, assignments, or metrics.',
-    inputSchema: z.object({}),
-    outputSchema: z.any(),
-  },
-  async () => {
-    return await getAllProjects();
-  }
-);
 
 const insightsPrompt = ai.definePrompt({
-  name: 'projectInsightsPrompt',
+  name: 'projectInsightsPromptFromData',
   model: googleAI.model('gemini-1.5-pro-latest'),
-  input: { schema: z.string() },
+  input: { schema: InsightRequestSchema },
   output: { schema: InsightResponseSchema },
-  tools: [getProjectsTool],
   system: `You are an expert project management analyst.
-Your task is to answer user questions based on the provided project data from the getAllProjects tool.
+Your task is to answer the user's question based on the provided JSON project data.
 - Today's date is ${new Date().toDateString()}.
 - If the user asks for a chart, provide the data in a JSON array format suitable for a bar chart (e.g., \`[{ name: 'Client A', value: 10 }, { name: 'Client B', value: 15 }]\`). The \`responseType\` should be 'chart'.
 - For all other questions, provide a clear, concise text-based answer. The \`responseType\` should be 'text'.
-- Always use the getAllProjects tool to get the data you need. Do not make up information.
 - Analyze the data to answer the user's query accurately.
+- Do not use any tools. The project data is provided directly in the prompt.
 - If the query is unclear or cannot be answered with the available data, provide a helpful message stating what you can do.`,
+  prompt: `User Question: {{{query}}}\n\nProject Data (JSON):\n\`\`\`json\n{{{json projects}}}\n\`\`\`\n`,
 });
 
 const projectInsightsFlow = ai.defineFlow(
   {
     name: 'projectInsightsFlow',
-    inputSchema: z.string(),
+    inputSchema: InsightRequestSchema,
     outputSchema: InsightResponseSchema,
   },
-  async (query) => {
-    // Generate the full response from the prompt.
-    const response = await insightsPrompt(query);
+  async (request) => {
+    // Generate the full response from the prompt, passing the request object.
+    const response = await insightsPrompt(request);
     
     // The structured, schema-compliant output is in the `output` property.
     const structuredOutput = response.output;
 
-    // Defensive check to prevent crashes. This is the most critical part of the fix.
     if (structuredOutput) {
       // If we have a valid structured output that matches our schema, return it.
       return structuredOutput;
     }
 
     // --- Fallback Logic ---
-    // If structuredOutput is null or undefined, it means the model didn't follow instructions.
-    // We'll try to return something helpful instead of crashing.
-
     const rawTextResponse = response.text;
     if (rawTextResponse) {
       // If we have raw text, return it so the user sees something.
@@ -86,6 +76,6 @@ const projectInsightsFlow = ai.defineFlow(
 );
 
 
-export async function askProjectInsights(query: string): Promise<InsightResponse> {
-  return projectInsightsFlow(query);
+export async function askProjectInsights(request: InsightRequest): Promise<InsightResponse> {
+  return projectInsightsFlow(request);
 }

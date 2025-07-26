@@ -7,10 +7,15 @@ import { Button } from "./ui/button";
 import { Textarea } from "./ui/textarea";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "./ui/card";
 import { askProjectInsights, type InsightResponse } from "@/ai/flows/project-insights-flow";
+import type { Project } from "@/lib/data";
 import { Bar, BarChart, CartesianGrid, XAxis, YAxis, ResponsiveContainer } from "recharts";
 import { ChartContainer, ChartTooltip, ChartTooltipContent } from "./ui/chart";
 
-export function ProjectInsights() {
+interface ProjectInsightsProps {
+  projects: Project[];
+}
+
+export function ProjectInsights({ projects }: ProjectInsightsProps) {
   const [query, setQuery] = React.useState("");
   const [isLoading, setIsLoading] = React.useState(false);
   const [response, setResponse] = React.useState<InsightResponse | null>(null);
@@ -18,14 +23,20 @@ export function ProjectInsights() {
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!query.trim()) return;
+    if (!query.trim() || !projects || projects.length === 0) {
+      if (!projects || projects.length === 0) {
+        setError("There is no project data available to analyze.");
+      }
+      return;
+    }
 
     setIsLoading(true);
     setResponse(null);
     setError(null);
 
     try {
-      const result = await askProjectInsights(query);
+      // Pass the query and the project data to the AI flow
+      const result = await askProjectInsights({ query, projects });
       setResponse(result);
     } catch (err) {
       console.error("AI Insight Error:", err);
@@ -79,7 +90,7 @@ export function ProjectInsights() {
       <CardHeader>
         <CardTitle>AI Project Insights</CardTitle>
         <CardDescription>
-          Ask questions about your project data in natural language.
+          Ask questions about the project data currently loaded on your dashboard.
           For example: "How many projects are assigned to Anil?" or "Show me a chart of projects by client name."
         </CardDescription>
       </CardHeader>
