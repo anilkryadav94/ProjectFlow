@@ -1,4 +1,3 @@
-
 "use client";
 
 import * as React from "react";
@@ -338,4 +337,3 @@ export function UserManagementTable({ sessionUser }: { sessionUser: User }) {
         </>
     )
 }
-    

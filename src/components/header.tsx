@@ -1,4 +1,3 @@
-
 "use client"
 
 import * as React from "react"
@@ -16,8 +15,7 @@ import {
   DropdownMenuRadioGroup,
   DropdownMenuRadioItem,
 } from "@/components/ui/dropdown-menu"
-import { signOut } from "firebase/auth";
-import { auth } from "@/lib/firebase";
+import { logout } from "@/lib/auth";
 import { useRouter, usePathname } from "next/navigation"
 import { ThemeToggle } from "./theme-toggle";
 import { Separator } from "./ui/separator";
@@ -86,7 +84,7 @@ export function Header({
   const pathname = usePathname();
 
   const handleLogout = async () => {
-    await signOut(auth);
+    await logout();
     router.push('/login');
   };
 
@@ -188,7 +186,7 @@ export function Header({
                 </div>
             )}
             
-            {(!showManagerSearch && activeRole !== 'Admin' && setSearch && setSearchColumn && onQuickSearch) && (
+            {(!isManagerOrAdmin && activeRole !== 'Admin' && setSearch && setSearchColumn && onQuickSearch) && (
               <div className="flex items-center space-x-2">
                 <div className="flex items-center space-x-0 relative">
                     {activeRole !== 'Case Manager' ? (

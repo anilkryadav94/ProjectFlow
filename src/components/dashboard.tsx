@@ -1,9 +1,8 @@
-
 "use client";
 
 import * as React from 'react';
 import Papa from "papaparse";
-import { type Project, type Role, type User, roleHierarchy, ProcessType, processorActionableStatuses, qaStatuses, clientStatuses } from '@/lib/data';
+import { type Project, type Role, type User, roleHierarchy, ProcessType } from '@/lib/data';
 import { DataTable } from '@/components/data-table';
 import { getColumns, allColumns } from '@/components/columns';
 import { Header } from '@/components/header';
@@ -125,7 +124,7 @@ function Dashboard({ user, error }: DashboardProps) {
         
     } catch (error) {
         console.error("Failed to fetch projects:", error);
-        if (error instanceof Error && error.message.includes("RESOURCE_EXHAUSTED")) {
+        if (error instanceof Error && (error.message.includes("RESOURCE_EXHAUSTED") || error.message.includes("Quota exceeded"))) {
              toast({ title: "Quota Exceeded", description: "The free data limit for today has been reached.", variant: "destructive" });
         } else {
             toast({ title: "Error", description: `Could not fetch project data.`, variant: "destructive" });
@@ -186,6 +185,13 @@ function Dashboard({ user, error }: DashboardProps) {
     }
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [user, searchParams]);
+  
+  React.useEffect(() => {
+    if (isLoading || isManagerOrAdmin || activeRole === 'Admin') return;
+    handleFilterChange();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [clientNameFilter, processFilter]);
+
   
   const handleFilterChange = () => {
     if (!activeRole) return;
@@ -598,5 +604,3 @@ function Dashboard({ user, error }: DashboardProps) {
     </div>
   );
 }
-
-export default Dashboard;

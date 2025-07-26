@@ -1,4 +1,3 @@
-
 'use server';
 
 /**
@@ -8,9 +7,8 @@
  * - askProjectInsights - The main function to ask a question about projects.
  */
 
-import { ai } from '@/ai/genkit';
+import { ai } from '@/ai/config';
 import { z } from 'zod';
-import { googleAI } from '@genkit-ai/googleai';
 import { getAllProjects } from '@/services/project-service';
 
 const InsightRequestSchema = z.object({
@@ -32,7 +30,7 @@ const getProjectsTool = ai.defineTool(
     outputSchema: z.any(),
   },
   async () => {
-    console.log('getProjectsTool: Fetching all projects from Firestore...');
+    console.log('getProjectsTool: Fetching all projects...');
     const projects = await getAllProjects();
     console.log(`getProjectsTool: Fetched ${projects.length} projects.`);
     return projects;
@@ -42,13 +40,13 @@ const getProjectsTool = ai.defineTool(
 
 const insightsPrompt = ai.definePrompt({
   name: 'projectInsightsPromptWithTool',
-  model: googleAI.model('gemini-1.5-flash-latest'),
+  model: 'gemini-1.5-flash-latest',
   tools: [getProjectsTool],
   input: { schema: InsightRequestSchema },
   output: { schema: InsightResponseSchema },
   system: `You are an expert project management analyst.
 Your task is to answer the user's question about project data.
-- First, you MUST use the provided 'getProjectsTool' to fetch all the project data. It is the only way you can access the information.
+- First, you MUST use the provided 'getProjectsTool' to fetch all the project data. It is the only way you can access the information. Do not ask the user for data.
 - Once you have the data, analyze it to answer the user's query accurately.
 - Today's date is ${new Date().toDateString()}.
 - If the user asks for a chart, provide the data in a JSON array format suitable for a bar chart. Each object in the array MUST have a 'name' key for the x-axis label and a 'value' key for the y-axis count (e.g., \`[{ "name": "Client A", "value": 10 }, { "name": "Client B", "value": 15 }]\`). The \`responseType\` must be 'chart'.
@@ -87,5 +85,3 @@ const projectInsightsFlow = ai.defineFlow(
 export async function askProjectInsights(request: InsightRequest): Promise<InsightResponse> {
   return projectInsightsFlow(request);
 }
-
-    

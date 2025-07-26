@@ -1,11 +1,12 @@
+"use client";
 
 import * as React from 'react';
 import type { Project, Role, User, ProcessType } from '@/lib/data';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Header } from '@/components/header';
-import { doc, getDoc, collection, getDocs, Timestamp } from 'firebase/firestore';
-import { db } from '@/lib/firebase';
+import { getProjectById } from '@/services/project-service';
+import { getUserDocument } from '@/services/user-service';
 import { EditProjectDialog } from '@/components/edit-project-dialog';
 import { onAuthChanged, getUsers } from '@/lib/auth';
 import { Loader2 } from 'lucide-react';
@@ -14,34 +15,6 @@ interface TaskPageProps {
     params: { id: string };
 }
 
-async function getProjectById(id: string): Promise<Project | undefined> {
-    const projectDoc = await getDoc(doc(db, 'projects', id));
-    if (projectDoc.exists()) {
-        const data = projectDoc.data();
-        // Convert Timestamps to ISO strings
-        Object.keys(data).forEach(key => {
-            if (data[key] instanceof Timestamp) {
-                data[key] = data[key].toDate().toISOString().split('T')[0];
-            }
-        });
-        return { id: projectDoc.id, ...data } as Project;
-    }
-    return undefined;
-}
-
-async function getUser(firebaseUser: import('firebase/auth').User): Promise<User | null> {
-    const userDocRef = doc(db, 'users', firebaseUser.uid);
-    const userDocSnap = await getDoc(userDocRef);
-
-    if (userDocSnap.exists()) {
-        return {
-            id: firebaseUser.uid,
-            email: firebaseUser.email || '',
-            ...userDocSnap.data()
-        } as User;
-    }
-    return null;
-}
 
 // This is a client component because of useEffect and useState
 export default function TaskPage({ params }: TaskPageProps) {
@@ -50,23 +23,35 @@ export default function TaskPage({ params }: TaskPageProps) {
   const [loading, setLoading] = React.useState(true);
   const [dropdownOptions, setDropdownOptions] = React.useState({
       clientNames: [] as string[],
+      processors: [] as string[],
+      qas: [] as string[],
+      caseManagers: [] as string[],
       processes: [] as ProcessType[],
   });
 
   React.useEffect(() => {
     const fetchPageData = async (fbUser: import('firebase/auth').User) => {
         try {
-            const [projectData, userData, allUsers] = await Promise.all([
+             const [projectData, userData, allUsers] = await Promise.all([
                 getProjectById(params.id),
-                getUser(fbUser),
+                getUserDocument(fbUser.uid),
                 getUsers()
             ]);
             
             if (projectData) setProject(projectData);
-            if (userData) setUser(userData);
+            if (userData && fbUser.email) {
+                setUser({
+                    id: fbUser.uid,
+                    email: fbUser.email,
+                    ...userData
+                });
+            }
             if (allUsers) {
                  setDropdownOptions({
                     clientNames: [...new Set(allUsers.map(u => u.name).filter(Boolean))].sort(),
+                    processors: allUsers.filter(u => u.roles.includes('Processor')).map(u => u.name).sort(),
+                    qas: allUsers.filter(u => u.roles.includes('QA')).map(u => u.name).sort(),
+                    caseManagers: allUsers.filter(u => u.roles.includes('Case Manager')).map(u => u.name).sort(),
                     processes: ['Patent', 'TM', 'IDS', 'Project'] as ProcessType[],
                 });
             }
@@ -165,10 +150,7 @@ export default function TaskPage({ params }: TaskPageProps) {
                         </CardContent>
                     </Card>
                 </div>
-                {/* The dialog should be triggered from the main dashboard, not here */}
             </main>
         </div>
   );
 }
-
-    
