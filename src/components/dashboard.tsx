@@ -46,9 +46,6 @@ function Dashboard({ user, error }: DashboardProps) {
   
   // Overall loading state for the entire component
   const [isLoading, setIsLoading] = React.useState(true);
-  
-  // Role and UI states
-  const [activeRole, setActiveRole] = React.useState<Role | null>(null);
   const [isSwitching, setIsSwitching] = React.useState(false);
   const [switchingToRole, setSwitchingToRole] = React.useState<Role | null>(null);
   
@@ -107,7 +104,7 @@ function Dashboard({ user, error }: DashboardProps) {
         else if (role === 'Case Manager') setVisibleColumnKeys(defaultCaseManagerColumns);
         else if (role === 'Admin' || role === 'Manager') setVisibleColumnKeys(defaultManagerAdminColumns);
     }
-  }, []);
+  }, [defaultCaseManagerColumns, defaultManagerAdminColumns, defaultProcessorQAColumns]);
 
   const fetchPageData = React.useCallback(async (role: Role, currentPage: number, currentSort: typeof sort, currentFilters: any) => {
     if (!user || role === 'Admin') {
@@ -190,7 +187,7 @@ function Dashboard({ user, error }: DashboardProps) {
 
   // Fetch projects data when dependencies change for non-manager roles
   React.useEffect(() => {
-    if (isLoading || !activeRole || isManagerOrAdmin) return;
+    if (!activeRole || isManagerOrAdmin) return;
     
     const filters = {
         quickSearch: search,
@@ -200,7 +197,7 @@ function Dashboard({ user, error }: DashboardProps) {
     };
     fetchPageData(activeRole, page, sort, filters);
   // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [page, sort, search, searchColumn, clientNameFilter, processFilter]);
+  }, [page, sort, search, searchColumn, clientNameFilter, processFilter, activeRole, isManagerOrAdmin]);
 
 
   const saveColumnLayout = (role: Role) => {
@@ -285,7 +282,7 @@ function Dashboard({ user, error }: DashboardProps) {
         router.push(`/search?${params.toString()}`);
     } else if (activeRole) {
         setPage(1); 
-        // Refetch is handled by useEffect
+        fetchPageData(activeRole, 1, sort, { quickSearch: search, searchColumn: searchColumn, clientName: clientNameFilter, process: processFilter });
     }
   };
   
@@ -442,7 +439,7 @@ function Dashboard({ user, error }: DashboardProps) {
   }
   
   const columns = getColumns(isManagerOrAdmin, activeRole, rowSelection, setRowSelection, projects, handleOpenEditDialog, handleAddRowsDialog, visibleColumnKeys);
-  const showSubHeader = !isManagerOrAdmin && totalCount > 0;
+  const showSubHeader = !isManagerOrAdmin && (totalCount > 0 || isLoading);
   
    const bulkUpdateFields: {
         value: keyof Project;
@@ -633,3 +630,5 @@ function Dashboard({ user, error }: DashboardProps) {
 }
 
 export default Dashboard;
+
+    
