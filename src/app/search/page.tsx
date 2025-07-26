@@ -20,6 +20,8 @@ import { cn } from '@/lib/utils';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { EditProjectDialog } from '@/components/edit-project-dialog';
 import { AddRowsDialog } from '@/components/add-rows-dialog';
+import type { SearchableColumn } from '@/components/dashboard';
+
 
 interface SearchResultsState {
     projects: Project[];
@@ -68,6 +70,8 @@ export default function SearchResultsPage() {
     const [bulkUpdateField, setBulkUpdateField] = React.useState<keyof Project>('processor');
     const [bulkUpdateValue, setBulkUpdateValue] = React.useState('');
     const [isBulkUpdating, setIsBulkUpdating] = React.useState(false);
+    const [search, setSearch] = React.useState(searchParams.get('quickSearch') || '');
+    const [searchColumn, setSearchColumn] = React.useState<SearchableColumn>((searchParams.get('searchColumn') as SearchableColumn) || 'any');
 
     const loadColumnLayout = (role: Role) => {
         const savedLayout = localStorage.getItem(`columnLayout-${role}`);
@@ -163,6 +167,17 @@ export default function SearchResultsPage() {
 
     const handleResetSearch = () => {
         router.push('/?role=Manager');
+    };
+    
+    const handleQuickSearch = () => {
+        if (!search.trim()) {
+             toast({ title: "Empty Search", description: "Please enter a value to search.", variant: "destructive" });
+            return;
+        }
+        const params = new URLSearchParams();
+        params.set('quickSearch', search);
+        params.set('searchColumn', searchColumn);
+        router.push(`/search?${params.toString()}`);
     };
 
     const handleDownload = async () => {
@@ -327,10 +342,15 @@ export default function SearchResultsPage() {
                 user={user}
                 activeRole="Manager"
                 setActiveRole={handleRoleSwitch}
+                search={search}
+                setSearch={setSearch}
+                searchColumn={searchColumn}
+                setSearchColumn={setSearchColumn}
+                onQuickSearch={handleQuickSearch}
                 isManagerOrAdmin={true}
+                showManagerSearch={true}
                 clientNames={dropdownOptions.clientNames}
                 processes={dropdownOptions.processes}
-                showManagerSearch={true}
             />
             
             {showSubHeader && (
