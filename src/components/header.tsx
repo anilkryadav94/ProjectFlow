@@ -18,7 +18,7 @@ import {
 } from "@/components/ui/dropdown-menu"
 import { signOut } from "firebase/auth";
 import { auth } from "@/lib/firebase";
-import { useRouter } from "next/navigation"
+import { useRouter, usePathname } from "next/navigation"
 import { ThemeToggle } from "./theme-toggle";
 import { Separator } from "./ui/separator";
 import { Label } from "@/components/ui/label";
@@ -84,6 +84,7 @@ export function Header({
   taskPagination,
 }: HeaderProps) {
   const router = useRouter();
+  const pathname = usePathname();
 
   const handleLogout = async () => {
     await signOut(auth);
@@ -128,6 +129,8 @@ export function Header({
 
   const dashboardName = getDashboardName();
   const dashboardLink = `/?role=${activeRole}`;
+  
+  const isSearchPage = pathname === '/search';
 
   return (
     <header className="flex items-center justify-between bg-primary text-primary-foreground p-2 px-4 shadow-md h-16 shrink-0 gap-4">
@@ -225,7 +228,7 @@ export function Header({
               </div>
             )}
             
-            {activeRole === 'Manager' && setSearch && setSearchColumn && onQuickSearch && (
+            {(activeRole === 'Manager' && !isSearchPage) && setSearch && setSearchColumn && onQuickSearch && (
                 <div className="flex items-center space-x-0 relative">
                     <Select value={searchColumn} onValueChange={(v) => setSearchColumn(v as SearchableColumn)}>
                         <SelectTrigger className="w-[180px] rounded-r-none focus:ring-0 text-foreground h-8 text-xs">
@@ -250,6 +253,7 @@ export function Header({
                         placeholder="Quick search..."
                         value={search}
                         onChange={(e) => setSearch(e.target.value)}
+                        onKeyDown={(e) => e.key === 'Enter' && onQuickSearch()}
                         className="rounded-none focus-visible:ring-0 h-8 w-48 text-foreground text-xs"
                     />
                     <Button variant="outline" size="icon" className="h-8 w-8 rounded-l-none text-foreground" onClick={onQuickSearch}>

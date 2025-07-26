@@ -70,34 +70,6 @@ function Dashboard({
   
   const [rowSelection, setRowSelection] = React.useState<Record<string, boolean>>({});
 
-  const [page, setPage] = React.useState(1);
-  const [totalPages, setTotalPages] = React.useState(1);
-  const [totalCount, setTotalCount] = React.useState(0);
-  const [isFetching, setIsFetching] = React.useState(false);
-
-  const bulkUpdateFields: {
-    value: keyof Project;
-    label: string;
-    options: readonly string[] | string[];
-    type: 'select';
-  }[] = [
-    { value: 'processor', label: 'Processor', options: processors, type: 'select' },
-    { value: 'qa', label: 'QA', options: qas, type: 'select' },
-    { value: 'case_manager', label: 'Case Manager', options: caseManagers, type: 'select' },
-    { value: 'client_name', label: 'Client Name', options: clientNames, type: 'select' },
-    { value: 'process', label: 'Process', options: processes, type: 'select' },
-    { value: 'workflowStatus', label: 'Workflow Status', options: workflowStatuses, type: 'select' },
-    { value: 'processing_status', label: 'Processing Status', options: allProcessorStatuses, type: 'select' },
-    { value: 'qa_status', label: 'QA Status', options: allQaStatuses, type: 'select' },
-  ];
-
-  const [bulkUpdateField, setBulkUpdateField] = React.useState<keyof Project>('processor');
-  const [bulkUpdateValue, setBulkUpdateValue] = React.useState('');
-  const [isBulkUpdating, setIsBulkUpdating] = React.useState(false);
-
-  const [searchCriteria, setSearchCriteria] = React.useState<SearchCriteria | null>(null);
-  const [filteredProjects, setFilteredProjects] = React.useState<Project[] | null>(null);
-
   const [clientNameFilter, setClientNameFilter] = React.useState('all');
   const [processFilter, setProcessFilter] = React.useState<string | 'all'>('all');
 
@@ -129,14 +101,10 @@ function Dashboard({
   const { toast } = useToast();
   
   const refreshProjects = async () => {
-    if (!activeRole) return;
+    if (!activeRole || isManagerOrAdmin) return;
     try {
-        if (isManagerOrAdmin) {
-            fetchManagerProjects(1); // Refetch paged data for manager
-        } else {
-            const updatedProjects = await getProjectsForUser(user.name, user.roles);
-            setProjects(updatedProjects);
-        }
+        const updatedProjects = await getProjectsForUser(user.name, user.roles);
+        setProjects(updatedProjects);
     } catch (error) {
         console.error("Failed to refresh projects:", error);
         toast({
@@ -163,36 +131,12 @@ function Dashboard({
         }
     }
   }, [user.roles, router, activeRole, searchParams]);
-  
-  const fetchManagerProjects = React.useCallback(async (pageNum: number) => {
-    if (!isManagerOrAdmin) return;
-    setIsFetching(true);
-    setPage(pageNum);
-    try {
-        const { projects, totalCount, totalPages } = await getPaginatedProjects({
-            page: pageNum,
-            limit: 50,
-            filters: { quickSearch: search, advanced: searchCriteria },
-            sort: sort || { key: 'id', direction: 'asc' },
-        });
-        setProjects(projects);
-        setTotalCount(totalCount);
-        setTotalPages(totalPages);
-    } catch (error) {
-        toast({ title: "Error", description: "Failed to fetch projects.", variant: "destructive" });
-        console.error("Failed to fetch paginated projects:", error);
-    } finally {
-        setIsFetching(false);
-    }
-  }, [isManagerOrAdmin, search, searchCriteria, sort]);
 
   React.useEffect(() => {
-    if (isManagerOrAdmin) {
-        fetchManagerProjects(1);
-    } else {
+    if (!isManagerOrAdmin) {
         setProjects(initialProjects);
     }
-  }, [isManagerOrAdmin, initialProjects, fetchManagerProjects]);
+  }, [isManagerOrAdmin, initialProjects]);
   
   const loadColumnLayout = (role: Role) => {
     const savedLayout = localStorage.getItem(`columnLayout-${role}`);
@@ -209,60 +153,6 @@ function Dashboard({
     }
   };
 
-  const saveColumnLayout = () => {
-    if (activeRole) {
-        localStorage.setItem(`columnLayout-${activeRole}`, JSON.stringify(visibleColumnKeys));
-        toast({
-            title: "Layout Saved",
-            description: `Your column layout for the ${activeRole} role has been saved.`,
-        });
-    }
-  };
-
-
-  const handleDownload = () => {
-    const dataToExport = dashboardProjects;
-    if (dataToExport.length === 0) {
-      toast({ title: "No data to export", variant: "destructive" });
-      return;
-    }
-    const csv = Papa.unparse(dataToExport);
-    const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
-    const link = document.createElement("a");
-    const url = URL.createObjectURL(blob);
-    link.setAttribute("href", url);
-    link.setAttribute("download", `projects_export_${new Date().toISOString().split('T')[0]}.csv`);
-    link.style.visibility = 'hidden';
-    document.body.appendChild(link);
-    link.click();
-    document.body.removeChild(link);
-  };
-
-  const handleBulkUpdate = async () => {
-    const projectIds = Object.keys(rowSelection).filter(id => rowSelection[id]);
-    if (projectIds.length === 0 || !bulkUpdateField || !bulkUpdateValue) {
-        toast({ title: "Bulk Update Error", description: "Please select rows, a field, and a value.", variant: "destructive" });
-        return;
-    }
-    
-    setIsBulkUpdating(true);
-    try {
-        const result = await bulkUpdateProjects({ projectIds, field: bulkUpdateField, value: bulkUpdateValue });
-        if (result.success) {
-            toast({ title: "Success", description: `${projectIds.length} projects have been updated.` });
-            await refreshProjects();
-            setRowSelection({});
-            setBulkUpdateValue('');
-        } else {
-            throw new Error(result.error || "An unknown error occurred.");
-        }
-    } catch(e) {
-        toast({ title: "Error", description: `Failed to update projects. ${e instanceof Error ? e.message : ''}`, variant: "destructive"});
-    } finally {
-        setIsBulkUpdating(false);
-    }
-  };
-  
   const handleFileSelect = (event: React.ChangeEvent<HTMLInputElement>) => {
     const file = event.target.files?.[0];
     if (file) {
@@ -295,7 +185,6 @@ function Dashboard({
                     const sanitizedRow: { [key: string]: any } = {};
                     for (const key in row) {
                         if (Object.prototype.hasOwnProperty.call(row, key)) {
-                            // Ensure id and auto-generated fields are not copied from CSV
                             if (key === 'id' || key === 'row_number') continue;
                             sanitizedRow[key] = row[key] === undefined || row[key] === '' ? null : row[key];
                         }
@@ -330,21 +219,19 @@ function Dashboard({
   }
 
   const handleAdvancedSearch = (criteria: SearchCriteria) => {
-    setSearchCriteria(criteria);
-    setSearch(''); // Clear quick search
-    fetchManagerProjects(1);
+    const params = new URLSearchParams();
+    params.set('advanced', 'true');
+    params.set('criteria', JSON.stringify(criteria.filter(c => c.field && c.operator)));
+    router.push(`/search?${params.toString()}`);
   };
   
   const handleQuickSearch = () => {
-    setSearchCriteria(null); // Clear advanced search
-    fetchManagerProjects(1);
+    if (!search.trim()) return;
+    const params = new URLSearchParams();
+    params.set('quickSearch', search);
+    params.set('searchColumn', searchColumn);
+    router.push(`/search?${params.toString()}`);
   };
-
-  const handleResetAdvancedSearch = () => {
-      setSearchCriteria(null);
-      setSearch('');
-      fetchManagerProjects(1);
-  }
   
   const handleOpenEditDialog = (project: Project) => {
     setEditingProject(project);
@@ -375,11 +262,9 @@ function Dashboard({
   const dashboardProjects = React.useMemo(() => {
     let baseProjects: Project[] = projects;
     
-    // Non-manager filtering is now done client-side based on the initial fetch
     if (!isManagerOrAdmin) {
         let filtered = baseProjects;
         
-        // Apply role-based filters first
         if (activeRole === 'Processor') {
             filtered = filtered.filter(p => 
                 p.processor === user.name && 
@@ -399,7 +284,6 @@ function Dashboard({
             );
         }
 
-        // Then apply UI filters
         if (search) {
             const effectiveSearchColumn = activeRole === 'Case Manager' ? 'any' : searchColumn;
             const lowercasedSearch = search.toLowerCase();
@@ -436,9 +320,7 @@ function Dashboard({
         }
         return filtered;
     }
-
-    // For manager/admin, the data is already paginated and filtered from the server
-    return baseProjects;
+    return []; // Manager no longer shows table on main dashboard
   }, [activeRole, user.name, projects, search, searchColumn, sort, clientNameFilter, processFilter, isManagerOrAdmin]);
 
   const clientWorkStatus = React.useMemo(() => {
@@ -462,8 +344,6 @@ function Dashboard({
         };
     }
     
-    // NOTE: This now operates on ALL initial projects for accuracy, not just the paged view.
-    // For very large datasets, this calculation should also be moved to the server.
     for (const project of initialProjects) {
         if (!statusByClient[project.client_name]) {
              statusByClient[project.client_name] = {
@@ -475,7 +355,6 @@ function Dashboard({
             };
         }
 
-        // Processing status
         if (['Pending', 'On Hold', 'Re-Work'].includes(project.processing_status)) {
             statusByClient[project.client_name].pendingProcessing++;
         }
@@ -483,7 +362,6 @@ function Dashboard({
             statusByClient[project.client_name].processedToday++;
         }
 
-        // QA status
         if (project.qa_status === 'Pending' && project.workflowStatus === 'With QA') {
             statusByClient[project.client_name].pendingQA++;
         }
@@ -503,7 +381,6 @@ function Dashboard({
 
     const outsideTatCount = dashboardProjects.filter(p => {
         if (!p.qa_date) return false;
-        // The difference in business days between the current date and the QA date.
         const daysDiff = differenceInBusinessDays(new Date(), new Date(p.qa_date));
         return daysDiff > 3;
     }).length;
@@ -532,19 +409,8 @@ function Dashboard({
       handleAddRowsDialog,
       visibleColumnKeys
   );
-  const selectedBulkUpdateField = bulkUpdateFields.find(f => f.value === bulkUpdateField);
 
-  // When to show the data table vs the accordions for manager
-  const showDataTable = isManagerOrAdmin; // Manager always sees the table now
-  const showManagerAccordions = isManagerOrAdmin;
-
-  // When to show the sub-header with column/layout controls
-  const showSubHeader = 
-    (
-      (activeRole === 'Processor' || activeRole === 'QA' || activeRole === 'Case Manager') || 
-      (isManagerOrAdmin && showDataTable)
-    ) && dashboardProjects.length > 0;
-
+  const showSubHeader = activeRole === 'Case Manager' && dashboardProjects.length > 0;
 
   return (
     <div className="flex flex-col h-screen bg-background w-full">
@@ -596,8 +462,6 @@ function Dashboard({
             searchColumn={searchColumn}
             setSearchColumn={setSearchColumn}
             isManagerOrAdmin={isManagerOrAdmin}
-            hasSearchResults={filteredProjects !== null}
-            onResetSearch={handleResetAdvancedSearch}
             onQuickSearch={handleQuickSearch}
             clientNameFilter={clientNameFilter}
             setClientNameFilter={setClientNameFilter}
@@ -608,10 +472,7 @@ function Dashboard({
         />
         {showSubHeader && (
             <div className="flex-shrink-0 border-b bg-muted">
-                <div className={cn(
-                  "flex items-center justify-end gap-2 px-4",
-                  activeRole === 'Case Manager' ? 'py-2.5' : 'py-1'
-                )}>
+                <div className="flex items-center justify-end gap-2 px-4 py-2.5">
                      {activeRole === 'Case Manager' ? (
                         <div className="flex-grow text-left text-sm font-semibold text-muted-foreground">
                             {dashboardProjects.length > 0 && caseManagerTatInfo && (
@@ -623,34 +484,7 @@ function Dashboard({
                                 </>
                             )}
                         </div>
-                    ) : (
-                        <>
-                            {activeRole === 'Manager' && (searchCriteria !== null || search !== '') && (
-                                <Button variant="outline" className="h-7 px-2 text-xs" onClick={handleResetAdvancedSearch}>
-                                    <RotateCcw className="mr-1.5 h-3.5 w-3.5" /> Reset Search
-                                </Button>
-                            )}
-                            <Button variant="outline" className="h-7 px-2 text-xs" onClick={() => setIsColumnSelectOpen(true)}>
-                                <Rows className="mr-1.5 h-3.5 w-3.5" />
-                                Select Columns
-                            </Button>
-                            <Button variant="outline" className="h-7 px-2 text-xs" onClick={saveColumnLayout}>
-                                <Save className="mr-1.5 h-3.5 w-3.5" />
-                                Save Layout
-                            </Button>
-                            {(activeRole === 'Processor' || activeRole === 'QA' || activeRole === 'Manager') && (
-                                <Button 
-                                    variant="outline" 
-                                    className="h-7 px-2 text-xs" 
-                                    onClick={handleDownload} 
-                                    disabled={dashboardProjects.length === 0}
-                                    title="Download CSV"
-                                >
-                                    <FileSpreadsheet className="h-3.5 w-3.5" />
-                                </Button>
-                            )}
-                        </>
-                    )}
+                    ) : null}
                 </div>
             </div>
         )}
@@ -660,172 +494,111 @@ function Dashboard({
                     <UserManagementTable sessionUser={user} />
                 </div>
             ) : activeRole === 'Manager' ? (
-              <div className="flex flex-col h-full">
-                 {showManagerAccordions && (
-                    <div className="p-4 md:p-6">
-                        <Accordion type="single" collapsible className="w-full" defaultValue='work-status'>
-                            <AccordionItem value="work-allocation" className="border-0 bg-muted/30 shadow-md mb-4 rounded-lg">
-                                <AccordionTrigger className="px-4 py-3 hover:no-underline">Work Allocation / Records Addition</AccordionTrigger>
-                                <AccordionContent className="p-4 pt-0">
-                                <Card>
-                                    <CardHeader>
-                                        <CardTitle>Bulk Upload Records</CardTitle>
-                                        <CardDescription>Upload a CSV file to add multiple new project records at once. Download the sample file for the correct format.</CardDescription>
-                                    </CardHeader>
-                                    <CardContent>
-                                        <div className="flex items-center gap-4">
-                                            <Button variant="outline" onClick={() => fileInputRef.current?.click()} disabled={isUploading}>
-                                                <Upload className="mr-2" />
-                                                Choose CSV File
-                                            </Button>
-                                            {selectedFile && <span className="text-sm text-muted-foreground">{selectedFile.name}</span>}
-                                            {selectedFile && <Button size="sm" variant="ghost" onClick={() => setSelectedFile(null)}><X /></Button>}
-                                        </div>
-                                    </CardContent>
-                                    <CardFooter className="gap-2">
-                                        <Button onClick={handleProcessUpload} disabled={!selectedFile || isUploading}>
-                                            {isUploading ? <Loader2 className="mr-2 animate-spin" /> : <FileUp className="mr-2" />}
-                                            Process Upload
-                                        </Button>
-                                        <Button variant="secondary" onClick={handleDownloadSample}>
-                                            <FileDown className="mr-2" />
-                                            Download Sample CSV
-                                        </Button>
-                                    </CardFooter>
-                                </Card>
-                                </AccordionContent>
-                            </AccordionItem>
-                             <AccordionItem value="ai-insights" className="border-0 bg-muted/30 shadow-md mb-4 rounded-lg">
-                                <AccordionTrigger className="px-4 py-3 hover:no-underline">AI Project Insights</AccordionTrigger>
-                                <AccordionContent className="p-4 pt-0">
-                                   <ProjectInsights />
-                                </AccordionContent>
-                            </AccordionItem>
-                            <AccordionItem value="advanced-search" className="border-0 bg-muted/30 shadow-md mb-4 rounded-lg">
-                                <AccordionTrigger className="px-4 py-3 hover:no-underline">Advanced Search</AccordionTrigger>
-                                <AccordionContent className="p-4 pt-0">
-                                <AdvancedSearchForm onSearch={handleAdvancedSearch} initialCriteria={searchCriteria} processors={processors} qas={qas} clientNames={clientNames} processes={processes} />
-                                </AccordionContent>
-                            </AccordionItem>
-                            <AccordionItem value="work-status" className="border-0 bg-muted/30 shadow-md mb-4 rounded-lg">
-                                <AccordionTrigger className="px-4 py-3 hover:no-underline">Work Status (Client Wise)</AccordionTrigger>
-                                <AccordionContent className="p-4 pt-0">
-                                <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 p-4">
-                                    <Card>
-                                        <CardHeader>
-                                            <CardTitle>Processing Status</CardTitle>
-                                        </CardHeader>
-                                        <CardContent>
-                                            <Table>
-                                                <TableHeader>
-                                                    <TableRow>
-                                                        <TableHead>Client</TableHead>
-                                                        <TableHead>All Time Pending</TableHead>
-                                                        <TableHead>Processed (Today)</TableHead>
-                                                    </TableRow>
-                                                </TableHeader>
-                                                <TableBody>
-                                                    {clientWorkStatus.map(item => (
-                                                        <TableRow key={item.client}>
-                                                            <TableCell>{item.client}</TableCell>
-                                                            <TableCell>{item.pendingProcessing}</TableCell>
-                                                            <TableCell>{item.processedToday}</TableCell>
-                                                        </TableRow>
-                                                    ))}
-                                                </TableBody>
-                                            </Table>
-                                        </CardContent>
-                                    </Card>
-                                    <Card>
-                                        <CardHeader>
-                                            <CardTitle>QA Status</CardTitle>
-                                        </CardHeader>
-                                        <CardContent>
-                                            <Table>
-                                                <TableHeader>
-                                                    <TableRow>
-                                                        <TableHead>Client</TableHead>
-                                                        <TableHead>Pending QA</TableHead>
-                                                        <TableHead>Client Query</TableHead>
-                                                        <TableHead>Completed (Today)</TableHead>
-                                                    </TableRow>
-                                                </TableHeader>
-                                                <TableBody>
-                                                    {clientWorkStatus.map(item => (
-                                                        <TableRow key={item.client}>
-                                                            <TableCell>{item.client}</TableCell>
-                                                            <TableCell>{item.pendingQA}</TableCell>
-                                                            <TableCell>{item.clientQuery}</TableCell>
-                                                            <TableCell>{item.completedToday}</TableCell>
-                                                        </TableRow>
-                                                    ))}
-                                                </TableBody>
-                                            </Table>
-                                        </CardContent>
-                                    </Card>
+              <div className="flex flex-col h-full p-4 md:p-6 overflow-y-auto">
+                <Accordion type="single" collapsible className="w-full" defaultValue='advanced-search'>
+                    <AccordionItem value="work-allocation" className="border-0 bg-muted/30 shadow-md mb-4 rounded-lg">
+                        <AccordionTrigger className="px-4 py-3 hover:no-underline">Work Allocation / Records Addition</AccordionTrigger>
+                        <AccordionContent className="p-4 pt-0">
+                        <Card>
+                            <CardHeader>
+                                <CardTitle>Bulk Upload Records</CardTitle>
+                                <CardDescription>Upload a CSV file to add multiple new project records at once. Download the sample file for the correct format.</CardDescription>
+                            </CardHeader>
+                            <CardContent>
+                                <div className="flex items-center gap-4">
+                                    <Button variant="outline" onClick={() => fileInputRef.current?.click()} disabled={isUploading}>
+                                        <Upload className="mr-2" />
+                                        Choose CSV File
+                                    </Button>
+                                    {selectedFile && <span className="text-sm text-muted-foreground">{selectedFile.name}</span>}
+                                    {selectedFile && <Button size="sm" variant="ghost" onClick={() => setSelectedFile(null)}><X /></Button>}
                                 </div>
-                                </AccordionContent>
-                            </AccordionItem>
-                        </Accordion>
-                    </div>
-                )}
-                 <div className="flex-grow flex flex-col overflow-y-auto">
-                    {Object.keys(rowSelection).length > 0 && (
-                        <div className="flex-shrink-0 flex items-center gap-4 p-4 border-b bg-muted/50">
-                            <span className="text-sm font-semibold">{Object.keys(rowSelection).length} selected</span>
-                            <div className="flex items-center gap-2">
-                                <Select value={bulkUpdateField} onValueChange={(v) => {
-                                    setBulkUpdateField(v as keyof Project);
-                                    setBulkUpdateValue('');
-                                }}>
-                                    <SelectTrigger className="w-[180px] h-9">
-                                        <SelectValue placeholder="Select field" />
-                                    </SelectTrigger>
-                                    <SelectContent>
-                                        {bulkUpdateFields.map(f => (
-                                            <SelectItem key={f.value} value={f.value}>{f.label}</SelectItem>
-                                        ))}
-                                    </SelectContent>
-                                </Select>
-                                
-                                <Select value={bulkUpdateValue} onValueChange={setBulkUpdateValue}>
-                                    <SelectTrigger className="w-[180px] h-9">
-                                        <SelectValue placeholder="Select new value" />
-                                    </SelectTrigger>
-                                    <SelectContent>
-                                        {selectedBulkUpdateField?.options.map(opt => (
-                                            <SelectItem key={opt} value={opt}>{opt}</SelectItem>
-                                        ))}
-                                    </SelectContent>
-                                </Select>
-                            </div>
-                            <Button size="sm" onClick={handleBulkUpdate} disabled={isBulkUpdating}>
-                                {isBulkUpdating && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
-                                Apply Update
-                            </Button>
+                            </CardContent>
+                            <CardFooter className="gap-2">
+                                <Button onClick={handleProcessUpload} disabled={!selectedFile || isUploading}>
+                                    {isUploading ? <Loader2 className="mr-2 animate-spin" /> : <FileUp className="mr-2" />}
+                                    Process Upload
+                                </Button>
+                                <Button variant="secondary" onClick={handleDownloadSample}>
+                                    <FileDown className="mr-2" />
+                                    Download Sample CSV
+                                </Button>
+                            </CardFooter>
+                        </Card>
+                        </AccordionContent>
+                    </AccordionItem>
+                      <AccordionItem value="ai-insights" className="border-0 bg-muted/30 shadow-md mb-4 rounded-lg">
+                        <AccordionTrigger className="px-4 py-3 hover:no-underline">AI Project Insights</AccordionTrigger>
+                        <AccordionContent className="p-4 pt-0">
+                            <ProjectInsights />
+                        </AccordionContent>
+                    </AccordionItem>
+                    <AccordionItem value="advanced-search" className="border-0 bg-muted/30 shadow-md mb-4 rounded-lg">
+                        <AccordionTrigger className="px-4 py-3 hover:no-underline">Advanced Search</AccordionTrigger>
+                        <AccordionContent className="p-4 pt-0">
+                        <AdvancedSearchForm onSearch={handleAdvancedSearch} initialCriteria={null} processors={processors} qas={qas} clientNames={clientNames} processes={processes} />
+                        </AccordionContent>
+                    </AccordionItem>
+                    <AccordionItem value="work-status" className="border-0 bg-muted/30 shadow-md mb-4 rounded-lg">
+                        <AccordionTrigger className="px-4 py-3 hover:no-underline">Work Status (Client Wise)</AccordionTrigger>
+                        <AccordionContent className="p-4 pt-0">
+                        <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 p-4">
+                            <Card>
+                                <CardHeader>
+                                    <CardTitle>Processing Status</CardTitle>
+                                </CardHeader>
+                                <CardContent>
+                                    <Table>
+                                        <TableHeader>
+                                            <TableRow>
+                                                <TableHead>Client</TableHead>
+                                                <TableHead>All Time Pending</TableHead>
+                                                <TableHead>Processed (Today)</TableHead>
+                                            </TableRow>
+                                        </TableHeader>
+                                        <TableBody>
+                                            {clientWorkStatus.map(item => (
+                                                <TableRow key={item.client}>
+                                                    <TableCell>{item.client}</TableCell>
+                                                    <TableCell>{item.pendingProcessing}</TableCell>
+                                                    <TableCell>{item.processedToday}</TableCell>
+                                                </TableRow>
+                                            ))}
+                                        </TableBody>
+                                    </Table>
+                                </CardContent>
+                            </Card>
+                            <Card>
+                                <CardHeader>
+                                    <CardTitle>QA Status</CardTitle>
+                                </CardHeader>
+                                <CardContent>
+                                    <Table>
+                                        <TableHeader>
+                                            <TableRow>
+                                                <TableHead>Client</TableHead>
+                                                <TableHead>Pending QA</TableHead>
+                                                <TableHead>Client Query</TableHead>
+                                                <TableHead>Completed (Today)</TableHead>
+                                            </TableRow>
+                                        </TableHeader>
+                                        <TableBody>
+                                            {clientWorkStatus.map(item => (
+                                                <TableRow key={item.client}>
+                                                    <TableCell>{item.client}</TableCell>
+                                                    <TableCell>{item.pendingQA}</TableCell>
+                                                    <TableCell>{item.clientQuery}</TableCell>
+                                                    <TableCell>{item.completedToday}</TableCell>
+                                                </TableRow>
+                                            ))}
+                                        </TableBody>
+                                    </Table>
+                                </CardContent>
+                            </Card>
                         </div>
-                    )}
-                    {showDataTable && (
-                        <div className="flex-grow flex flex-col">
-                          <DataTable 
-                              data={dashboardProjects}
-                              columns={columns}
-                              sort={sort}
-                              setSort={setSort}
-                              rowSelection={rowSelection}
-                              setRowSelection={setRowSelection}
-                              isManagerOrAdmin={isManagerOrAdmin}
-                              totalCount={totalCount}
-                              activeRole={activeRole}
-                              page={page}
-                              totalPages={totalPages}
-                              onPageChange={fetchManagerProjects}
-                              isFetching={isFetching}
-                          />
-                        </div>
-                    )}
-                 </div>
-
+                        </AccordionContent>
+                    </AccordionItem>
+                </Accordion>
               </div>
             ) : (
                  <div className="flex-grow flex flex-col">
@@ -848,5 +621,3 @@ function Dashboard({
 }
 
 export default Dashboard;
-
-    

@@ -14,6 +14,7 @@ import {
 } from "@/components/ui/table"
 import { cn } from "@/lib/utils"
 import { Button } from "./ui/button"
+import { usePathname, useRouter, useSearchParams } from "next/navigation"
 
 interface DataTableProps {
   data: Project[];
@@ -50,15 +51,33 @@ export function DataTable({
     onPageChange,
     isFetching,
 }: DataTableProps) {
+  const router = useRouter();
+  const pathname = usePathname();
+  const searchParams = useSearchParams();
+
   const handleSort = (key: string) => {
-    if (key === 'select' || key === 'actions') return;
+    if (key === 'select' || key === 'actions' || !isManagerOrAdmin) return;
     const projectKey = key as keyof Project;
-    if (sort && sort.key === projectKey) {
-      setSort({ key: projectKey, direction: sort.direction === 'asc' ? 'desc' : 'asc' });
-    } else {
-      setSort({ key: projectKey, direction: 'asc' });
+
+    const newSort = {
+        key: projectKey,
+        direction: (sort && sort.key === projectKey && sort.direction === 'asc') ? 'desc' : 'asc'
+    }
+    setSort(newSort);
+
+    if (onPageChange) { // This implies server-side sorting
+        const params = new URLSearchParams(searchParams);
+        params.set('sort', newSort.key);
+        params.set('dir', newSort.direction);
+        router.push(`${pathname}?${params.toString()}`);
     }
   };
+
+  const handlePageChange = (newPage: number) => {
+    if (onPageChange) {
+        onPageChange(newPage);
+    }
+  }
   
   const renderEmptyState = () => {
     if (isFetching) {
@@ -75,6 +94,8 @@ export function DataTable({
         message = "There are currently no tasks assigned to you. Please contact your manager for further assignments.";
     } else if (activeRole === 'Case Manager') {
         message = "Your dashboard is up to date — there are no pending queries at the moment.";
+    } else if (isManagerOrAdmin) {
+        message = "No projects found matching your search criteria."
     }
 
     return (
@@ -139,14 +160,14 @@ export function DataTable({
              <div className="flex-1 text-left">
                 {Object.keys(rowSelection).length > 0 && <span>{Object.keys(rowSelection).length} selected</span>}
              </div>
-             {showPagination && page && totalPages && onPageChange && (
+             {showPagination && page && totalPages && handlePageChange && (
                 <div className="flex items-center gap-2">
-                    <Button variant="outline" size="sm" onClick={() => onPageChange(page - 1)} disabled={page <= 1 || isFetching}>
+                    <Button variant="outline" size="sm" onClick={() => handlePageChange(page - 1)} disabled={page <= 1 || isFetching}>
                         <ChevronLeft className="h-4 w-4" />
                         Previous
                     </Button>
                     <span>Page {page} of {totalPages}</span>
-                     <Button variant="outline" size="sm" onClick={() => onPageChange(page + 1)} disabled={page >= totalPages || isFetching}>
+                     <Button variant="outline" size="sm" onClick={() => handlePageChange(page + 1)} disabled={page >= totalPages || isFetching}>
                         Next
                         <ChevronRight className="h-4 w-4" />
                     </Button>
