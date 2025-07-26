@@ -91,11 +91,22 @@ function Dashboard({ user, error }: DashboardProps) {
   const defaultProcessorQAColumns = [ 'actions', 'row_number', 'ref_number', 'client_name', 'process', 'processor', 'sender', 'subject_line', 'received_date', 'case_manager', 'allocation_date', 'processing_date', 'processing_status', 'qa_status', 'workflowStatus' ];
   const defaultCaseManagerColumns = [ 'actions', 'row_number', 'ref_number', 'application_number', 'country', 'patent_number', 'sender', 'subject_line', 'client_query_description', 'client_comments', 'clientquery_status', 'case_manager', 'qa_date', 'client_response_date' ];
   const defaultManagerAdminColumns = [ 'select', 'actions', 'row_number', 'ref_number', 'client_name', 'process', 'processor', 'qa', 'case_manager', 'workflowStatus', 'processing_status', 'qa_status', 'received_date', 'allocation_date', 'processing_date', 'qa_date' ];
-  const [visibleColumnKeys, setVisibleColumnKeys] = React.useState<string[]>(defaultProcessorQAColumns);
+  const [visibleColumnKeys, setVisibleColumnKeys] = React.useState<string[]>([]);
   
   const { toast } = useToast();
   
   const isManagerOrAdmin = React.useMemo(() => activeRole === 'Manager' || activeRole === 'Admin', [activeRole]);
+
+  const loadColumnLayout = React.useCallback((role: Role) => {
+    const savedLayout = localStorage.getItem(`columnLayout-${role}`);
+    if (savedLayout) {
+        setVisibleColumnKeys(JSON.parse(savedLayout));
+    } else {
+        if (role === 'Processor' || role === 'QA') setVisibleColumnKeys(defaultProcessorQAColumns);
+        else if (role === 'Case Manager') setVisibleColumnKeys(defaultCaseManagerColumns);
+        else if (role === 'Admin' || role === 'Manager') setVisibleColumnKeys(defaultManagerAdminColumns);
+    }
+  }, []);
 
   const fetchPageData = React.useCallback(async (role: Role, currentPage: number, currentSort: typeof sort, currentFilters: any) => {
     if (!user || role === 'Admin') {
@@ -104,10 +115,6 @@ function Dashboard({ user, error }: DashboardProps) {
         return;
     };
     
-    // For non-paginated roles, we fetch all data and handle pagination/sorting client-side
-    // For manager/admin, we use server-side pagination
-    const isServerPaginated = isManagerOrAdmin;
-
     try {
         const result = await getPaginatedProjects({
             page: currentPage,
@@ -119,7 +126,7 @@ function Dashboard({ user, error }: DashboardProps) {
         
         setProjects(result.projects);
         setTotalCount(result.totalCount);
-        setTotalPages(isServerPaginated ? result.totalPages : 1);
+        setTotalPages(result.totalPages);
         
     } catch (error) {
         console.error("Failed to fetch projects:", error);
@@ -127,7 +134,7 @@ function Dashboard({ user, error }: DashboardProps) {
         setProjects([]);
         setTotalCount(0);
     }
-  }, [user, toast, isManagerOrAdmin]);
+  }, [user, toast]);
 
   // Effect to set initial role and load initial dropdown data
   React.useEffect(() => {
@@ -185,17 +192,6 @@ function Dashboard({ user, error }: DashboardProps) {
       }
     }
   }, [activeRole, page, sort, search, searchColumn, clientNameFilter, processFilter, isManagerOrAdmin, isLoading]);
-
-  const loadColumnLayout = (role: Role) => {
-    const savedLayout = localStorage.getItem(`columnLayout-${role}`);
-    if (savedLayout) {
-        setVisibleColumnKeys(JSON.parse(savedLayout));
-    } else {
-        if (role === 'Processor' || role === 'QA') setVisibleColumnKeys(defaultProcessorQAColumns);
-        else if (role === 'Case Manager') setVisibleColumnKeys(defaultCaseManagerColumns);
-        else if (role === 'Admin' || role === 'Manager') setVisibleColumnKeys(defaultManagerAdminColumns);
-    }
-  };
 
   const saveColumnLayout = (role: Role) => {
     localStorage.setItem(`columnLayout-${role}`, JSON.stringify(visibleColumnKeys));
@@ -324,27 +320,32 @@ function Dashboard({ user, error }: DashboardProps) {
     } else if (activeRole === 'Case Manager') {
         filtered = filtered.filter(p => p.qa_status === 'Client Query' && p.clientquery_status === null);
     }
-
-    filtered.sort((a, b) => {
-        const key = sort.key as keyof Project;
-        const aValue = a[key];
-        const bValue = b[key];
-
-        if (aValue === null || aValue === undefined) return 1;
-        if (bValue === null || bValue === undefined) return -1;
-        
-        let comparison = 0;
-        if (typeof aValue === 'string' && typeof bValue === 'string') {
-            comparison = aValue.localeCompare(bValue);
-        } else if (typeof aValue === 'number' && typeof bValue === 'number') {
-            comparison = aValue - bValue;
-        }
-
-        return sort.direction === 'asc' ? comparison : -comparison;
-    });
     
     return filtered;
-  }, [projects, activeRole, isManagerOrAdmin, totalPages, sort]);
+  }, [projects, activeRole, isManagerOrAdmin, totalPages]);
+
+
+  const sortedDashboardProjects = React.useMemo(() => {
+        const sorted = [...dashboardProjects];
+        sorted.sort((a, b) => {
+            const key = sort.key as keyof Project;
+            const aValue = a[key];
+            const bValue = b[key];
+
+            if (aValue === null || aValue === undefined) return 1;
+            if (bValue === null || bValue === undefined) return -1;
+            
+            let comparison = 0;
+            if (typeof aValue === 'string' && typeof bValue === 'string') {
+                comparison = aValue.localeCompare(bValue);
+            } else if (typeof aValue === 'number' && typeof bValue === 'number') {
+                comparison = aValue - bValue;
+            }
+
+            return sort.direction === 'asc' ? comparison : -comparison;
+        });
+        return sorted;
+    }, [dashboardProjects, sort]);
 
 
   const caseManagerTatInfo = React.useMemo(() => {
@@ -409,7 +410,7 @@ function Dashboard({ user, error }: DashboardProps) {
         }
     };
   
-  if (isLoading || !activeRole) {
+  if (isLoading || !activeRole || visibleColumnKeys.length === 0) {
     return (
         <div className="flex h-screen w-full items-center justify-center bg-background">
             <div className="flex flex-col items-center gap-4">
@@ -454,7 +455,7 @@ function Dashboard({ user, error }: DashboardProps) {
             />
         )}
         {sourceProject && ( <AddRowsDialog isOpen={isAddRowsDialogOpen} onOpenChange={setIsAddRowsDialogOpen} sourceProject={sourceProject} onAddRowsSuccess={() => {if(activeRole) fetchPageData(activeRole, page, sort, {})}} /> )}
-        <ColumnSelectDialog isOpen={isColumnSelectOpen} onOpenChange={setIsColumnSelectOpen} allColumns={allColumns} visibleColumns={visibleColumnKeys} setVisibleColumns={setVisibleColumns} />
+        <ColumnSelectDialog isOpen={isColumnSelectOpen} onOpenChange={setIsColumnSelectOpen} allColumns={allColumns} visibleColumns={visibleColumnKeys} setVisibleColumns={setVisibleColumnKeys} />
 
         <Header 
             user={user} activeRole={activeRole} setActiveRole={handleRoleSwitch}
@@ -582,7 +583,7 @@ function Dashboard({ user, error }: DashboardProps) {
                         </div>
                     )}
                      <DataTable 
-                        data={dashboardProjects}
+                        data={sortedDashboardProjects}
                         columns={columns}
                         sort={sort}
                         setSort={setSort}
@@ -604,5 +605,3 @@ function Dashboard({ user, error }: DashboardProps) {
 }
 
 export default Dashboard;
-
-    
