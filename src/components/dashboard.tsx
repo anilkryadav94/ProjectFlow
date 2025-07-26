@@ -3,39 +3,30 @@
 
 import * as React from 'react';
 import Papa from "papaparse";
-import { type Project, type Role, type User, roleHierarchy, projectStatuses, processorActionableStatuses, processorSubmissionStatuses, qaSubmissionStatuses, workflowStatuses, allProcessorStatuses, allQaStatuses, ProcessType } from '@/lib/data';
+import { type Project, type Role, type User, roleHierarchy, ProcessType } from '@/lib/data';
 import { DataTable } from '@/components/data-table';
 import { getColumns, allColumns } from '@/components/columns';
 import { Header } from '@/components/header';
 import { UserManagementTable } from './user-management-table';
 import { Button } from './ui/button';
 import { useToast } from '@/hooks/use-toast';
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from './ui/select';
-import { FileUp, Loader2, Upload, X, Download, FileDown, Rows, Save, FileSpreadsheet, RotateCcw, Search } from 'lucide-react';
+import { FileUp, Loader2, Upload, X, FileDown, Rows, Save, FileSpreadsheet, RotateCcw } from 'lucide-react';
 import { AdvancedSearchForm, type SearchCriteria } from './advanced-search-form';
 import { useSearchParams, useRouter } from 'next/navigation';
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from './ui/card';
-import { Input } from './ui/input';
 import { cn } from '@/lib/utils';
 import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from './ui/accordion';
 import { EditProjectDialog } from './edit-project-dialog';
 import { AddRowsDialog } from './add-rows-dialog';
-import { getProjectsForUser, addRows } from '@/app/actions';
+import { getPaginatedProjects, addRows, getProjectsForExport } from '@/app/actions';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from './ui/table';
 import { ColumnSelectDialog } from './column-select-dialog';
 import { differenceInBusinessDays } from 'date-fns';
-import { Label } from './ui/label';
 import { ProjectInsights } from './project-insights';
+import { getUsers } from '@/lib/auth';
 
 interface DashboardProps {
   user: User;
-  initialProjects: Project[];
-  clientNames: string[];
-  processors: string[];
-  qas: string[];
-  caseManagers: string[];
-  processes: ProcessType[];
-  onSwitchRole: (role: Role) => void;
   error: string | null;
 }
 
@@ -47,31 +38,30 @@ export function DashboardWrapper(props: DashboardProps) {
 export type SearchableColumn = 'any' | 'row_number' | 'ref_number' | 'application_number' | 'patent_number' | 'subject_line' | 'processing_status' | 'qa_status' | 'workflowStatus' | 'allocation_date' | 'received_date';
 
 
-function Dashboard({ 
-  user, 
-  initialProjects,
-  clientNames,
-  processors,
-  qas,
-  caseManagers,
-  processes,
-  onSwitchRole
-}: DashboardProps) {
+function Dashboard({ user, error }: DashboardProps) {
   const searchParams = useSearchParams();
   const router = useRouter();
   const fileInputRef = React.useRef<HTMLInputElement>(null);
   
   const [activeRole, setActiveRole] = React.useState<Role | null>(null);
-  const [nonManagerProjects, setNonManagerProjects] = React.useState<Project[]>(initialProjects);
+  const [isSwitching, setIsSwitching] = React.useState(false);
+  const [switchingToRole, setSwitchingToRole] = React.useState<Role | null>(null);
+  
+  // States for server-side pagination and filtering
+  const [projects, setProjects] = React.useState<Project[]>([]);
+  const [totalCount, setTotalCount] = React.useState(0);
+  const [totalPages, setTotalPages] = React.useState(1);
+  const [page, setPage] = React.useState(1);
+  const [isLoading, setIsLoading] = React.useState(true);
+  
+  // States for UI controls
+  const [sort, setSort] = React.useState<{ key: keyof Project; direction: 'asc' | 'desc' }>({ key: 'row_number', direction: 'desc' });
   const [search, setSearch] = React.useState('');
   const [searchColumn, setSearchColumn] = React.useState<SearchableColumn>('any');
-  
-  const [sort, setSort] = React.useState<{ key: keyof Project; direction: 'asc' | 'desc' }>({ key: 'row_number', direction: 'desc' });
-  
-  const [rowSelection, setRowSelection] = React.useState<Record<string, boolean>>({});
-
   const [clientNameFilter, setClientNameFilter] = React.useState('all');
   const [processFilter, setProcessFilter] = React.useState<string | 'all'>('all');
+
+  const [rowSelection, setRowSelection] = React.useState<Record<string, boolean>>({});
 
   const [selectedFile, setSelectedFile] = React.useState<File | null>(null);
   const [isUploading, setIsUploading] = React.useState(false);
@@ -81,41 +71,62 @@ function Dashboard({
 
   const [isAddRowsDialogOpen, setIsAddRowsDialogOpen] = React.useState(false);
   const [sourceProject, setSourceProject] = React.useState<Project | null>(null);
+  
+  // Dropdown options states
+  const [clientNames, setClientNames] = React.useState<string[]>([]);
+  const [processors, setProcessors] = React.useState<string[]>([]);
+  const [qas, setQas] = React.useState<string[]>([]);
+  const [caseManagers, setCaseManagers] = React.useState<string[]>([]);
+  const [processes, setProcesses] = React.useState<ProcessType[]>([]);
 
   const [isColumnSelectOpen, setIsColumnSelectOpen] = React.useState(false);
 
-  const defaultProcessorQAColumns = [
-    'actions', 'row_number', 'ref_number', 'client_name', 'process', 'processor', 'sender', 'subject_line', 'received_date', 'case_manager', 'allocation_date', 'processing_date', 'processing_status', 'qa_status', 'workflowStatus'
-  ];
-  
-  const defaultCaseManagerColumns = [
-      'actions', 'row_number', 'ref_number', 'application_number', 'country', 'patent_number', 'sender', 'subject_line', 'client_query_description', 'client_comments', 'clientquery_status', 'case_manager', 'qa_date', 'client_response_date'
-  ];
-
-  const defaultManagerAdminColumns = [
-      'select', 'actions', 'row_number', 'ref_number', 'client_name', 'process', 'processor', 'qa', 'case_manager', 'workflowStatus', 'processing_status', 'qa_status', 'received_date', 'allocation_date', 'processing_date', 'qa_date'
-  ];
-
+  const defaultProcessorQAColumns = [ 'actions', 'row_number', 'ref_number', 'client_name', 'process', 'processor', 'sender', 'subject_line', 'received_date', 'case_manager', 'allocation_date', 'processing_date', 'processing_status', 'qa_status', 'workflowStatus' ];
+  const defaultCaseManagerColumns = [ 'actions', 'row_number', 'ref_number', 'application_number', 'country', 'patent_number', 'sender', 'subject_line', 'client_query_description', 'client_comments', 'clientquery_status', 'case_manager', 'qa_date', 'client_response_date' ];
+  const defaultManagerAdminColumns = [ 'select', 'actions', 'row_number', 'ref_number', 'client_name', 'process', 'processor', 'qa', 'case_manager', 'workflowStatus', 'processing_status', 'qa_status', 'received_date', 'allocation_date', 'processing_date', 'qa_date' ];
   const [visibleColumnKeys, setVisibleColumnKeys] = React.useState<string[]>(defaultProcessorQAColumns);
   
   const { toast } = useToast();
   
-  const refreshProjects = async () => {
-    if (!activeRole || isManagerOrAdmin) return;
-    try {
-        const updatedProjects = await getProjectsForUser(user.name, user.roles);
-        setNonManagerProjects(updatedProjects);
-    } catch (error) {
-        console.error("Failed to refresh projects:", error);
-        toast({
-            title: "Error",
-            description: "Could not refresh project data.",
-            variant: "destructive"
-        });
-    }
-  };
-  
   const isManagerOrAdmin = React.useMemo(() => activeRole === 'Manager' || activeRole === 'Admin', [activeRole]);
+
+  const fetchDropdownData = React.useCallback(async () => {
+    try {
+        const allUsers = await getUsers();
+        const allProjs = await getProjectsForExport({ filters: {}, sort: { key: 'row_number', direction: 'desc' }, user});
+        setClientNames([...new Set(allProjs.map(p => p.client_name).filter(Boolean))].sort());
+        setProcesses([...new Set(allProjs.map(p => p.process).filter(Boolean))].sort() as ProcessType[]);
+        setProcessors(allUsers.filter(u => u.roles.includes('Processor')).map(u => u.name).sort());
+        setQas(allUsers.filter(u => u.roles.includes('QA')).map(u => u.name).sort());
+        setCaseManagers(allUsers.filter(u => u.roles.includes('Case Manager')).map(u => u.name).sort());
+    } catch(e) {
+        console.error("Failed to fetch dropdown data", e);
+        toast({ title: "Error", description: "Could not load filter options.", variant: "destructive" });
+    }
+  }, [user, toast]);
+
+  const fetchProjects = React.useCallback(async (role: Role, currentPage: number, currentSort: typeof sort, currentFilters: any) => {
+    if (!user || role === 'Admin') return;
+    setIsLoading(true);
+
+    try {
+        const result = await getPaginatedProjects({
+            page: currentPage,
+            limit: 50,
+            sort: currentSort,
+            filters: { ...currentFilters, roleFilter: { role, userName: user.name } },
+            user,
+        });
+        setProjects(result.projects);
+        setTotalCount(result.totalCount);
+        setTotalPages(result.totalPages);
+    } catch (error) {
+        console.error("Failed to fetch projects:", error);
+        toast({ title: "Error", description: "Could not fetch project data.", variant: "destructive" });
+    } finally {
+        setIsLoading(false);
+    }
+  }, [user, toast]);
 
   React.useEffect(() => {
     const highestRole = roleHierarchy.find(role => user.roles.includes(role)) || user.roles[0];
@@ -125,45 +136,54 @@ function Dashboard({
     if (newActiveRole !== activeRole) {
         setActiveRole(newActiveRole);
         loadColumnLayout(newActiveRole);
-        const currentUrlRole = searchParams.get('role');
-        if (currentUrlRole !== newActiveRole) {
-             router.replace(`/?role=${newActiveRole}`, { scroll: false });
-        }
+        if (isManagerOrAdmin) fetchDropdownData();
     }
-  }, [user.roles, router, activeRole, searchParams]);
+  }, [user.roles, searchParams, activeRole, isManagerOrAdmin, fetchDropdownData]);
 
+  // Fetch data when role, page, sort, or filters change
   React.useEffect(() => {
-    setNonManagerProjects(initialProjects);
-  }, [initialProjects]);
-  
+    if (activeRole && !isManagerOrAdmin) {
+        const filters = {
+            quickSearch: search,
+            searchColumn: searchColumn,
+            clientName: clientNameFilter,
+            process: processFilter
+        };
+        fetchProjects(activeRole, page, sort, filters);
+    }
+  }, [activeRole, page, sort, search, searchColumn, clientNameFilter, processFilter, fetchProjects, isManagerOrAdmin]);
+
   const loadColumnLayout = (role: Role) => {
     const savedLayout = localStorage.getItem(`columnLayout-${role}`);
     if (savedLayout) {
         setVisibleColumnKeys(JSON.parse(savedLayout));
     } else {
-        if (role === 'Processor' || role === 'QA') {
-            setVisibleColumnKeys(defaultProcessorQAColumns);
-        } else if (role === 'Case Manager') {
-            setVisibleColumnKeys(defaultCaseManagerColumns);
-        } else if (role === 'Admin' || role === 'Manager') {
-            setVisibleColumnKeys(defaultManagerAdminColumns);
-        }
+        if (role === 'Processor' || role === 'QA') setVisibleColumnKeys(defaultProcessorQAColumns);
+        else if (role === 'Case Manager') setVisibleColumnKeys(defaultCaseManagerColumns);
+        else if (role === 'Admin' || role === 'Manager') setVisibleColumnKeys(defaultManagerAdminColumns);
     }
   };
 
   const saveColumnLayout = (role: Role) => {
     localStorage.setItem(`columnLayout-${role}`, JSON.stringify(visibleColumnKeys));
-    toast({
-        title: "Layout Saved",
-        description: `Your column layout for the ${role} role has been saved.`,
-    });
+    toast({ title: "Layout Saved", description: `Your column layout for the ${role} role has been saved.` });
+  };
+  
+  const handleRoleSwitch = (role: Role) => {
+    setIsSwitching(true);
+    setSwitchingToRole(role);
+    setPage(1); // Reset page on role switch
+    setSort({ key: 'row_number', direction: 'desc' }); // Reset sort
+    router.push(`/?role=${role}`);
+    setTimeout(() => {
+      setIsSwitching(false);
+      setSwitchingToRole(null);
+    }, 500);
   };
 
   const handleFileSelect = (event: React.ChangeEvent<HTMLInputElement>) => {
     const file = event.target.files?.[0];
-    if (file) {
-        setSelectedFile(file);
-    }
+    if (file) setSelectedFile(file);
     event.target.value = '';
   }
 
@@ -175,8 +195,7 @@ function Dashboard({
     setIsUploading(true);
 
     Papa.parse(selectedFile, {
-        header: true,
-        skipEmptyLines: true,
+        header: true, skipEmptyLines: true,
         complete: async (results) => {
             const rows = results.data as any[];
             if (rows.length === 0) {
@@ -184,32 +203,25 @@ function Dashboard({
                 setIsUploading(false);
                 return;
             }
-
-            const projectsToAdd: Partial<Project>[] = rows
-                .filter(row => row.client_name || row.subject_line)
-                .map(row => {
-                    const sanitizedRow: { [key: string]: any } = {};
-                    for (const key in row) {
-                        if (Object.prototype.hasOwnProperty.call(row, key)) {
-                            if (key === 'id' || key === 'row_number') continue;
-                            sanitizedRow[key] = row[key] === undefined || row[key] === '' ? null : row[key];
-                        }
+            const projectsToAdd: Partial<Project>[] = rows.filter(row => row.client_name || row.subject_line).map(row => {
+                const sanitizedRow: { [key: string]: any } = {};
+                for (const key in row) {
+                    if (Object.prototype.hasOwnProperty.call(row, key)) {
+                        if (key === 'id' || key === 'row_number') continue;
+                        sanitizedRow[key] = row[key] === undefined || row[key] === '' ? null : row[key];
                     }
-                    return sanitizedRow;
-                });
+                }
+                return sanitizedRow;
+            });
 
             try {
                 const result = await addRows(projectsToAdd);
                 if (result.success) {
-                    toast({
-                        title: "Bulk Add Complete",
-                        description: `${result.addedCount} projects have been added.`,
-                    });
-                    await refreshProjects();
+                    toast({ title: "Bulk Add Complete", description: `${result.addedCount} projects have been added.` });
+                    if (activeRole) fetchProjects(activeRole, 1, sort, {});
                 } else {
                     throw new Error(result.error || "An unknown error occurred during upload.");
                 }
-
             } catch(e) {
                  toast({ title: "Upload Error", description: `Failed to add projects to database. ${e instanceof Error ? e.message : ''}`, variant: "destructive" });
             } finally {
@@ -232,11 +244,17 @@ function Dashboard({
   };
   
   const handleQuickSearch = () => {
-    if (!search.trim()) return;
-    const params = new URLSearchParams();
-    params.set('quickSearch', search);
-    params.set('searchColumn', searchColumn);
-    router.push(`/search?${params.toString()}`);
+    if (isManagerOrAdmin) {
+        if (!search.trim()) return;
+        const params = new URLSearchParams();
+        params.set('quickSearch', search);
+        params.set('searchColumn', searchColumn);
+        router.push(`/search?${params.toString()}`);
+    } else if (activeRole) {
+        // For other roles, just trigger a re-fetch with new search term
+        setPage(1); // Reset to page 1 for new search
+        fetchProjects(activeRole, 1, sort, { quickSearch: search, searchColumn });
+    }
   };
   
   const handleOpenEditDialog = (project: Project) => {
@@ -265,160 +283,31 @@ function Dashboard({
     document.body.removeChild(link);
   }
 
-  const dashboardProjects = React.useMemo(() => {
-    if (isManagerOrAdmin) {
-        return []; // Manager no longer shows table on main dashboard
-    }
-    
-    let filtered: Project[] = nonManagerProjects;
-    
-    if (activeRole === 'Processor') {
-        filtered = filtered.filter(p => 
-            p.processor === user.name && 
-            (['Pending', 'Re-Work', 'On Hold'].includes(p.processing_status) || !p.processing_status)
-        );
-    } else if (activeRole === 'QA') {
-        filtered = filtered.filter(p => 
-            p.qa === user.name &&
-            ['Processed', 'Already Processed', 'NTP', 'Client Query'].includes(p.processing_status) &&
-            (['Pending', 'On Hold'].includes(p.qa_status) || !p.qa_status)
-        );
-    } else if (activeRole === 'Case Manager') {
-        filtered = filtered.filter(p =>
-            p.case_manager === user.name &&
-            p.qa_status === 'Client Query' &&
-            p.clientquery_status === null
-        );
-    }
-
-    if (search) {
-        const effectiveSearchColumn = activeRole === 'Case Manager' ? 'any' : searchColumn;
-        const lowercasedSearch = search.toLowerCase();
-        
-        if (effectiveSearchColumn === 'any') {
-            filtered = filtered.filter(p => 
-                Object.values(p).some(val => String(val).toLowerCase().includes(lowercasedSearch))
-            );
-        } else {
-            filtered = filtered.filter(p => 
-                (p[effectiveSearchColumn] as string)?.toString().toLowerCase().includes(lowercasedSearch)
-            );
-        }
-    }
-
-    if (clientNameFilter !== 'all') {
-        filtered = filtered.filter(p => p.client_name === clientNameFilter);
-    }
-    
-    if (processFilter !== 'all') {
-        filtered = filtered.filter(p => p.process === processFilter);
-    }
-    
-    if (sort && filtered) {
-        const sorted = [...filtered].sort((a, b) => {
-            const valA = a[sort.key];
-            const valB = b[sort.key];
-            if (valA === null || valA === undefined) return 1; 
-            if (valB === null || valB === undefined) return -1;
-            
-            // Handle numeric or date sorting if needed, for now assume string comparison
-            if (typeof valA === 'string' && typeof valB === 'string') {
-                 if (sort.direction === 'asc') {
-                    return valA.localeCompare(valB, undefined, {numeric: true});
-                 } else {
-                    return valB.localeCompare(valA, undefined, {numeric: true});
-                 }
-            }
-            
-            if (valA < valB) return sort.direction === 'asc' ? -1 : 1;
-            if (valA > valB) return sort.direction === 'asc' ? 1 : -1;
-            return 0;
-        });
-        return sorted;
-    }
-
-    return filtered;
-
-  }, [activeRole, user.name, nonManagerProjects, search, searchColumn, sort, clientNameFilter, processFilter, isManagerOrAdmin]);
-
-  const clientWorkStatus = React.useMemo(() => {
-    const statusByClient: Record<string, {
-        pendingProcessing: number;
-        processedToday: number;
-        pendingQA: number;
-        clientQuery: number;
-        completedToday: number;
-    }> = {};
-
-    const today = new Date().toISOString().split('T')[0];
-
-    for (const client of clientNames) {
-        statusByClient[client] = {
-            pendingProcessing: 0,
-            processedToday: 0,
-            pendingQA: 0,
-            clientQuery: 0,
-            completedToday: 0,
-        };
-    }
-    
-    for (const project of initialProjects) {
-        if (!statusByClient[project.client_name]) {
-             statusByClient[project.client_name] = {
-                pendingProcessing: 0,
-                processedToday: 0,
-                pendingQA: 0,
-                clientQuery: 0,
-                completedToday: 0,
-            };
-        }
-
-        if (['Pending', 'On Hold', 'Re-Work'].includes(project.processing_status)) {
-            statusByClient[project.client_name].pendingProcessing++;
-        }
-        if (project.processing_date === today) {
-            statusByClient[project.client_name].processedToday++;
-        }
-
-        if (project.qa_status === 'Pending' && project.workflowStatus === 'With QA') {
-            statusByClient[project.client_name].pendingQA++;
-        }
-        if (project.qa_status === 'Client Query') {
-            statusByClient[project.client_name].clientQuery++;
-        }
-        if (project.qa_date === today && project.qa_status === 'Complete') {
-             statusByClient[project.client_name].completedToday++;
-        }
-    }
-
-    return Object.entries(statusByClient).map(([client, status]) => ({ client, ...status }));
-  }, [initialProjects, clientNames]);
-  
   const caseManagerTatInfo = React.useMemo(() => {
     if (activeRole !== 'Case Manager') return null;
-
-    const outsideTatCount = dashboardProjects.filter(p => {
+    const outsideTatCount = projects.filter(p => {
         if (!p.qa_date) return false;
-        const daysDiff = differenceInBusinessDays(new Date(), new Date(p.qa_date));
-        return daysDiff > 3;
+        return differenceInBusinessDays(new Date(), new Date(p.qa_date)) > 3;
     }).length;
-
     const greeting = new Date().getHours() < 17 ? "Good Morning" : "Good Evening";
+    return { count: outsideTatCount, greeting: `Hi ${user.name}, ${greeting}!`, plural: outsideTatCount === 1 ? 'Email' : 'Emails' };
+  }, [activeRole, projects, user.name]);
 
-    return {
-        count: outsideTatCount,
-        greeting: `Hi ${user.name}, ${greeting}!`,
-        plural: outsideTatCount === 1 ? 'Email' : 'Emails',
-    };
-  }, [activeRole, dashboardProjects, user.name]);
+  const handleNonManagerDownload = async () => {
+        const filters = {
+            quickSearch: search,
+            searchColumn: searchColumn,
+            clientName: clientNameFilter,
+            process: processFilter
+        };
+        const projectsToExport = await getProjectsForExport({ filters, sort, user });
 
-  const handleNonManagerDownload = () => {
-        if (dashboardProjects.length === 0) {
+        if (projectsToExport.length === 0) {
             toast({ title: "No data to export", variant: "destructive" });
             return;
         }
 
-        const csv = Papa.unparse(dashboardProjects);
+        const csv = Papa.unparse(projectsToExport);
         const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
         const link = document.createElement("a");
         const url = URL.createObjectURL(blob);
@@ -428,89 +317,49 @@ function Dashboard({
         link.click();
         document.body.removeChild(link);
   };
-
-
-  if (!activeRole) {
-    return <div className="flex h-screen w-full items-center justify-center"><Loader2 className="h-8 w-8 animate-spin" /></div>;
+  
+  if (!activeRole || isSwitching) {
+    return (
+        <div className="flex h-screen w-full items-center justify-center bg-background">
+            <div className="flex flex-col items-center gap-4">
+                <Loader2 className="h-12 w-12 animate-spin text-primary" />
+                {isSwitching && <p className="text-lg text-muted-foreground">Opening {switchingToRole} Dashboard...</p>}
+            </div>
+        </div>
+    );
   }
   
-  const columns = getColumns(
-      isManagerOrAdmin,
-      activeRole,
-      rowSelection, 
-      setRowSelection, 
-      dashboardProjects,
-      handleOpenEditDialog,
-      handleAddRowsDialog,
-      visibleColumnKeys
-  );
-
-  const showSubHeader = !isManagerOrAdmin && dashboardProjects.length > 0;
+  const columns = getColumns(isManagerOrAdmin, activeRole, rowSelection, setRowSelection, projects, handleOpenEditDialog, handleAddRowsDialog, visibleColumnKeys);
+  const showSubHeader = !isManagerOrAdmin && totalCount > 0;
 
   return (
     <div className="flex flex-col h-screen bg-background w-full">
-         <input
-            type="file"
-            ref={fileInputRef}
-            onChange={handleFileSelect}
-            className="hidden"
-            accept=".csv"
-        />
+         <input type="file" ref={fileInputRef} onChange={handleFileSelect} className="hidden" accept=".csv" />
         {editingProject && (
              <EditProjectDialog
-                isOpen={isEditDialogOpen}
-                onOpenChange={setIsEditDialogOpen}
-                project={editingProject}
-                onUpdateSuccess={refreshProjects}
-                userRole={activeRole}
-                projectQueue={dashboardProjects}
-                onNavigate={setEditingProject}
-                clientNames={clientNames}
-                processors={processors}
-                qas={qas}
-                caseManagers={caseManagers}
-                processes={processes}
+                isOpen={isEditDialogOpen} onOpenChange={setIsEditDialogOpen} project={editingProject}
+                onUpdateSuccess={() => {if(activeRole) fetchProjects(activeRole, page, sort, {})}}
+                userRole={activeRole} projectQueue={projects} onNavigate={setEditingProject}
+                clientNames={clientNames} processors={processors} qas={qas} caseManagers={caseManagers} processes={processes}
             />
         )}
-        {sourceProject && (
-          <AddRowsDialog
-            isOpen={isAddRowsDialogOpen}
-            onOpenChange={setIsAddRowsDialogOpen}
-            sourceProject={sourceProject}
-            onAddRowsSuccess={refreshProjects}
-          />
-        )}
-        <ColumnSelectDialog
-            isOpen={isColumnSelectOpen}
-            onOpenChange={setIsColumnSelectOpen}
-            allColumns={allColumns}
-            visibleColumns={visibleColumnKeys}
-            setVisibleColumns={setVisibleColumnKeys}
-        />
+        {sourceProject && ( <AddRowsDialog isOpen={isAddRowsDialogOpen} onOpenChange={setIsAddRowsDialogOpen} sourceProject={sourceProject} onAddRowsSuccess={() => {if(activeRole) fetchProjects(activeRole, page, sort, {})}} /> )}
+        <ColumnSelectDialog isOpen={isColumnSelectOpen} onOpenChange={setIsColumnSelectOpen} allColumns={allColumns} visibleColumns={visibleColumnKeys} setVisibleColumns={setVisibleColumnKeys} />
 
         <Header 
-            user={user}
-            activeRole={activeRole}
-            setActiveRole={(role) => onSwitchRole(role)}
-            search={search}
-            setSearch={setSearch}
-            searchColumn={searchColumn}
-            setSearchColumn={setSearchColumn}
-            isManagerOrAdmin={isManagerOrAdmin}
-            onQuickSearch={handleQuickSearch}
-            clientNameFilter={clientNameFilter}
-            setClientNameFilter={setClientNameFilter}
-            processFilter={processFilter}
-            setProcessFilter={setProcessFilter}
-            clientNames={clientNames}
-            processes={processes}
+            user={user} activeRole={activeRole} setActiveRole={handleRoleSwitch}
+            search={search} setSearch={setSearch} searchColumn={searchColumn} setSearchColumn={setSearchColumn}
+            onQuickSearch={handleQuickSearch} clientNameFilter={clientNameFilter} setClientNameFilter={setClientNameFilter}
+            processFilter={processFilter} setProcessFilter={setProcessFilter} isManagerOrAdmin={isManagerOrAdmin}
+            showManagerSearch={isManagerOrAdmin} clientNames={clientNames} processes={processes}
         />
+        
         {showSubHeader && (
             <div className="flex-shrink-0 border-b bg-muted">
                 <div className="flex items-center justify-end gap-2 px-4 py-1">
                      {activeRole === 'Case Manager' ? (
                         <div className="flex-grow text-left text-sm font-semibold text-muted-foreground">
-                            {dashboardProjects.length > 0 && caseManagerTatInfo && (
+                            {totalCount > 0 && caseManagerTatInfo && (
                                 <>
                                     <span>{caseManagerTatInfo.greeting} </span>
                                     {caseManagerTatInfo.count > 0 && (
@@ -520,32 +369,20 @@ function Dashboard({
                             )}
                         </div>
                     ) : <div className="flex-grow" />}
-
-                    {!isManagerOrAdmin && (
-                        <>
-                           <Button variant="outline" className="h-7 px-2 text-xs" onClick={() => setIsColumnSelectOpen(true)}>
-                                <Rows className="mr-1.5 h-3.5 w-3.5" />
-                                Select Columns
-                            </Button>
-                            <Button variant="outline" className="h-7 px-2 text-xs" onClick={() => saveColumnLayout(activeRole)}>
-                                <Save className="mr-1.5 h-3.5 w-3.5" />
-                                Save Layout
-                            </Button>
-                             <Button 
-                                variant="outline" 
-                                className="h-7 px-2 text-xs" 
-                                onClick={handleNonManagerDownload} 
-                                disabled={dashboardProjects.length === 0}
-                                title="Download CSV"
-                            >
-                                <FileSpreadsheet className="mr-1.5 h-3.5 w-3.5" />
-                                Download
-                            </Button>
-                        </>
-                    )}
+                    
+                    <Button variant="outline" className="h-7 px-2 text-xs" onClick={() => setIsColumnSelectOpen(true)}>
+                        <Rows className="mr-1.5 h-3.5 w-3.5" /> Select Columns
+                    </Button>
+                    <Button variant="outline" className="h-7 px-2 text-xs" onClick={() => saveColumnLayout(activeRole)}>
+                        <Save className="mr-1.5 h-3.5 w-3.5" /> Save Layout
+                    </Button>
+                    <Button variant="outline" className="h-7 px-2 text-xs" onClick={handleNonManagerDownload} disabled={projects.length === 0}>
+                        <FileSpreadsheet className="mr-1.5 h-3.5 w-3.5" /> Download
+                    </Button>
                 </div>
             </div>
         )}
+
         <main className="flex flex-col flex-grow overflow-y-auto transition-opacity duration-300">
              {activeRole === 'Admin' ? (
                 <div className="flex-grow flex flex-col p-4">
@@ -565,8 +402,7 @@ function Dashboard({
                             <CardContent>
                                 <div className="flex items-center gap-4">
                                     <Button variant="outline" onClick={() => fileInputRef.current?.click()} disabled={isUploading}>
-                                        <Upload className="mr-2" />
-                                        Choose CSV File
+                                        <Upload className="mr-2" /> Choose CSV File
                                     </Button>
                                     {selectedFile && <span className="text-sm text-muted-foreground">{selectedFile.name}</span>}
                                     {selectedFile && <Button size="sm" variant="ghost" onClick={() => setSelectedFile(null)}><X /></Button>}
@@ -574,12 +410,10 @@ function Dashboard({
                             </CardContent>
                             <CardFooter className="gap-2">
                                 <Button onClick={handleProcessUpload} disabled={!selectedFile || isUploading}>
-                                    {isUploading ? <Loader2 className="mr-2 animate-spin" /> : <FileUp className="mr-2" />}
-                                    Process Upload
+                                    {isUploading ? <Loader2 className="mr-2 animate-spin" /> : <FileUp className="mr-2" />} Process Upload
                                 </Button>
                                 <Button variant="secondary" onClick={handleDownloadSample}>
-                                    <FileDown className="mr-2" />
-                                    Download Sample CSV
+                                    <FileDown className="mr-2" /> Download Sample CSV
                                 </Button>
                             </CardFooter>
                         </Card>
@@ -600,60 +434,8 @@ function Dashboard({
                     <AccordionItem value="work-status" className="border-0 bg-muted/30 shadow-md mb-4 rounded-lg">
                         <AccordionTrigger className="px-4 py-3 hover:no-underline">Work Status (Client Wise)</AccordionTrigger>
                         <AccordionContent className="p-4 pt-0">
-                        <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 p-4">
-                            <Card>
-                                <CardHeader>
-                                    <CardTitle>Processing Status</CardTitle>
-                                </CardHeader>
-                                <CardContent>
-                                    <Table>
-                                        <TableHeader>
-                                            <TableRow>
-                                                <TableHead>Client</TableHead>
-                                                <TableHead>All Time Pending</TableHead>
-                                                <TableHead>Processed (Today)</TableHead>
-                                            </TableRow>
-                                        </TableHeader>
-                                        <TableBody>
-                                            {clientWorkStatus.map(item => (
-                                                <TableRow key={item.client}>
-                                                    <TableCell>{item.client}</TableCell>
-                                                    <TableCell>{item.pendingProcessing}</TableCell>
-                                                    <TableCell>{item.processedToday}</TableCell>
-                                                </TableRow>
-                                            ))}
-                                        </TableBody>
-                                    </Table>
-                                </CardContent>
-                            </Card>
-                            <Card>
-                                <CardHeader>
-                                    <CardTitle>QA Status</CardTitle>
-                                </CardHeader>
-                                <CardContent>
-                                    <Table>
-                                        <TableHeader>
-                                            <TableRow>
-                                                <TableHead>Client</TableHead>
-                                                <TableHead>Pending QA</TableHead>
-                                                <TableHead>Client Query</TableHead>
-                                                <TableHead>Completed (Today)</TableHead>
-                                            </TableRow>
-                                        </TableHeader>
-                                        <TableBody>
-                                            {clientWorkStatus.map(item => (
-                                                <TableRow key={item.client}>
-                                                    <TableCell>{item.client}</TableCell>
-                                                    <TableCell>{item.pendingQA}</TableCell>
-                                                    <TableCell>{item.clientQuery}</TableCell>
-                                                    <TableCell>{item.completedToday}</TableCell>
-                                                </TableRow>
-                                            ))}
-                                        </TableBody>
-                                    </Table>
-                                </CardContent>
-                            </Card>
-                        </div>
+                            {/* This would need its own data fetching logic now */}
+                            <p className="p-4 text-muted-foreground">Work status overview will be implemented here.</p>
                         </AccordionContent>
                     </AccordionItem>
                 </Accordion>
@@ -661,15 +443,19 @@ function Dashboard({
             ) : (
                  <div className="flex-grow flex flex-col">
                      <DataTable 
-                        data={dashboardProjects}
+                        data={projects}
                         columns={columns}
                         sort={sort}
                         setSort={setSort}
                         rowSelection={rowSelection}
                         setRowSelection={setRowSelection}
                         isManagerOrAdmin={isManagerOrAdmin}
-                        totalCount={dashboardProjects.length}
+                        totalCount={totalCount}
                         activeRole={activeRole}
+                        page={page}
+                        totalPages={totalPages}
+                        onPageChange={setPage}
+                        isFetching={isLoading}
                     />
                  </div>
             )}
@@ -679,5 +465,3 @@ function Dashboard({
 }
 
 export default Dashboard;
-
-    
