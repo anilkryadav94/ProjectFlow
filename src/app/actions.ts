@@ -291,17 +291,19 @@ export async function addRows(
   }
 }
 
-function buildFilterConstraints(filters: {
+function buildQueryConstraints(filters: {
     quickSearch?: string;
     searchColumn?: string;
     advanced?: { field: string; operator: string; value: any }[] | null;
-}): QueryConstraint[] {
+}, sort: { key: string, direction: 'asc' | 'desc' }): QueryConstraint[] {
     const queryConstraints: QueryConstraint[] = [];
     const dateFields = ['received_date', 'allocation_date', 'processing_date', 'qa_date', 'reportout_date', 'client_response_date'];
+    const andConstraints: QueryConstraint[] = [];
 
+    // --- Advanced Filters ---
     if (filters.advanced && filters.advanced.length > 0) {
         filters.advanced.forEach(criterion => {
-            if (!criterion.field || !criterion.operator) return; // Allow empty value for 'blank'
+            if (!criterion.field || !criterion.operator) return;
             if (criterion.operator !== 'blank' && !criterion.value) return;
 
             const isDate = dateFields.includes(criterion.field);
@@ -313,77 +315,58 @@ function buildFilterConstraints(filters: {
             switch (criterion.operator) {
                 case 'equals':
                 case 'dateEquals':
-                    queryConstraints.push(where(criterion.field, '==', value));
+                    andConstraints.push(where(criterion.field, '==', value));
                     break;
                 case 'in':
                      const values = typeof value === 'string' ? value.split(',').map(s => s.trim()) : [];
                      if (values.length > 0) {
-                        queryConstraints.push(where(criterion.field, 'in', values));
+                        andConstraints.push(where(criterion.field, 'in', values));
                      }
                     break;
                 case 'startsWith':
-                    queryConstraints.push(where(criterion.field, '>=', value));
-                    queryConstraints.push(where(criterion.field, '<=', value + '\uf8ff'));
-                    break;
-                case 'contains':
-                     queryConstraints.push(where(criterion.field, '>=', value));
-                     queryConstraints.push(where(criterion.field, '<=', value + '\uf8ff'));
+                case 'contains': // Firestore doesn't have a native 'contains', startsWith is the closest we can get without a third-party service
+                    andConstraints.push(where(criterion.field, '>=', value));
+                    andConstraints.push(where(criterion.field, '<=', value + '\uf8ff'));
                     break;
                 case 'blank':
-                    queryConstraints.push(where(criterion.field, '==', null));
+                    andConstraints.push(where(criterion.field, '==', null));
                     break;
             }
         });
+        if (andConstraints.length > 0) {
+            queryConstraints.push(and(...andConstraints));
+        }
+    // --- Quick Search Filter ---
     } else if (filters.quickSearch && filters.searchColumn) {
+        const searchableFields = ['row_number', 'ref_number', 'application_number', 'patent_number', 'subject_line', 'processing_status', 'qa_status', 'workflowStatus', 'processor', 'qa', 'case_manager', 'client_name'];
         if (filters.searchColumn === 'any') {
-            queryConstraints.push(where('row_number', '>=', filters.quickSearch));
-            queryConstraints.push(where('row_number', '<=', filters.quickSearch + '\uf8ff'));
+            const orConstraints = searchableFields.map(field => 
+                where(field, '>=', filters.quickSearch)
+            );
+             queryConstraints.push(or(...orConstraints));
         } else {
              queryConstraints.push(where(filters.searchColumn, '>=', filters.quickSearch));
              queryConstraints.push(where(filters.searchColumn, '<=', filters.quickSearch + '\uf8ff'));
         }
     }
     
-    return queryConstraints;
-}
-
-
-function buildQueryConstraints(filters: {
-    quickSearch?: string;
-    searchColumn?: string;
-    advanced?: { field: string; operator: string; value: any }[] | null;
-}, sort: { key: string, direction: 'asc' | 'desc' }): QueryConstraint[] {
-    let queryConstraints = buildFilterConstraints(filters);
-    
+    // --- Sorting ---
+    // Firestore requires the first orderBy field to be the same as the inequality field in a query.
+    // To simplify and avoid needing complex composite indexes for every combination,
+    // we only allow sorting on the first filtered field or the default sort key.
     const isAdvancedFilterActive = filters.advanced && filters.advanced.length > 0;
     
     if (isAdvancedFilterActive && filters.advanced && filters.advanced[0]?.field) {
-        // To avoid needing a composite index for every combination,
-        // we only allow sorting on the first filtered field when using advanced search.
+        // If an advanced filter is active, we MUST sort by that field first.
         queryConstraints.push(orderBy(filters.advanced[0].field, sort.direction));
     } else if (sort.key && sort.key !== 'id') {
+        // Otherwise, use the user-selected sort key
         queryConstraints.push(orderBy(sort.key, sort.direction));
     } else {
+        // Default sort
         queryConstraints.push(orderBy('row_number', 'desc')); 
     }
 
-    return queryConstraints;
-}
-
-function buildExportQueryConstraints(filters: {
-    quickSearch?: string;
-    searchColumn?: string;
-    advanced?: { field: string; operator: string; value: any }[] | null;
-}, sort: { key: string, direction: 'asc' | 'desc' }): QueryConstraint[] {
-    let queryConstraints = buildFilterConstraints(filters);
-    
-    // Apply sorting without any limits.
-    if (sort.key && sort.key !== 'id') {
-        queryConstraints.push(orderBy(sort.key, sort.direction));
-    } else {
-        queryConstraints.push(orderBy('row_number', 'desc'));
-    }
-    
     return queryConstraints;
 }
 
@@ -403,10 +386,9 @@ export async function getPaginatedProjects(options: {
     const projectsCollection = collection(db, "projects");
     
     const queryConstraints = buildQueryConstraints(filters, sort);
-    const filterConstraints = buildFilterConstraints(filters);
 
     // Get total count for pagination based on the same filters
-    const countQuery = query(projectsCollection, ...filterConstraints);
+    const countQuery = query(projectsCollection, ...queryConstraints);
     const totalCountSnapshot = await getCountFromServer(countQuery);
     const totalCount = totalCountSnapshot.data().count;
 
@@ -455,8 +437,8 @@ export async function getProjectsForExport(options: {
     const { filters, sort } = options;
     const projectsCollection = collection(db, "projects");
     
-    // Use the dedicated export query builder without limits
-    const queryConstraints = buildExportQueryConstraints(filters, sort);
+    // Use the same query builder as pagination to ensure consistency
+    const queryConstraints = buildQueryConstraints(filters, sort);
     
     const finalQuery = query(projectsCollection, ...queryConstraints);
     const projectSnapshot = await getDocs(finalQuery);
@@ -471,5 +453,7 @@ export async function getProjectsForExport(options: {
 
     return projectList;
 }
+
+    
 
     
