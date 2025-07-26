@@ -29,7 +29,7 @@ export type InsightResponse = z.infer<typeof InsightResponseSchema>;
 
 const insightsPrompt = ai.definePrompt({
   name: 'projectInsightsPromptFromData',
-  model: googleAI.model('gemini-1.5-pro-latest'),
+  model: googleAI.model('gemini-1.5-flash-latest'),
   input: { schema: InsightRequestSchema },
   output: { schema: InsightResponseSchema },
   system: `You are an expert project management analyst.
