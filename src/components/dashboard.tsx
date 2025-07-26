@@ -156,11 +156,10 @@ function Dashboard({ user, error }: DashboardProps) {
         }
         
         try {
-            // Fetch users to populate dropdowns dynamically
             const allUsers = await getUsers();
             setDropdownOptions({
                 clientNames: [...new Set(allUsers.map(u => u.name).filter(Boolean))].sort(),
-                processes: ['Patent', 'TM', 'IDS', 'Project'] as ProcessType[], // Processes are a fixed list
+                processes: ['Patent', 'TM', 'IDS', 'Project'] as ProcessType[],
                 processors: allUsers.filter(u => u.roles.includes('Processor')).map(u => u.name).sort(),
                 qas: allUsers.filter(u => u.roles.includes('QA')).map(u => u.name).sort(),
                 caseManagers: allUsers.filter(u => u.roles.includes('Case Manager')).map(u => u.name).sort(),
@@ -172,11 +171,11 @@ function Dashboard({ user, error }: DashboardProps) {
         }
         
         if (newActiveRole) {
-             const currentFilters = {
+            const currentFilters = {
                 quickSearch: search,
                 searchColumn: searchColumn,
                 clientName: clientNameFilter,
-                process: processFilter
+                process: processFilter,
             };
             await fetchPageData(newActiveRole, page, sort, currentFilters);
         }
@@ -188,11 +187,20 @@ function Dashboard({ user, error }: DashboardProps) {
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [user, searchParams]);
   
+  const handleFilterChange = () => {
+    if (!activeRole) return;
+    setPage(1); // Reset to first page on new search
+    const currentFilters = {
+      quickSearch: search,
+      searchColumn: searchColumn,
+      clientName: clientNameFilter,
+      process: processFilter,
+    };
+    fetchPageData(activeRole, 1, sort, currentFilters);
+  };
+  
   React.useEffect(() => {
     if (!activeRole || isLoading) return;
-
-    // This effect now only runs for pagination or sorting changes.
-    // Filtering is handled by the manual search button.
     const currentFilters = {
       quickSearch: search,
       searchColumn: searchColumn,
@@ -438,7 +446,8 @@ function Dashboard({ user, error }: DashboardProps) {
             search={search} setSearch={setSearch} searchColumn={searchColumn} setSearchColumn={setSearchColumn}
             onQuickSearch={handleQuickSearch} clientNameFilter={clientNameFilter} setClientNameFilter={setClientNameFilter}
             processFilter={processFilter} setProcessFilter={setProcessFilter} isManagerOrAdmin={isManagerOrAdmin}
-            showManagerSearch={isManagerOrAdmin} clientNames={dropdownOptions.clientNames} processes={dropdownOptions.processes}
+            showManagerSearch={activeRole === 'Manager'}
+            clientNames={dropdownOptions.clientNames} processes={dropdownOptions.processes}
         />
         
         {showSubHeader && (
@@ -591,5 +600,3 @@ function Dashboard({ user, error }: DashboardProps) {
 }
 
 export default Dashboard;
-
-    

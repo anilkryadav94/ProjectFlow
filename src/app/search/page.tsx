@@ -36,7 +36,7 @@ export default function SearchResultsPage() {
 
     // Consolidated loading state
     const [isLoading, setIsLoading] = React.useState(true);
-    const [isSwitching, setIsSwitching] = React.useState(isSwitching);
+    const [isSwitching, setIsSwitching] = React.useState(false);
     const [switchingToRole, setSwitchingToRole] = React.useState<Role | null>(null);
 
     // Data state
@@ -330,7 +330,7 @@ export default function SearchResultsPage() {
                 isManagerOrAdmin={true}
                 clientNames={dropdownOptions.clientNames}
                 processes={dropdownOptions.processes}
-                showManagerSearch={false}
+                showManagerSearch={true}
             />
             
             {showSubHeader && (
@@ -421,5 +421,3 @@ export default function SearchResultsPage() {
         </div>
     );
 }
-
-    
