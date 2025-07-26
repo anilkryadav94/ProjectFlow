@@ -416,7 +416,7 @@ function Dashboard({
       visibleColumnKeys
   );
 
-  const showSubHeader = !isManagerOrAdmin || (activeRole === 'Case Manager' && dashboardProjects.length > 0);
+  const showSubHeader = !isManagerOrAdmin && dashboardProjects.length > 0;
 
   return (
     <div className="flex flex-col h-screen bg-background w-full">
@@ -640,5 +640,3 @@ function Dashboard({
 }
 
 export default Dashboard;
-
-    

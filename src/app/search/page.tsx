@@ -20,6 +20,7 @@ import { cn } from '@/lib/utils';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { EditProjectDialog } from '@/components/edit-project-dialog';
 import { AddRowsDialog } from '@/components/add-rows-dialog';
+import type { SearchableColumn } from '@/components/dashboard';
 
 interface SearchResultsState {
     projects: Project[];
@@ -55,6 +56,9 @@ export default function SearchResultsPage() {
         caseManagers: [],
         processes: [],
     });
+
+    const [quickSearchTerm, setQuickSearchTerm] = React.useState(searchParams.get('quickSearch') || '');
+    const [searchColumn, setSearchColumn] = React.useState<SearchableColumn>((searchParams.get('searchColumn') || 'any') as SearchableColumn);
 
     const [rowSelection, setRowSelection] = React.useState<Record<string, boolean>>({});
     const [isColumnSelectOpen, setIsColumnSelectOpen] = React.useState(false);
@@ -170,6 +174,15 @@ export default function SearchResultsPage() {
         router.push('/?role=Manager');
     };
     
+    const handleQuickSearch = () => {
+        if (!quickSearchTerm.trim()) return;
+        const params = new URLSearchParams();
+        params.set('quickSearch', quickSearchTerm);
+        params.set('searchColumn', searchColumn);
+        params.set('page', '1'); // Reset to first page on new search
+        router.push(`/search?${params.toString()}`);
+    };
+
     const handleDownload = () => {
         if (state.projects.length === 0) {
           toast({ title: "No data to export", variant: "destructive" });
@@ -255,6 +268,8 @@ export default function SearchResultsPage() {
         handleAddRowsDialog,
         visibleColumnKeys
     );
+    
+    const showSubHeader = state.projects.length > 0 && !state.loading;
 
     return (
         <div className="flex flex-col h-screen bg-background w-full">
@@ -291,37 +306,47 @@ export default function SearchResultsPage() {
             <Header 
                 user={state.user}
                 activeRole="Manager"
+                setActiveRole={(role: Role) => router.push(`/?role=${role}`)}
                 isManagerOrAdmin={true}
                 clientNames={state.clientNames}
                 processes={state.processes}
+                showManagerSearch={true}
+                search={quickSearchTerm}
+                setSearch={setQuickSearchTerm}
+                searchColumn={searchColumn}
+                setSearchColumn={setSearchColumn}
+                onQuickSearch={handleQuickSearch}
             />
             
-            <div className="flex-shrink-0 border-b bg-muted">
-                <div className="flex items-center justify-end gap-2 px-4 py-1">
-                    <Button variant="outline" className="h-7 px-2 text-xs" onClick={handleResetSearch}>
-                        <RotateCcw className="mr-1.5 h-3.5 w-3.5" /> Reset Search
-                    </Button>
-                    <Button variant="outline" className="h-7 px-2 text-xs" onClick={() => setIsColumnSelectOpen(true)}>
-                        <Rows className="mr-1.5 h-3.5 w-3.5" />
-                        Select Columns
-                    </Button>
-                    <Button variant="outline" className="h-7 px-2 text-xs" onClick={saveColumnLayout}>
-                        <Save className="mr-1.5 h-3.5 w-3.5" />
-                        Save Layout
-                    </Button>
-                    <Button 
-                        variant="outline" 
-                        className="h-7 px-2 text-xs" 
-                        onClick={handleDownload} 
-                        disabled={state.projects.length === 0}
-                        title="Download CSV"
-                    >
-                        <FileSpreadsheet className="h-3.5 w-3.5" />
-                    </Button>
+            {showSubHeader && (
+                <div className="flex-shrink-0 border-b bg-muted">
+                    <div className="flex items-center justify-end gap-2 px-4 py-1">
+                        <Button variant="outline" className="h-7 px-2 text-xs" onClick={handleResetSearch}>
+                            <RotateCcw className="mr-1.5 h-3.5 w-3.5" /> Reset Search
+                        </Button>
+                        <Button variant="outline" className="h-7 px-2 text-xs" onClick={() => setIsColumnSelectOpen(true)}>
+                            <Rows className="mr-1.5 h-3.5 w-3.5" />
+                            Select Columns
+                        </Button>
+                        <Button variant="outline" className="h-7 px-2 text-xs" onClick={saveColumnLayout}>
+                            <Save className="mr-1.5 h-3.5 w-3.5" />
+                            Save Layout
+                        </Button>
+                        <Button 
+                            variant="outline" 
+                            className="h-7 px-2 text-xs" 
+                            onClick={handleDownload} 
+                            disabled={state.projects.length === 0}
+                            title="Download CSV"
+                        >
+                            <FileSpreadsheet className="h-3.5 w-3.5" />
+                        </Button>
+                    </div>
                 </div>
-            </div>
+            )}
 
-            <main className="flex flex-col flex-grow overflow-y-auto transition-opacity duration-300 p-4">
+
+            <main className="flex flex-col flex-grow overflow-y-auto transition-opacity duration-300">
                  <div className="flex-grow flex flex-col overflow-y-auto">
                     {Object.keys(rowSelection).length > 0 && (
                         <div className="flex-shrink-0 flex items-center gap-4 p-4 border-b bg-muted/50">

@@ -53,6 +53,7 @@ interface HeaderProps {
     setProcessFilter?: (value: string | 'all') => void;
 
     isManagerOrAdmin: boolean;
+    showManagerSearch?: boolean;
     hasSearchResults?: boolean;
     onResetSearch?: () => void;
     
@@ -76,6 +77,7 @@ export function Header({
   processFilter,
   setProcessFilter,
   isManagerOrAdmin,
+  showManagerSearch,
   hasSearchResults,
   onResetSearch,
   clientNames,
@@ -93,7 +95,11 @@ export function Header({
 
   const handleRoleChange = (role: Role) => {
     if (setActiveRole) {
-      setActiveRole(role);
+      if(pathname.startsWith('/search')) {
+        router.push(`/?role=${role}`);
+      } else {
+        setActiveRole(role);
+      }
     }
   }
   
@@ -106,6 +112,8 @@ export function Header({
 
   const getDashboardName = () => {
     if (!activeRole) return 'Dashboard';
+    if(pathname.startsWith('/search')) return 'Search Results';
+
     switch(activeRole) {
       case 'Processor':
         return 'Processor Dashboard';
@@ -130,8 +138,6 @@ export function Header({
   const dashboardName = getDashboardName();
   const dashboardLink = `/?role=${activeRole}`;
   
-  const isSearchPage = pathname === '/search';
-
   return (
     <header className="flex items-center justify-between bg-primary text-primary-foreground p-2 px-4 shadow-md h-16 shrink-0 gap-4">
         <div className="flex items-center gap-2 flex-shrink-0">
@@ -228,7 +234,7 @@ export function Header({
               </div>
             )}
             
-            {(activeRole === 'Manager' && !isSearchPage) && setSearch && setSearchColumn && onQuickSearch && (
+            {(showManagerSearch) && setSearch && setSearchColumn && onQuickSearch && (
                 <div className="flex items-center space-x-0 relative">
                     <Select value={searchColumn} onValueChange={(v) => setSearchColumn(v as SearchableColumn)}>
                         <SelectTrigger className="w-[180px] rounded-r-none focus:ring-0 text-foreground h-8 text-xs">
