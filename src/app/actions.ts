@@ -401,12 +401,13 @@ export async function getPaginatedProjects(options: {
         process?: string;
     };
     sort: { key: string, direction: 'asc' | 'desc' };
-    user: User;
+    user?: User;
 }) {
     const { page, limit: pageSize, filters, sort, user } = options;
     const projectsCollection = collection(db, "projects");
     
-    const queryConstraints = buildFilterConstraints({ ...filters, roleFilter: { role: filters.roleFilter?.role || 'Admin', userName: user.name }});
+    const roleFilter = user ? { role: filters.roleFilter?.role || 'Admin', userName: user.name } : undefined;
+    const queryConstraints = buildFilterConstraints({ ...filters, roleFilter });
 
     // Get total count for pagination based on the same filters
     const countQuery = query(projectsCollection, ...queryConstraints);
@@ -468,8 +469,8 @@ export async function getProjectsForExport(options: {
     const { filters, sort, user } = options;
     const projectsCollection = collection(db, "projects");
     
-    // Use the same query builder as pagination to ensure consistency
-    const queryConstraints = buildFilterConstraints({ ...filters, roleFilter: { role: filters.roleFilter?.role || 'Admin', userName: user.name }}, true);
+    const roleFilter = user ? { role: filters.roleFilter?.role || 'Admin', userName: user.name } : undefined;
+    const queryConstraints = buildFilterConstraints({ ...filters, roleFilter }, true);
     
      if (sort.key && sort.key !== 'id') {
         queryConstraints.push(orderBy(sort.key, sort.direction));
