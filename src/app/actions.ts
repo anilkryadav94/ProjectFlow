@@ -310,17 +310,13 @@ function buildFilterConstraints(
     // --- Role-based filters for non-manager dashboards ---
     if (filters.roleFilter) {
         const { role, userName } = filters.roleFilter;
+        // Simplified queries to avoid composite indexes
         if (role === 'Processor') {
             allWhereClauses.push(where("processor", "==", userName));
-            allWhereClauses.push(where("processing_status", "in", ['Pending', 'Re-Work', 'On Hold']));
         } else if (role === 'QA') {
             allWhereClauses.push(where("qa", "==", userName));
-            allWhereClauses.push(where("processing_status", "in", ['Processed', 'Already Processed', 'NTP', 'Client Query']));
-            allWhereClauses.push(where("qa_status", "in", ['Pending', 'On Hold']));
         } else if (role === 'Case Manager') {
             allWhereClauses.push(where("case_manager", "==", userName));
-            allWhereClauses.push(where("qa_status", "==", 'Client Query'));
-            allWhereClauses.push(where("clientquery_status", "==", null));
         }
     }
 
@@ -491,3 +487,5 @@ export async function getProjectsForExport(options: {
 
     return projectList;
 }
+
+    

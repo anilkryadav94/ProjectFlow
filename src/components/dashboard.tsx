@@ -3,7 +3,7 @@
 
 import * as React from 'react';
 import Papa from "papaparse";
-import { type Project, type Role, type User, roleHierarchy, ProcessType } from '@/lib/data';
+import { type Project, type Role, type User, roleHierarchy, ProcessType, processorActionableStatuses, qaStatuses, clientStatuses } from '@/lib/data';
 import { DataTable } from '@/components/data-table';
 import { getColumns, allColumns } from '@/components/columns';
 import { Header } from '@/components/header';
@@ -136,9 +136,9 @@ function Dashboard({ user, error }: DashboardProps) {
     if (newActiveRole !== activeRole) {
         setActiveRole(newActiveRole);
         loadColumnLayout(newActiveRole);
-        if (isManagerOrAdmin) fetchDropdownData();
+        if (newActiveRole === 'Manager' || newActiveRole === 'Admin') fetchDropdownData();
     }
-  }, [user.roles, searchParams, activeRole, isManagerOrAdmin, fetchDropdownData]);
+  }, [user.roles, searchParams, activeRole, fetchDropdownData]);
 
   // Fetch data when role, page, sort, or filters change
   React.useEffect(() => {
@@ -150,6 +150,12 @@ function Dashboard({ user, error }: DashboardProps) {
             process: processFilter
         };
         fetchProjects(activeRole, page, sort, filters);
+    } else {
+        // Clear data for Manager/Admin
+        setProjects([]);
+        setTotalCount(0);
+        setTotalPages(1);
+        setIsLoading(false);
     }
   }, [activeRole, page, sort, search, searchColumn, clientNameFilter, processFilter, fetchProjects, isManagerOrAdmin]);
 
@@ -283,24 +289,47 @@ function Dashboard({ user, error }: DashboardProps) {
     document.body.removeChild(link);
   }
 
+ const clientSideFilteredProjects = React.useMemo(() => {
+    if (isManagerOrAdmin) return [];
+    if (!projects) return [];
+
+    let filtered = [...projects];
+
+    if (activeRole === 'Processor') {
+        filtered = filtered.filter(p => processorActionableStatuses.includes(p.processing_status));
+    } else if (activeRole === 'QA') {
+        filtered = filtered.filter(p => (
+          (p.processing_status === 'Processed' || p.processing_status === 'Already Processed' || p.processing_status === 'NTP' || p.processing_status === 'Client Query') &&
+          (p.qa_status === 'Pending' || p.qa_status === 'On Hold')
+        ));
+    } else if (activeRole === 'Case Manager') {
+        filtered = filtered.filter(p => p.qa_status === 'Client Query' && p.clientquery_status === null);
+    }
+    return filtered;
+ }, [projects, activeRole, isManagerOrAdmin]);
+
+
   const caseManagerTatInfo = React.useMemo(() => {
     if (activeRole !== 'Case Manager') return null;
-    const outsideTatCount = projects.filter(p => {
+    const outsideTatCount = clientSideFilteredProjects.filter(p => {
         if (!p.qa_date) return false;
         return differenceInBusinessDays(new Date(), new Date(p.qa_date)) > 3;
     }).length;
     const greeting = new Date().getHours() < 17 ? "Good Morning" : "Good Evening";
     return { count: outsideTatCount, greeting: `Hi ${user.name}, ${greeting}!`, plural: outsideTatCount === 1 ? 'Email' : 'Emails' };
-  }, [activeRole, projects, user.name]);
+  }, [activeRole, clientSideFilteredProjects, user.name]);
 
   const handleNonManagerDownload = async () => {
+        setIsLoading(true);
         const filters = {
             quickSearch: search,
             searchColumn: searchColumn,
             clientName: clientNameFilter,
-            process: processFilter
+            process: processFilter,
+            roleFilter: activeRole ? { role: activeRole, userName: user.name } : undefined
         };
         const projectsToExport = await getProjectsForExport({ filters, sort, user });
+        setIsLoading(false);
 
         if (projectsToExport.length === 0) {
             toast({ title: "No data to export", variant: "destructive" });
@@ -339,7 +368,7 @@ function Dashboard({ user, error }: DashboardProps) {
              <EditProjectDialog
                 isOpen={isEditDialogOpen} onOpenChange={setIsEditDialogOpen} project={editingProject}
                 onUpdateSuccess={() => {if(activeRole) fetchProjects(activeRole, page, sort, {})}}
-                userRole={activeRole} projectQueue={projects} onNavigate={setEditingProject}
+                userRole={activeRole} projectQueue={clientSideFilteredProjects} onNavigate={setEditingProject}
                 clientNames={clientNames} processors={processors} qas={qas} caseManagers={caseManagers} processes={processes}
             />
         )}
@@ -376,8 +405,9 @@ function Dashboard({ user, error }: DashboardProps) {
                     <Button variant="outline" className="h-7 px-2 text-xs" onClick={() => saveColumnLayout(activeRole)}>
                         <Save className="mr-1.5 h-3.5 w-3.5" /> Save Layout
                     </Button>
-                    <Button variant="outline" className="h-7 px-2 text-xs" onClick={handleNonManagerDownload} disabled={projects.length === 0}>
-                        <FileSpreadsheet className="mr-1.5 h-3.5 w-3.5" /> Download
+                    <Button variant="outline" className="h-7 px-2 text-xs" onClick={handleNonManagerDownload} disabled={projects.length === 0 || isLoading}>
+                        {isLoading ? <Loader2 className="mr-1.5 h-3.5 w-3.5 animate-spin" /> : <FileSpreadsheet className="mr-1.5 h-3.5 w-3.5" />}
+                         Download
                     </Button>
                 </div>
             </div>
@@ -443,7 +473,7 @@ function Dashboard({ user, error }: DashboardProps) {
             ) : (
                  <div className="flex-grow flex flex-col">
                      <DataTable 
-                        data={projects}
+                        data={clientSideFilteredProjects}
                         columns={columns}
                         sort={sort}
                         setSort={setSort}
@@ -465,3 +495,5 @@ function Dashboard({ user, error }: DashboardProps) {
 }
 
 export default Dashboard;
+
+    
