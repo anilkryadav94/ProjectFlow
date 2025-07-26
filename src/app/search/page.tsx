@@ -58,9 +58,7 @@ export default function SearchResultsPage() {
     });
     
     const [isDownloading, setIsDownloading] = React.useState(false);
-    const [quickSearchTerm, setQuickSearchTerm] = React.useState(searchParams.get('quickSearch') || '');
-    const [searchColumn, setSearchColumn] = React.useState<SearchableColumn>((searchParams.get('searchColumn') || 'any') as SearchableColumn);
-
+    
     const [rowSelection, setRowSelection] = React.useState<Record<string, boolean>>({});
     const [isColumnSelectOpen, setIsColumnSelectOpen] = React.useState(false);
     const [visibleColumnKeys, setVisibleColumnKeys] = React.useState<string[]>([]);
@@ -178,15 +176,6 @@ export default function SearchResultsPage() {
 
     const handleResetSearch = () => {
         router.push('/?role=Manager');
-    };
-    
-    const handleQuickSearch = () => {
-        if (!quickSearchTerm.trim()) return;
-        const params = new URLSearchParams();
-        params.set('quickSearch', quickSearchTerm);
-        params.set('searchColumn', searchColumn);
-        params.set('page', '1'); // Reset to first page on new search
-        router.push(`/search?${params.toString()}`);
     };
 
     const handleDownload = async () => {
@@ -317,7 +306,7 @@ export default function SearchResultsPage() {
         visibleColumnKeys
     );
     
-    const showSubHeader = (state.projects.length > 0 || state.loading) && !state.loading;
+    const showSubHeader = state.projects.length > 0;
 
     return (
         <div className="flex flex-col h-screen bg-background w-full">
@@ -358,12 +347,7 @@ export default function SearchResultsPage() {
                 isManagerOrAdmin={true}
                 clientNames={state.clientNames}
                 processes={state.processes}
-                showManagerSearch={true}
-                search={quickSearchTerm}
-                setSearch={setQuickSearchTerm}
-                searchColumn={searchColumn}
-                setSearchColumn={setSearchColumn}
-                onQuickSearch={handleQuickSearch}
+                showManagerSearch={false}
             />
             
             {showSubHeader && (
@@ -454,5 +438,3 @@ export default function SearchResultsPage() {
         </div>
     );
 }
-
-    
