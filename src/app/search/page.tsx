@@ -75,6 +75,10 @@ export default function SearchResultsPage() {
     const [bulkUpdateValue, setBulkUpdateValue] = React.useState('');
     const [isBulkUpdating, setIsBulkUpdating] = React.useState(false);
 
+    const [isSwitching, setIsSwitching] = React.useState(false);
+    const [switchingToRole, setSwitchingToRole] = React.useState<Role | null>(null);
+
+
     const loadColumnLayout = (role: Role) => {
         const savedLayout = localStorage.getItem(`columnLayout-${role}`);
         if (savedLayout) {
@@ -260,6 +264,12 @@ export default function SearchResultsPage() {
         setIsAddRowsDialogOpen(true);
     };
 
+    const handleRoleSwitch = (role: Role) => {
+        setIsSwitching(true);
+        setSwitchingToRole(role);
+        router.push(`/?role=${role}`);
+    };
+
     const bulkUpdateFields: {
         value: keyof Project;
         label: string;
@@ -279,6 +289,19 @@ export default function SearchResultsPage() {
         return (
             <div className="flex h-screen w-full items-center justify-center bg-background">
                 <Loader2 className="h-12 w-12 animate-spin text-primary" />
+            </div>
+        );
+    }
+
+    if (isSwitching) {
+        return (
+            <div className="flex h-screen w-full items-center justify-center bg-background">
+                <div className="flex flex-col items-center gap-4">
+                    <Loader2 className="h-12 w-12 animate-spin text-primary" />
+                    <p className="text-lg text-muted-foreground">
+                        Opening {switchingToRole} Dashboard...
+                    </p>
+                </div>
             </div>
         );
     }
@@ -331,7 +354,7 @@ export default function SearchResultsPage() {
             <Header 
                 user={state.user}
                 activeRole="Manager"
-                setActiveRole={(role: Role) => router.push(`/?role=${role}`)}
+                setActiveRole={handleRoleSwitch}
                 isManagerOrAdmin={true}
                 clientNames={state.clientNames}
                 processes={state.processes}
@@ -364,7 +387,8 @@ export default function SearchResultsPage() {
                             disabled={state.totalCount === 0 || isDownloading}
                             title="Download CSV"
                         >
-                            {isDownloading ? <Loader2 className="mr-1.5 h-3.5 w-3.5 animate-spin" /> : <FileSpreadsheet className="h-3.5 w-3.5" />}
+                            {isDownloading ? <Loader2 className="mr-1.5 h-3.5 w-3.5 animate-spin" /> : <FileSpreadsheet className="mr-1.5 h-3.5 w-3.5" />}
+                             Download
                         </Button>
                     </div>
                 </div>
@@ -430,3 +454,5 @@ export default function SearchResultsPage() {
         </div>
     );
 }
+
+    

@@ -400,6 +400,23 @@ function Dashboard({
     };
   }, [activeRole, dashboardProjects, user.name]);
 
+  const handleNonManagerDownload = () => {
+        if (dashboardProjects.length === 0) {
+            toast({ title: "No data to export", variant: "destructive" });
+            return;
+        }
+
+        const csv = Papa.unparse(dashboardProjects);
+        const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
+        const link = document.createElement("a");
+        const url = URL.createObjectURL(blob);
+        link.setAttribute("download", `${activeRole}_dashboard_export_${new Date().toISOString().split('T')[0]}.csv`);
+        link.style.visibility = 'hidden';
+        document.body.appendChild(link);
+        link.click();
+        document.body.removeChild(link);
+  };
+
 
   if (!activeRole) {
     return <div className="flex h-screen w-full items-center justify-center"><Loader2 className="h-8 w-8 animate-spin" /></div>;
@@ -501,6 +518,16 @@ function Dashboard({
                             <Button variant="outline" className="h-7 px-2 text-xs" onClick={() => saveColumnLayout(activeRole)}>
                                 <Save className="mr-1.5 h-3.5 w-3.5" />
                                 Save Layout
+                            </Button>
+                             <Button 
+                                variant="outline" 
+                                className="h-7 px-2 text-xs" 
+                                onClick={handleNonManagerDownload} 
+                                disabled={dashboardProjects.length === 0}
+                                title="Download CSV"
+                            >
+                                <FileSpreadsheet className="mr-1.5 h-3.5 w-3.5" />
+                                Download
                             </Button>
                         </>
                     )}
@@ -640,3 +667,5 @@ function Dashboard({
 }
 
 export default Dashboard;
+
+    
