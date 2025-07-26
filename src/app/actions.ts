@@ -296,44 +296,28 @@ function buildFilterConstraints(
         quickSearch?: string;
         searchColumn?: string;
         advanced?: { field: string; operator: string; value: any }[] | null;
-        roleFilter?: { role: Role; userName: string };
         clientName?: string;
         process?: string;
-    },
-    isExport: boolean = false
+    }
 ): QueryConstraint[] {
     const queryConstraints: QueryConstraint[] = [];
     const dateFields = ['received_date', 'allocation_date', 'processing_date', 'qa_date', 'reportout_date', 'client_response_date'];
     
-    let allWhereClauses: QueryConstraint[] = [];
-
-    // --- Role-based filters for non-manager dashboards ---
-    if (filters.roleFilter) {
-        const { role, userName } = filters.roleFilter;
-        // This is simplified to avoid composite indexes for now.
-        // Status filtering will happen on the client.
-        if (role === 'Processor') {
-            allWhereClauses.push(where("processor", "==", userName));
-        } else if (role === 'QA') {
-            allWhereClauses.push(where("qa", "==", userName));
-        } else if (role === 'Case Manager') {
-            allWhereClauses.push(where("case_manager", "==", userName));
-        }
-    }
+    const andConstraints: QueryConstraint[] = [];
 
     // --- Client Name & Process filters (from header dropdowns) ---
     if (filters.clientName && filters.clientName !== 'all') {
-        allWhereClauses.push(where('client_name', '==', filters.clientName));
+        andConstraints.push(where('client_name', '==', filters.clientName));
     }
     if (filters.process && filters.process !== 'all') {
-        allWhereClauses.push(where('process', '==', filters.process));
+        andConstraints.push(where('process', '==', filters.process));
     }
-
 
     // --- Advanced Filters (Manager Search) ---
     if (filters.advanced && filters.advanced.length > 0) {
         filters.advanced.forEach(criterion => {
             if (!criterion.field || !criterion.operator) return;
+            // Allow blank value only for 'blank' operator
             if (criterion.operator !== 'blank' && !criterion.value) return;
 
             const isDate = dateFields.includes(criterion.field);
@@ -345,41 +329,42 @@ function buildFilterConstraints(
             switch (criterion.operator) {
                 case 'equals':
                 case 'dateEquals':
-                    allWhereClauses.push(where(criterion.field, '==', value));
+                    andConstraints.push(where(criterion.field, '==', value));
                     break;
                 case 'in':
                      const values = typeof value === 'string' ? value.split(',').map(s => s.trim()) : [];
                      if (values.length > 0) {
-                        allWhereClauses.push(where(criterion.field, 'in', values));
+                        andConstraints.push(where(criterion.field, 'in', values));
                      }
                     break;
                 case 'startsWith':
-                case 'contains': // Firestore doesn't have a native 'contains', startsWith is the closest we can get without a third-party service
-                    allWhereClauses.push(where(criterion.field, '>=', value));
-                    allWhereClauses.push(where(criterion.field, '<=', value + '\uf8ff'));
+                case 'contains':
+                    andConstraints.push(where(criterion.field, '>=', value));
+                    andConstraints.push(where(criterion.field, '<=', value + '\uf8ff'));
                     break;
                 case 'blank':
-                    allWhereClauses.push(where(criterion.field, '==', null));
+                    andConstraints.push(where(criterion.field, '==', null));
                     break;
             }
         });
-    
+    }
+
     // --- Quick Search Filter ---
-    } else if (filters.quickSearch && filters.searchColumn) {
+    if (filters.quickSearch && filters.searchColumn) {
         const searchableFields = ['row_number', 'ref_number', 'application_number', 'patent_number', 'subject_line', 'processing_status', 'qa_status', 'workflowStatus', 'processor', 'qa', 'case_manager', 'client_name'];
         if (filters.searchColumn === 'any') {
             const orConstraints = searchableFields.map(field => 
-                where(field, '>=', filters.quickSearch)
+                and(where(field, '>=', filters.quickSearch), where(field, '<=', filters.quickSearch + '\uf8ff'))
             );
-             queryConstraints.push(or(...orConstraints)); // OR queries cannot be combined with other WHERE clauses easily
+             queryConstraints.push(or(...orConstraints)); 
         } else {
-             allWhereClauses.push(where(filters.searchColumn, '>=', filters.quickSearch));
-             allWhereClauses.push(where(filters.searchColumn, '<=', filters.quickSearch + '\uf8ff'));
+             andConstraints.push(where(filters.searchColumn, '>=', filters.quickSearch));
+             andConstraints.push(where(filters.searchColumn, '<=', filters.quickSearch + '\uf8ff'));
         }
     }
 
-    if(allWhereClauses.length > 0) {
-        queryConstraints.push(and(...allWhereClauses));
+    if (andConstraints.length > 0) {
+        queryConstraints.push(and(...andConstraints));
     }
     
     return queryConstraints;
@@ -403,85 +388,70 @@ export async function getPaginatedProjects(options: {
     const { page, limit: pageSize, filters, sort, user } = options;
     const projectsCollection = collection(db, "projects");
 
-    // We separate the roleFilter from the main filter builder to handle it specially
     const { roleFilter, ...otherFilters } = filters;
     
-    // Build constraints for general filters (search, client, process, advanced)
-    let queryConstraints = buildFilterConstraints(otherFilters);
-
-    // Apply role filter separately if it exists
+    // For role-based views, we fetch ALL projects for that user and paginate/sort on the client
+    // This avoids complex composite indexes in Firestore.
     if (roleFilter && user) {
+        let roleQueryConstraints: QueryConstraint[] = [];
         const { role, userName } = roleFilter;
         if (role === 'Processor') {
-            queryConstraints.push(where("processor", "==", userName));
+            roleQueryConstraints.push(where("processor", "==", userName));
         } else if (role === 'QA') {
-            queryConstraints.push(where("qa", "==", userName));
+            roleQueryConstraints.push(where("qa", "==", userName));
         } else if (role === 'Case Manager') {
-            queryConstraints.push(where("case_manager", "==", userName));
+            roleQueryConstraints.push(where("case_manager", "==", userName));
         }
+
+        const roleQuery = query(projectsCollection, ...roleQueryConstraints);
+        const snapshot = await getDocs(roleQuery);
+        const projectList = snapshot.docs.map(doc => ({
+            id: doc.id,
+            ...convertTimestampsToDates(doc.data())
+        } as Project));
+        
+        return {
+            projects: projectList,
+            totalCount: projectList.length,
+            totalPages: 1, // Client-side will handle actual pagination
+        };
     }
+    
+    // For Manager/Admin/Search views, we use server-side pagination and sorting
+    let queryConstraints = buildFilterConstraints(otherFilters);
 
     // Get total count for pagination based on the same filters
     const countQuery = query(projectsCollection, ...queryConstraints);
     const totalCountSnapshot = await getCountFromServer(countQuery);
     const totalCount = totalCountSnapshot.data().count;
 
-    let finalQueryConstraints = [...queryConstraints];
-
     // --- Sorting ---
-    // IMPORTANT: To avoid needing composite indexes for every role-based view,
-    // we will NOT apply server-side sorting for role-filtered queries.
-    // Sorting will be done on the client for these views.
-    const isRoleFiltered = !!roleFilter;
-
-    if (!isRoleFiltered) {
-        if (sort.key && sort.key !== 'id') {
-            finalQueryConstraints.push(orderBy(sort.key, sort.direction));
-        } else {
-            finalQueryConstraints.push(orderBy('row_number', 'desc')); 
-        }
+    if (sort.key && sort.key !== 'id') {
+        queryConstraints.push(orderBy(sort.key, sort.direction));
+    } else {
+        queryConstraints.push(orderBy('row_number', 'desc')); 
     }
-
 
     // --- Pagination ---
     if (page > 1) {
-        // To paginate correctly, the ordering must be consistent.
-        // If we are not sorting for role-filtered views, we can't reliably paginate on the server.
-        // The current implementation fetches ALL records for a role and paginates on the client.
-        // Let's adjust to paginate on server *without* sort.
-        let tempPaginationQuery = [...finalQueryConstraints];
-        if (isRoleFiltered) {
-            // Must order by *something* for startAfter to work consistently. Default to row_number.
-            tempPaginationQuery.push(orderBy('row_number', 'desc'));
-        }
-        tempPaginationQuery.push(limit((page - 1) * pageSize));
-
-        const lastVisibleQuery = query(projectsCollection, ...tempPaginationQuery);
-        const lastVisibleSnapshot = await getDocs(lastVisibleQuery);
+        const tempPaginationQuery = query(projectsCollection, ...queryConstraints, limit((page - 1) * pageSize));
+        const lastVisibleSnapshot = await getDocs(tempPaginationQuery);
         if (lastVisibleSnapshot.docs.length > 0) {
             const lastVisible = lastVisibleSnapshot.docs[lastVisibleSnapshot.docs.length - 1];
-            finalQueryConstraints.push(startAfter(lastVisible));
+            queryConstraints.push(startAfter(lastVisible));
         }
     }
     
-    // Add the default ordering back if it was removed for pagination calculation
-    if (isRoleFiltered) {
-        finalQueryConstraints.push(orderBy('row_number', 'desc'));
-    }
-    
-    finalQueryConstraints.push(limit(pageSize));
+    const finalQueryConstraints = [...queryConstraints, limit(pageSize)];
 
     // --- Final Query ---
     const finalQuery = query(projectsCollection, ...finalQueryConstraints);
     const projectSnapshot = await getDocs(finalQuery);
 
-    const projectList = projectSnapshot.docs.map(doc => {
-        const data = doc.data();
-        return {
-            id: doc.id,
-            ...convertTimestampsToDates(data)
-        } as Project;
-    });
+    const projectList = projectSnapshot.docs.map(doc => ({
+        id: doc.id,
+        ...convertTimestampsToDates(doc.data())
+    } as Project));
 
     return {
         projects: projectList,
@@ -501,13 +471,25 @@ export async function getProjectsForExport(options: {
         process?: string;
     };
     sort: { key: string, direction: 'asc' | 'desc' };
-    user: User;
+    user?: User;
 }): Promise<Project[]> {
     const { filters, sort, user } = options;
     const projectsCollection = collection(db, "projects");
     
-    const roleFilter = user ? { role: filters.roleFilter?.role || 'Admin', userName: user.name } : undefined;
-    const queryConstraints = buildFilterConstraints({ ...filters, roleFilter }, true);
+    const { roleFilter, ...otherFilters } = filters;
+    
+    let queryConstraints = buildFilterConstraints(otherFilters);
+    
+    if (roleFilter && user) {
+        const { role, userName } = roleFilter;
+        if (role === 'Processor') {
+            queryConstraints.push(where("processor", "==", userName));
+        } else if (role === 'QA') {
+            queryConstraints.push(where("qa", "==", userName));
+        } else if (role === 'Case Manager') {
+            queryConstraints.push(where("case_manager", "==", userName));
+        }
+    }
     
      if (sort.key && sort.key !== 'id') {
         queryConstraints.push(orderBy(sort.key, sort.direction));
@@ -528,3 +510,4 @@ export async function getProjectsForExport(options: {
 
     return projectList;
 }
+
