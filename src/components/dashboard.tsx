@@ -20,7 +20,7 @@ import { cn } from '@/lib/utils';
 import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from './ui/accordion';
 import { EditProjectDialog } from './edit-project-dialog';
 import { AddRowsDialog } from './add-rows-dialog';
-import { getProjectsForUser, bulkUpdateProjects, addRows } from '@/app/actions';
+import { getProjectsForUser, bulkUpdateProjects, addRows, getPaginatedProjects } from '@/app/actions';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from './ui/table';
 import { ColumnSelectDialog } from './column-select-dialog';
 import { differenceInBusinessDays } from 'date-fns';
@@ -69,6 +69,11 @@ function Dashboard({
   const [sort, setSort] = React.useState<{ key: keyof Project; direction: 'asc' | 'desc' } | null>({ key: 'id', direction: 'asc' });
   
   const [rowSelection, setRowSelection] = React.useState<Record<string, boolean>>({});
+
+  const [page, setPage] = React.useState(1);
+  const [totalPages, setTotalPages] = React.useState(1);
+  const [totalCount, setTotalCount] = React.useState(0);
+  const [isFetching, setIsFetching] = React.useState(false);
 
   const bulkUpdateFields: {
     value: keyof Project;
@@ -126,8 +131,12 @@ function Dashboard({
   const refreshProjects = async () => {
     if (!activeRole) return;
     try {
-        const updatedProjects = await getProjectsForUser(user.name, user.roles);
-        setProjects(updatedProjects);
+        if (isManagerOrAdmin) {
+            fetchManagerProjects(1); // Refetch paged data for manager
+        } else {
+            const updatedProjects = await getProjectsForUser(user.name, user.roles);
+            setProjects(updatedProjects);
+        }
     } catch (error) {
         console.error("Failed to refresh projects:", error);
         toast({
@@ -155,9 +164,35 @@ function Dashboard({
     }
   }, [user.roles, router, activeRole, searchParams]);
   
+  const fetchManagerProjects = React.useCallback(async (pageNum: number) => {
+    if (!isManagerOrAdmin) return;
+    setIsFetching(true);
+    setPage(pageNum);
+    try {
+        const { projects, totalCount, totalPages } = await getPaginatedProjects({
+            page: pageNum,
+            limit: 50,
+            filters: { quickSearch: search, advanced: searchCriteria },
+            sort: sort || { key: 'id', direction: 'asc' },
+        });
+        setProjects(projects);
+        setTotalCount(totalCount);
+        setTotalPages(totalPages);
+    } catch (error) {
+        toast({ title: "Error", description: "Failed to fetch projects.", variant: "destructive" });
+        console.error("Failed to fetch paginated projects:", error);
+    } finally {
+        setIsFetching(false);
+    }
+  }, [isManagerOrAdmin, search, searchCriteria, sort]);
+
   React.useEffect(() => {
-    setProjects(initialProjects);
-  }, [initialProjects]);
+    if (isManagerOrAdmin) {
+        fetchManagerProjects(1);
+    } else {
+        setProjects(initialProjects);
+    }
+  }, [isManagerOrAdmin, initialProjects, fetchManagerProjects]);
   
   const loadColumnLayout = (role: Role) => {
     const savedLayout = localStorage.getItem(`columnLayout-${role}`);
@@ -297,71 +332,18 @@ function Dashboard({
   const handleAdvancedSearch = (criteria: SearchCriteria) => {
     setSearchCriteria(criteria);
     setSearch(''); // Clear quick search
-
-    let results = [...projects];
-    
-    if (criteria.length > 0 && criteria.some(c => c.value || c.operator === 'blank')) {
-        results = results.filter(project => {
-          return criteria.every(criterion => {
-            if (!criterion.field || !criterion.operator) return true;
-            
-            const fieldValue = project[criterion.field as keyof Project] as string | null | undefined;
-
-            if (criterion.operator === 'blank') {
-                return !fieldValue;
-            }
-            if (!criterion.value) return true;
-
-            switch (criterion.operator) {
-                case 'equals':
-                    return fieldValue?.toLowerCase() === criterion.value.toLowerCase();
-                case 'in':
-                    const values = criterion.value.split(',').map(v => v.trim().toLowerCase());
-                    return fieldValue ? values.includes(fieldValue.toLowerCase()) : false;
-                case 'startsWith':
-                    return fieldValue?.toLowerCase().startsWith(criterion.value.toLowerCase()) ?? false;
-                case 'contains':
-                    return fieldValue?.toLowerCase().includes(criterion.value.toLowerCase()) ?? false;
-                case 'dateEquals':
-                     if (!fieldValue) return false;
-                     const projectDate = new Date(fieldValue.replaceAll('-', '/'));
-                     const filterDate = new Date(criterion.value.replaceAll('-', '/'));
-                     return projectDate.toDateString() === filterDate.toDateString();
-                default:
-                    return true;
-            }
-          });
-        });
-    }
-    setFilteredProjects(results);
+    fetchManagerProjects(1);
   };
   
   const handleQuickSearch = () => {
     setSearchCriteria(null); // Clear advanced search
-    if (search.trim() === '') {
-      setFilteredProjects(null);
-      return;
-    }
-    
-    let results = [...projects];
-    const lowercasedSearch = search.toLowerCase();
-
-    if (searchColumn === 'any') {
-      results = results.filter(p => 
-        Object.values(p).some(val => String(val).toLowerCase().includes(lowercasedSearch))
-      );
-    } else {
-      results = results.filter(p => 
-        (p[searchColumn] as string)?.toString().toLowerCase().includes(lowercasedSearch)
-      );
-    }
-    setFilteredProjects(results);
+    fetchManagerProjects(1);
   };
 
   const handleResetAdvancedSearch = () => {
       setSearchCriteria(null);
-      setFilteredProjects(null);
       setSearch('');
+      fetchManagerProjects(1);
   }
   
   const handleOpenEditDialog = (project: Project) => {
@@ -391,85 +373,73 @@ function Dashboard({
   }
 
   const dashboardProjects = React.useMemo(() => {
-    let baseProjects: Project[];
-
-    if (filteredProjects) {
-        baseProjects = filteredProjects;
-    } else if (isManagerOrAdmin && search.trim() !== '') {
-        const lowercasedSearch = search.toLowerCase();
-        if (searchColumn === 'any') {
-            baseProjects = projects.filter(p => 
-                Object.values(p).some(val => String(val).toLowerCase().includes(lowercasedSearch))
-            );
-        } else {
-            baseProjects = projects.filter(p => 
-                (p[searchColumn] as string)?.toString().toLowerCase().includes(lowercasedSearch)
-            );
-        }
-    } else {
-        baseProjects = [...projects];
-    }
+    let baseProjects: Project[] = projects;
     
-    let filtered = baseProjects;
-    
-    // Apply role-based filters first if not a manager/admin
-    if (activeRole === 'Processor') {
-        filtered = filtered.filter(p => 
-            p.processor === user.name && 
-            (['Pending', 'Re-Work', 'On Hold'].includes(p.processing_status) || !p.processing_status)
-        );
-    } else if (activeRole === 'QA') {
-        filtered = filtered.filter(p => 
-            p.qa === user.name &&
-            ['Processed', 'Already Processed', 'NTP', 'Client Query'].includes(p.processing_status) &&
-            (['Pending', 'On Hold'].includes(p.qa_status) || !p.qa_status)
-        );
-    } else if (activeRole === 'Case Manager') {
-        filtered = filtered.filter(p =>
-            p.case_manager === user.name &&
-            p.qa_status === 'Client Query' &&
-            p.clientquery_status === null
-        );
-    }
-
-    // Then apply UI filters if they are active
-    if (search && !isManagerOrAdmin) {
-        const effectiveSearchColumn = activeRole === 'Case Manager' ? 'any' : searchColumn;
-        const lowercasedSearch = search.toLowerCase();
+    // Non-manager filtering is now done client-side based on the initial fetch
+    if (!isManagerOrAdmin) {
+        let filtered = baseProjects;
         
-        if (effectiveSearchColumn === 'any') {
+        // Apply role-based filters first
+        if (activeRole === 'Processor') {
             filtered = filtered.filter(p => 
-                Object.values(p).some(val => String(val).toLowerCase().includes(lowercasedSearch))
+                p.processor === user.name && 
+                (['Pending', 'Re-Work', 'On Hold'].includes(p.processing_status) || !p.processing_status)
             );
-        } else {
+        } else if (activeRole === 'QA') {
             filtered = filtered.filter(p => 
-                (p[effectiveSearchColumn] as string)?.toString().toLowerCase().includes(lowercasedSearch)
+                p.qa === user.name &&
+                ['Processed', 'Already Processed', 'NTP', 'Client Query'].includes(p.processing_status) &&
+                (['Pending', 'On Hold'].includes(p.qa_status) || !p.qa_status)
+            );
+        } else if (activeRole === 'Case Manager') {
+            filtered = filtered.filter(p =>
+                p.case_manager === user.name &&
+                p.qa_status === 'Client Query' &&
+                p.clientquery_status === null
             );
         }
+
+        // Then apply UI filters
+        if (search) {
+            const effectiveSearchColumn = activeRole === 'Case Manager' ? 'any' : searchColumn;
+            const lowercasedSearch = search.toLowerCase();
+            
+            if (effectiveSearchColumn === 'any') {
+                filtered = filtered.filter(p => 
+                    Object.values(p).some(val => String(val).toLowerCase().includes(lowercasedSearch))
+                );
+            } else {
+                filtered = filtered.filter(p => 
+                    (p[effectiveSearchColumn] as string)?.toString().toLowerCase().includes(lowercasedSearch)
+                );
+            }
+        }
+
+        if (clientNameFilter !== 'all') {
+            filtered = filtered.filter(p => p.client_name === clientNameFilter);
+        }
+        
+        if (processFilter !== 'all') {
+            filtered = filtered.filter(p => p.process === processFilter);
+        }
+        
+        if (sort && filtered) {
+          filtered.sort((a, b) => {
+            const valA = a[sort.key];
+            const valB = b[sort.key];
+            if (valA === null || valA === undefined) return 1; 
+            if (valB === null || valB === undefined) return -1;
+            if (valA < valB) return sort.direction === 'asc' ? -1 : 1;
+            if (valA > valB) return sort.direction === 'asc' ? 1 : -1;
+            return 0;
+          });
+        }
+        return filtered;
     }
 
-    if (clientNameFilter !== 'all' && !(activeRole === 'Manager' || activeRole === 'Admin')) {
-        filtered = filtered.filter(p => p.client_name === clientNameFilter);
-    }
-    
-    if (processFilter !== 'all' && !(activeRole === 'Manager' || activeRole === 'Admin')) {
-        filtered = filtered.filter(p => p.process === processFilter);
-    }
-    
-    if (sort && filtered) {
-      filtered.sort((a, b) => {
-        const valA = a[sort.key];
-        const valB = b[sort.key];
-        if (valA === null || valA === undefined) return 1; 
-        if (valB === null || valB === undefined) return -1;
-        if (valA < valB) return sort.direction === 'asc' ? -1 : 1;
-        if (valA > valB) return sort.direction === 'asc' ? 1 : -1;
-        return 0;
-      });
-    }
-
-    return filtered;
-  }, [activeRole, user.name, projects, search, searchColumn, sort, filteredProjects, clientNameFilter, processFilter, isManagerOrAdmin]);
+    // For manager/admin, the data is already paginated and filtered from the server
+    return baseProjects;
+  }, [activeRole, user.name, projects, search, searchColumn, sort, clientNameFilter, processFilter, isManagerOrAdmin]);
 
   const clientWorkStatus = React.useMemo(() => {
     const statusByClient: Record<string, {
@@ -491,8 +461,10 @@ function Dashboard({
             completedToday: 0,
         };
     }
-
-    for (const project of projects) {
+    
+    // NOTE: This now operates on ALL initial projects for accuracy, not just the paged view.
+    // For very large datasets, this calculation should also be moved to the server.
+    for (const project of initialProjects) {
         if (!statusByClient[project.client_name]) {
              statusByClient[project.client_name] = {
                 pendingProcessing: 0,
@@ -524,7 +496,7 @@ function Dashboard({
     }
 
     return Object.entries(statusByClient).map(([client, status]) => ({ client, ...status }));
-  }, [projects, clientNames]);
+  }, [initialProjects, clientNames]);
   
   const caseManagerTatInfo = React.useMemo(() => {
     if (activeRole !== 'Case Manager') return null;
@@ -563,8 +535,8 @@ function Dashboard({
   const selectedBulkUpdateField = bulkUpdateFields.find(f => f.value === bulkUpdateField);
 
   // When to show the data table vs the accordions for manager
-  const showDataTable = filteredProjects !== null || (isManagerOrAdmin && search.trim() !== '');
-  const showManagerAccordions = isManagerOrAdmin && !showDataTable;
+  const showDataTable = isManagerOrAdmin; // Manager always sees the table now
+  const showManagerAccordions = isManagerOrAdmin;
 
   // When to show the sub-header with column/layout controls
   const showSubHeader = 
@@ -653,7 +625,7 @@ function Dashboard({
                         </div>
                     ) : (
                         <>
-                            {activeRole === 'Manager' && showDataTable && (
+                            {activeRole === 'Manager' && (searchCriteria !== null || search !== '') && (
                                 <Button variant="outline" className="h-7 px-2 text-xs" onClick={handleResetAdvancedSearch}>
                                     <RotateCcw className="mr-1.5 h-3.5 w-3.5" /> Reset Search
                                 </Button>
@@ -666,7 +638,7 @@ function Dashboard({
                                 <Save className="mr-1.5 h-3.5 w-3.5" />
                                 Save Layout
                             </Button>
-                            {(activeRole === 'Processor' || activeRole === 'QA' || (activeRole === 'Manager' && showDataTable)) && (
+                            {(activeRole === 'Processor' || activeRole === 'QA' || activeRole === 'Manager') && (
                                 <Button 
                                     variant="outline" 
                                     className="h-7 px-2 text-xs" 
@@ -843,8 +815,12 @@ function Dashboard({
                               rowSelection={rowSelection}
                               setRowSelection={setRowSelection}
                               isManagerOrAdmin={isManagerOrAdmin}
-                              totalCount={dashboardProjects.length}
+                              totalCount={totalCount}
                               activeRole={activeRole}
+                              page={page}
+                              totalPages={totalPages}
+                              onPageChange={fetchManagerProjects}
+                              isFetching={isFetching}
                           />
                         </div>
                     )}

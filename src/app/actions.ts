@@ -5,7 +5,7 @@ import { z } from "zod";
 import type { Project, Role } from "@/lib/data";
 import { revalidatePath } from "next/cache";
 import { db } from "@/lib/firebase";
-import { collection, getDocs, doc, writeBatch, updateDoc, serverTimestamp, addDoc, getDoc, query, orderBy, limit, Timestamp, where } from "firebase/firestore";
+import { collection, getDocs, doc, writeBatch, updateDoc, serverTimestamp, addDoc, getDoc, query, orderBy, limit, Timestamp, where, startAfter, endBefore, limitToLast, getCountFromServer, QueryConstraint, or } from "firebase/firestore";
 
 function convertTimestampsToDates(data: any): any {
     const newData: { [key: string]: any } = { ...data };
@@ -50,7 +50,6 @@ export async function getProjectsForUser(userName: string, roles: Role[]): Promi
     });
     return projectList;
 }
-
 
 const bulkUpdateSchema = z.object({
   projectIds: z.array(z.string()),
@@ -290,4 +289,72 @@ export async function addRows(
     }
     return { success: false, error: "An unknown error occurred while adding rows."}
   }
+}
+
+// Server-side pagination and filtering
+export async function getPaginatedProjects(options: {
+    page: number;
+    limit: number;
+    filters: any; // Simplified for now
+    sort: { key: string, direction: 'asc' | 'desc' };
+}) {
+    const { page, limit: pageSize, filters, sort } = options;
+    const projectsCollection = collection(db, "projects");
+    
+    let queryConstraints: QueryConstraint[] = [];
+
+    // Apply filters
+    // This is a simplified filter implementation. A real implementation would need
+    // to handle different operators, data types, and compound queries carefully.
+    if (filters.quickSearch) {
+        // Firestore doesn't support full-text search natively. This is a very basic
+        // and limited implementation. For real full-text search, an external service
+        // like Algolia or Elasticsearch is recommended.
+        // We'll do a basic "startsWith" search on a few fields.
+        const searchFields: (keyof Project)[] = ['row_number', 'ref_number', 'client_name', 'processor', 'qa'];
+        const orConstraints = searchFields.map(field => 
+            where(field, '>=', filters.quickSearch) && where(field, '<=', filters.quickSearch + '\uf8ff')
+        );
+        // Note: Firestore 'or' queries are limited. This might not work as expected for complex cases.
+        // queryConstraints.push(or(...orConstraints)); 
+    }
+
+    // Apply sorting
+    if (sort.key) {
+        queryConstraints.push(orderBy(sort.key, sort.direction));
+    }
+
+    // Get total count for pagination
+    const countQuery = query(projectsCollection, ...queryConstraints);
+    const totalCountSnapshot = await getCountFromServer(countQuery);
+    const totalCount = totalCountSnapshot.data().count;
+
+    // Apply pagination
+    if (page > 1) {
+        const lastVisibleQuery = query(countQuery, limit((page - 1) * pageSize));
+        const lastVisibleSnapshot = await getDocs(lastVisibleQuery);
+        const lastVisible = lastVisibleSnapshot.docs[lastVisibleSnapshot.docs.length - 1];
+        if (lastVisible) {
+            queryConstraints.push(startAfter(lastVisible));
+        }
+    }
+    queryConstraints.push(limit(pageSize));
+
+    // Final query
+    const finalQuery = query(projectsCollection, ...queryConstraints);
+    const projectSnapshot = await getDocs(finalQuery);
+
+    const projectList = projectSnapshot.docs.map(doc => {
+        const data = doc.data();
+        return {
+            id: doc.id,
+            ...convertTimestampsToDates(data)
+        } as Project;
+    });
+
+    return {
+        projects: projectList,
+        totalCount: totalCount,
+        totalPages: Math.ceil(totalCount / pageSize),
+    };
 }

@@ -2,7 +2,7 @@
 "use client"
 
 import * as React from "react"
-import { ArrowDown, ArrowUp } from "lucide-react"
+import { ArrowDown, ArrowUp, ChevronLeft, ChevronRight, Loader2 } from "lucide-react"
 import type { Project, Role } from "@/lib/data"
 import {
   Table,
@@ -13,6 +13,7 @@ import {
   TableRow,
 } from "@/components/ui/table"
 import { cn } from "@/lib/utils"
+import { Button } from "./ui/button"
 
 interface DataTableProps {
   data: Project[];
@@ -28,6 +29,10 @@ interface DataTableProps {
   isManagerOrAdmin: boolean;
   totalCount: number;
   activeRole: Role;
+  page?: number;
+  totalPages?: number;
+  onPageChange?: (page: number) => void;
+  isFetching?: boolean;
 }
 
 export function DataTable({ 
@@ -39,7 +44,11 @@ export function DataTable({
     setRowSelection,
     isManagerOrAdmin, 
     totalCount,
-    activeRole
+    activeRole,
+    page,
+    totalPages,
+    onPageChange,
+    isFetching,
 }: DataTableProps) {
   const handleSort = (key: string) => {
     if (key === 'select' || key === 'actions') return;
@@ -52,6 +61,14 @@ export function DataTable({
   };
   
   const renderEmptyState = () => {
+    if (isFetching) {
+        return (
+            <div className="flex items-center justify-center h-full text-center p-8">
+                <Loader2 className="h-8 w-8 animate-spin text-primary" />
+            </div>
+        )
+    }
+
     let message = "No results found.";
     
     if (activeRole === 'Processor' || activeRole === 'QA') {
@@ -66,11 +83,13 @@ export function DataTable({
         </div>
     );
   };
+  
+  const showPagination = isManagerOrAdmin && totalPages && totalPages > 1;
 
   return (
     <div className={cn("h-full flex flex-col")}>
        <div className={cn("flex-grow rounded-t-md border bg-card relative overflow-y-auto")}>
-        {data.length > 0 ? (
+        {data.length > 0 || isFetching ? (
             <Table>
                 <TableHeader className="sticky top-0 z-10 bg-primary">
                     <TableRow>
@@ -90,17 +109,23 @@ export function DataTable({
                     </TableRow>
                 </TableHeader>
                 <TableBody>
-                    {data.map((row) => (
-                    <TableRow 
-                        key={row.id}
-                        data-state={rowSelection[row.id] ? "selected" : undefined}
-                    >
-                        {columns.map((column) => (
-                        <TableCell key={column.key} className={cn(column.key === 'select' && 'pr-0')}>
-                            {column.render ? column.render(row) : (row[column.key as keyof Project] ?? 'N/A')}
-                        </TableCell>
-                        ))}
-                    </TableRow>
+                    {isFetching && data.length === 0 ? (
+                        <TableRow>
+                            <TableCell colSpan={columns.length} className="h-24 text-center">
+                                <Loader2 className="mx-auto h-8 w-8 animate-spin text-primary" />
+                            </TableCell>
+                        </TableRow>
+                    ) : data.map((row) => (
+                      <TableRow 
+                          key={row.id}
+                          data-state={rowSelection[row.id] ? "selected" : undefined}
+                      >
+                          {columns.map((column) => (
+                          <TableCell key={column.key} className={cn(column.key === 'select' && 'pr-0')}>
+                              {column.render ? column.render(row) : (row[column.key as keyof Project] ?? 'N/A')}
+                          </TableCell>
+                          ))}
+                      </TableRow>
                     ))}
                 </TableBody>
             </Table>
@@ -109,14 +134,29 @@ export function DataTable({
         )}
       </div>
 
-       <div className="rounded-b-md border border-t-0 bg-card">
-         
-         <div className="flex items-center justify-end p-2 text-sm text-card-foreground">
-             {totalCount > 0 && <span>Total items: {totalCount}</span>}
+       <div className="flex-shrink-0 rounded-b-md border border-t-0 bg-card">
+         <div className="flex items-center justify-between p-2 text-sm text-card-foreground">
+             <div className="flex-1 text-left">
+                {Object.keys(rowSelection).length > 0 && <span>{Object.keys(rowSelection).length} selected</span>}
+             </div>
+             {showPagination && page && totalPages && onPageChange && (
+                <div className="flex items-center gap-2">
+                    <Button variant="outline" size="sm" onClick={() => onPageChange(page - 1)} disabled={page <= 1 || isFetching}>
+                        <ChevronLeft className="h-4 w-4" />
+                        Previous
+                    </Button>
+                    <span>Page {page} of {totalPages}</span>
+                     <Button variant="outline" size="sm" onClick={() => onPageChange(page + 1)} disabled={page >= totalPages || isFetching}>
+                        Next
+                        <ChevronRight className="h-4 w-4" />
+                    </Button>
+                </div>
+             )}
+             <div className="flex-1 text-right">
+                {totalCount > 0 && <span>Total items: {totalCount}</span>}
+             </div>
          </div>
        </div>
     </div>
   )
 }
-
-    
