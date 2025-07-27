@@ -119,33 +119,32 @@ function Dashboard({ user, error }: DashboardProps) {
 
     try {
         const projectsCollection = collection(db, 'projects');
-        let queryConstraints: QueryConstraint[] = [];
+        let baseConstraints: QueryConstraint[] = [];
 
         // --- Role and Status Based Filtering ---
         if (role === 'Processor') {
-            queryConstraints.push(where("processorId", "==", user.id));
-            queryConstraints.push(where("workflowStatus", "==", "With Processor"));
-            queryConstraints.push(where("processing_status", "in", ["Pending", "On Hold", "Re-Work"]));
+            baseConstraints.push(where("processorId", "==", user.id));
+            baseConstraints.push(where("workflowStatus", "==", "With Processor"));
+            baseConstraints.push(where("processing_status", "in", ["Pending", "On Hold", "Re-Work"]));
         } else if (role === 'QA') {
-            queryConstraints.push(where("qaId", "==", user.id));
-            queryConstraints.push(where("workflowStatus", "==", "With QA"));
+            baseConstraints.push(where("qaId", "==", user.id));
+            baseConstraints.push(where("workflowStatus", "==", "With QA"));
         } else if (role === 'Case Manager') {
-            queryConstraints.push(where("caseManagerId", "==", user.id));
-            queryConstraints.push(where("processing_status", "==", "Client Query"));
+            baseConstraints.push(where("caseManagerId", "==", user.id));
+            baseConstraints.push(where("processing_status", "==", "Client Query"));
         }
         
+        let finalQueryConstraints = [...baseConstraints];
+
         // --- Additional Dashboard Filters ---
         if (currentFilters.clientName && currentFilters.clientName !== 'all') {
-             queryConstraints.push(where('client_name', '==', currentFilters.clientName));
+             finalQueryConstraints.push(where('client_name', '==', currentFilters.clientName));
         }
         if (currentFilters.process && currentFilters.process !== 'all') {
-            queryConstraints.push(where('process', '==', currentFilters.process));
+            finalQueryConstraints.push(where('process', '==', currentFilters.process));
         }
-
-        // --- Sorting ---
-        queryConstraints.push(orderBy("row_number", "desc"));
-
-        const countQuery = query(projectsCollection, ...queryConstraints.filter(c => c.type !== 'orderBy')); // Count without ordering
+        
+        const countQuery = query(projectsCollection, ...finalQueryConstraints);
         const totalCountSnapshot = await getCountFromServer(countQuery);
         const total = totalCountSnapshot.data().count;
         setTotalCount(total);
@@ -156,13 +155,15 @@ function Dashboard({ user, error }: DashboardProps) {
             return;
         }
 
-        // --- Pagination ---
+        // --- Sorting & Pagination ---
+        finalQueryConstraints.push(orderBy("row_number", "desc"));
+
         if (currentPage > 1 && lastDoc) {
-            queryConstraints.push(startAfter(lastDoc));
+            finalQueryConstraints.push(startAfter(lastDoc));
         }
-        queryConstraints.push(limit(20)); 
+        finalQueryConstraints.push(limit(20)); 
         
-        const finalQuery = query(projectsCollection, ...queryConstraints);
+        const finalQuery = query(projectsCollection, ...finalQueryConstraints);
         const projectSnapshot = await getDocs(finalQuery);
 
         setLastVisible(projectSnapshot.docs[projectSnapshot.docs.length - 1] || null);
@@ -235,10 +236,6 @@ function Dashboard({ user, error }: DashboardProps) {
         if (newActiveRole !== activeRole) {
             setActiveRole(newActiveRole);
             loadColumnLayout(newActiveRole);
-            setPage(1);
-            setDashboardProjects([]);
-            setLastVisible(null);
-            setTotalCount(0);
         }
     }, [user.roles, searchParams, activeRole, loadColumnLayout]);
 
@@ -257,9 +254,7 @@ function Dashboard({ user, error }: DashboardProps) {
         setLastVisible(null);
         const currentFilters = { clientName: clientNameFilter, process: processFilter };
         fetchClientSidePageData(activeRole, 1, currentFilters, null);
-    // This effect should only re-run when these specific filters change.
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-    }, [activeRole, clientNameFilter, processFilter, isManagerOrAdmin]);
+    }, [activeRole, clientNameFilter, processFilter, isManagerOrAdmin, fetchClientSidePageData]);
 
 
   const handleFilterChange = React.useCallback(() => {
@@ -683,3 +678,5 @@ function Dashboard({ user, error }: DashboardProps) {
     </div>
   );
 }
+
+    
