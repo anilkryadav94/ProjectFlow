@@ -41,84 +41,75 @@ function buildFilterConstraints(
     
     // --- SERVER-SIDE ROLE & STATUS FILTERING ---
     if (filters.roleFilter) {
-        const { role, userId } = filters.roleFilter;
+        const { role, userName } = filters.roleFilter;
         if (role === 'Processor') {
-            andConstraints.push(where("processorId", "==", userId));
-            andConstraints.push(where("workflowStatus", "==", "With Processor"));
+            andConstraints.push(where("processor", "==", userName));
         } else if (role === 'QA') {
-            andConstraints.push(where("qaId", "==", userId));
-            andConstraints.push(where("workflowStatus", "==", "With QA"));
+            andConstraints.push(where("qa", "==", userName));
         } else if (role === 'Case Manager') {
-            andConstraints.push(where("caseManagerId", "==", userId));
-            andConstraints.push(where("processing_status", "==", "Client Query"));
-        }
-    } else {
-        // Apply these filters only if it's NOT a role-based dashboard view (e.g., Manager search)
-        if (filters.clientName && filters.clientName !== 'all') {
-            andConstraints.push(where('client_name', '==', filters.clientName));
-        }
-        if (filters.process && filters.process !== 'all') {
-            andConstraints.push(where('process', '==', filters.process));
+            andConstraints.push(where("case_manager", "==", userName));
         }
     }
 
+    // Manager/Admin Search filters
+    if (!filters.roleFilter) {
+        if (filters.advanced && filters.advanced.length > 0) {
+            filters.advanced.forEach(criterion => {
+                if (!criterion.field || !criterion.operator) return;
+                if (criterion.operator !== 'blank' && !criterion.value) return;
 
-    if (filters.advanced && filters.advanced.length > 0) {
-        filters.advanced.forEach(criterion => {
-            if (!criterion.field || !criterion.operator) return;
-            if (criterion.operator !== 'blank' && !criterion.value) return;
-
-            const isDate = dateFields.includes(criterion.field);
-            let value = criterion.value;
-            if (isDate && value && typeof value === 'string') {
-                try {
-                  const date = new Date(value);
-                  if(!isNaN(date.getTime())) {
-                    value = Timestamp.fromDate(date);
-                  }
-                } catch (e) {
-                  // ignore invalid date
+                const isDate = dateFields.includes(criterion.field);
+                let value = criterion.value;
+                if (isDate && value && typeof value === 'string') {
+                    try {
+                      const date = new Date(value);
+                      if(!isNaN(date.getTime())) {
+                        value = Timestamp.fromDate(date);
+                      }
+                    } catch (e) {
+                      // ignore invalid date
+                    }
                 }
-            }
-            
-            switch (criterion.operator) {
-                case 'equals':
-                case 'dateEquals':
-                    andConstraints.push(where(criterion.field, '==', value));
-                    break;
-                case 'in':
-                     const values = typeof value === 'string' ? value.split(',').map((s:string) => s.trim()) : [];
-                     if (values.length > 0) {
-                        andConstraints.push(where(criterion.field, 'in', values));
-                     }
-                    break;
-                case 'startsWith':
-                case 'contains':
-                    andConstraints.push(where(criterion.field, '>=', value));
-                    andConstraints.push(where(criterion.field, '<=', value + '\uf8ff'));
-                    break;
-                case 'blank':
-                    andConstraints.push(where(criterion.field, '==', null));
-                    break;
-            }
-        });
-    }
-    
-    if (filters.quickSearch && filters.searchColumn && filters.searchColumn !== 'any') {
-        const isDateSearch = dateFields.includes(filters.searchColumn);
-        if (isDateSearch) {
-             try {
-                const date = new Date(filters.quickSearch);
-                if (!isNaN(date.getTime())) {
-                    const startOfDay = Timestamp.fromDate(new Date(date.setHours(0, 0, 0, 0)));
-                    const endOfDay = Timestamp.fromDate(new Date(date.setHours(23, 59, 59, 999)));
-                    andConstraints.push(where(filters.searchColumn, '>=', startOfDay));
-                    andConstraints.push(where(filters.searchColumn, '<=', endOfDay));
+                
+                switch (criterion.operator) {
+                    case 'equals':
+                    case 'dateEquals':
+                        andConstraints.push(where(criterion.field, '==', value));
+                        break;
+                    case 'in':
+                         const values = typeof value === 'string' ? value.split(',').map((s:string) => s.trim()) : [];
+                         if (values.length > 0) {
+                            andConstraints.push(where(criterion.field, 'in', values));
+                         }
+                        break;
+                    case 'startsWith':
+                    case 'contains':
+                        andConstraints.push(where(criterion.field, '>=', value));
+                        andConstraints.push(where(criterion.field, '<=', value + '\uf8ff'));
+                        break;
+                    case 'blank':
+                        andConstraints.push(where(criterion.field, '==', null));
+                        break;
                 }
-             } catch (e) { /* Ignore invalid date */ }
-        } else {
-             andConstraints.push(where(filters.searchColumn, '>=', filters.quickSearch));
-             andConstraints.push(where(filters.searchColumn, '<=', filters.quickSearch + '\uf8ff'));
+            });
+        }
+        
+        if (filters.quickSearch && filters.searchColumn && filters.searchColumn !== 'any') {
+            const isDateSearch = dateFields.includes(filters.searchColumn);
+            if (isDateSearch) {
+                 try {
+                    const date = new Date(filters.quickSearch);
+                    if (!isNaN(date.getTime())) {
+                        const startOfDay = Timestamp.fromDate(new Date(date.setHours(0, 0, 0, 0)));
+                        const endOfDay = Timestamp.fromDate(new Date(date.setHours(23, 59, 59, 999)));
+                        andConstraints.push(where(filters.searchColumn, '>=', startOfDay));
+                        andConstraints.push(where(filters.searchColumn, '<=', endOfDay));
+                    }
+                 } catch (e) { /* Ignore invalid date */ }
+            } else {
+                 andConstraints.push(where(filters.searchColumn, '>=', filters.quickSearch));
+                 andConstraints.push(where(filters.searchColumn, '<=', filters.quickSearch + '\uf8ff'));
+            }
         }
     }
     
@@ -348,16 +339,21 @@ export async function getPaginatedProjects(options: {
     const { page, limit: pageSize, filters, sort } = options;
     const projectsCollection = collection(db, "projects");
 
-    // Temporarily remove all filtering logic for debugging.
     let queryConstraints: QueryConstraint[] = [];
+    const filterConstraints = buildFilterConstraints(filters);
+    if(filterConstraints.length > 0) {
+        queryConstraints.push(and(...filterConstraints));
+    }
     
-    // Get total count without filters for now.
-    const totalCountSnapshot = await getCountFromServer(collection(db, "projects"));
+    // Count query should use the same filters
+    const countQuery = query(projectsCollection, ...queryConstraints);
+    const totalCountSnapshot = await getCountFromServer(countQuery);
     const totalCount = totalCountSnapshot.data().count;
 
-    // Always sort by row_number
-    queryConstraints.push(orderBy('row_number', 'desc'));
+    // Add sorting
+    queryConstraints.push(orderBy(sort.key || 'row_number', sort.direction || 'desc'));
 
+    // Pagination logic
     if (page > 1) {
         const paginationQueryConstraints = [...queryConstraints, limit((page - 1) * pageSize)];
         const tempPaginationQuery = query(projectsCollection, ...paginationQueryConstraints);
@@ -368,6 +364,7 @@ export async function getPaginatedProjects(options: {
         }
     }
     
+    // Final query with limit
     const finalQueryConstraints = [...queryConstraints, limit(pageSize)];
     const finalQuery = query(projectsCollection, ...finalQueryConstraints);
     const projectSnapshot = await getDocs(finalQuery);
@@ -400,10 +397,7 @@ export async function getProjectsForExport(options: {
     const { filters, sort, user } = options;
     const projectsCollection = collection(db, "projects");
     
-    // Only apply role filter if it exists, otherwise it's a general export
-    const effectiveFilters = filters.roleFilter && user ? { roleFilter: filters.roleFilter } : filters;
-
-    const filterConstraints = buildFilterConstraints(effectiveFilters);
+    const filterConstraints = buildFilterConstraints(filters);
 
 
     let queryConstraints: QueryConstraint[] = [];

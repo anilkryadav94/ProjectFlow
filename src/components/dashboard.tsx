@@ -24,8 +24,6 @@ import { differenceInBusinessDays } from 'date-fns';
 import { getUsers } from '@/lib/auth';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { getPaginatedProjects } from '@/services/project-service';
-import { DocumentData, query, collection, where, getDocs, orderBy, limit, startAfter, getCountFromServer } from 'firebase/firestore';
-import { db } from '@/lib/firebase';
 
 
 interface DashboardProps {
@@ -115,15 +113,19 @@ function Dashboard({ user, error }: DashboardProps) {
   }, [defaultCaseManagerColumns, defaultManagerAdminColumns, defaultProcessorQAColumns]);
 
   const fetchDashboardData = React.useCallback(async (role: Role, currentPage: number, currentSort: any) => {
-    if (!user || isManagerOrAdmin) return;
+    if (!user) return;
     setIsLoading(true);
+
+    const isRoleBasedDashboard = role === 'Processor' || role === 'QA' || role === 'Case Manager';
 
     try {
         const { projects, totalCount, totalPages } = await getPaginatedProjects({
             page: currentPage,
             limit: 20,
             sort: currentSort,
-            filters: {} // Temporarily passing empty filters for debugging
+            filters: {
+                roleFilter: isRoleBasedDashboard ? { role: role, userName: user.name, userId: user.id } : undefined,
+            }
         });
 
         setDashboardProjects(projects);
@@ -143,7 +145,7 @@ function Dashboard({ user, error }: DashboardProps) {
     } finally {
         setIsLoading(false);
     }
-  }, [user, isManagerOrAdmin, toast]);
+  }, [user, toast]);
 
 
     const fetchInitialData = React.useCallback(async () => {
@@ -182,16 +184,14 @@ function Dashboard({ user, error }: DashboardProps) {
     }, [user.roles, searchParams, activeRole, loadColumnLayout]);
 
     React.useEffect(() => {
-        if (!activeRole || isManagerOrAdmin) {
-            if(isManagerOrAdmin) {
-                 setDashboardProjects([]);
-                 setTotalCount(0);
-                 setIsLoading(false);
-            }
+        if (!activeRole) {
+            setDashboardProjects([]);
+            setTotalCount(0);
+            setIsLoading(false);
             return;
         };
         fetchDashboardData(activeRole, page, sort);
-    }, [activeRole, page, sort, clientNameFilter, processFilter, fetchDashboardData, isManagerOrAdmin]);
+    }, [activeRole, page, sort, fetchDashboardData]);
     
     // Effect to reset page to 1 when filters change
     React.useEffect(() => {
