@@ -332,9 +332,21 @@ export async function getPaginatedProjects(options: {
     const totalCountSnapshot = await getCountFromServer(countQuery);
     const totalCount = totalCountSnapshot.data().count;
 
+    // To avoid needing a composite index for every sort combination on role-filtered dashboards,
+    // we adjust the sorting logic. If a role filter is applied, we sort by that role's field first.
+    if (filters.roleFilter?.role === 'Processor') {
+        queryConstraints.push(orderBy('processor', 'asc'));
+    } else if (filters.roleFilter?.role === 'QA') {
+        queryConstraints.push(orderBy('qa', 'asc'));
+    } else if (filters.roleFilter?.role === 'Case Manager') {
+        queryConstraints.push(orderBy('case_manager', 'asc'));
+    }
+
     if (sort.key && sort.key !== 'id') {
+        // Add the user's selected sort as a secondary sort criterion
         queryConstraints.push(orderBy(sort.key, sort.direction));
     } else {
+        // Default sort if none is provided
         queryConstraints.push(orderBy('row_number', 'desc')); 
     }
 
