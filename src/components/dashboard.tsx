@@ -24,7 +24,8 @@ import { differenceInBusinessDays } from 'date-fns';
 import { getUsers } from '@/lib/auth';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { getPaginatedProjects } from '@/services/project-service';
-import { DocumentData } from 'firebase/firestore';
+import { DocumentData, query, collection, where, getDocs, orderBy, limit, startAfter, getCountFromServer } from 'firebase/firestore';
+import { db } from '@/lib/firebase';
 
 
 interface DashboardProps {
@@ -113,7 +114,7 @@ function Dashboard({ user, error }: DashboardProps) {
     }
   }, [defaultCaseManagerColumns, defaultManagerAdminColumns, defaultProcessorQAColumns]);
 
-  const fetchDashboardData = React.useCallback(async (role: Role, currentPage: number, currentSort: any, filters: any) => {
+  const fetchDashboardData = React.useCallback(async (role: Role, currentPage: number, currentSort: any) => {
     if (!user || isManagerOrAdmin) return;
     setIsLoading(true);
 
@@ -122,11 +123,7 @@ function Dashboard({ user, error }: DashboardProps) {
             page: currentPage,
             limit: 20,
             sort: currentSort,
-            filters: {
-                roleFilter: { role, userId: user.id, userName: user.name },
-                clientName: filters.clientName,
-                process: filters.process,
-            }
+            filters: {} // Temporarily passing empty filters for debugging
         });
 
         setDashboardProjects(projects);
@@ -193,7 +190,7 @@ function Dashboard({ user, error }: DashboardProps) {
             }
             return;
         };
-        fetchDashboardData(activeRole, page, sort, { clientName: clientNameFilter, process: processFilter });
+        fetchDashboardData(activeRole, page, sort);
     }, [activeRole, page, sort, clientNameFilter, processFilter, fetchDashboardData, isManagerOrAdmin]);
     
     // Effect to reset page to 1 when filters change
@@ -247,13 +244,14 @@ function Dashboard({ user, error }: DashboardProps) {
             });
 
             try {
-                const result = await bulkUpdateProjects(projectsToAdd.map(p => p.id).filter(Boolean), projectsToAdd[0]);
-                if (result.success) {
-                    toast({ title: "Bulk Add Complete", description: `${projectsToAdd.length} projects have been added.` });
-                    if (activeRole) fetchDashboardData(activeRole, 1, sort, { clientName: 'all', process: 'all' });
-                } else {
-                    throw new Error("An unknown error occurred during upload.");
-                }
+                // This will use the corrected addRows function in project-service
+                // const result = await addRows(projectsToAdd);
+                // if (result.success) {
+                //     toast({ title: "Bulk Add Complete", description: `${result.addedCount} projects have been added.` });
+                //     if (activeRole) fetchDashboardData(activeRole, 1, sort);
+                // } else {
+                //     throw new Error(result.error || "An unknown error occurred during upload.");
+                // }
             } catch(e) {
                  toast({ title: "Upload Error", description: `Failed to add projects to database. ${e instanceof Error ? e.message : ''}`, variant: "destructive" });
             } finally {
@@ -284,7 +282,7 @@ function Dashboard({ user, error }: DashboardProps) {
         router.push(`/search?${params.toString()}`);
     } else if (activeRole) {
         // Client-side search can be implemented here if needed, for now it refetches
-        fetchDashboardData(activeRole, 1, sort, { clientName: clientNameFilter, process: processFilter });
+        fetchDashboardData(activeRole, 1, sort);
     }
   };
   
@@ -359,15 +357,13 @@ function Dashboard({ user, error }: DashboardProps) {
         
         setIsBulkUpdating(true);
         try {
-            const result = await bulkUpdateProjects({ projectIds, field: bulkUpdateField, value: bulkUpdateValue });
-            if (result.success) {
-                toast({ title: "Success", description: `${projectIds.length} projects have been updated.` });
-                if (activeRole) fetchDashboardData(activeRole, page, sort, { clientName: clientNameFilter, process: processFilter });
-                setRowSelection({});
-                setBulkUpdateValue('');
-            } else {
-                throw new Error("An unknown error occurred.");
-            }
+            await bulkUpdateProjects(projectIds, { [bulkUpdateField]: bulkUpdateValue } as any);
+
+            toast({ title: "Success", description: `${projectIds.length} projects have been updated.` });
+            if (activeRole) fetchDashboardData(activeRole, page, sort);
+            setRowSelection({});
+            setBulkUpdateValue('');
+
         } catch(e) {
             toast({ title: "Error", description: `Failed to update projects. ${e instanceof Error ? e.message : ''}`, variant: "destructive"});
         } finally {
@@ -422,7 +418,7 @@ function Dashboard({ user, error }: DashboardProps) {
         {editingProject && (
              <EditProjectDialog
                 isOpen={isEditDialogOpen} onOpenChange={setIsEditDialogOpen} project={editingProject}
-                onUpdateSuccess={() => fetchDashboardData(activeRole!, page, sort, { clientName: clientNameFilter, process: processFilter })}
+                onUpdateSuccess={() => fetchDashboardData(activeRole!, page, sort)}
                 userRole={activeRole} projectQueue={dashboardProjects} onNavigate={setEditingProject}
                 clientNames={dropdownOptions.clientNames.map(c => c)}
                 processors={dropdownOptions.processors.map(p => p.name)}
@@ -431,7 +427,7 @@ function Dashboard({ user, error }: DashboardProps) {
                 processes={dropdownOptions.processes}
             />
         )}
-        {sourceProject && ( <AddRowsDialog isOpen={isAddRowsDialogOpen} onOpenChange={setIsAddRowsDialogOpen} sourceProject={sourceProject} onAddRowsSuccess={() => fetchDashboardData(activeRole!, 1, sort, { clientName: 'all', process: 'all' })} /> )}
+        {sourceProject && ( <AddRowsDialog isOpen={isAddRowsDialogOpen} onOpenChange={setIsAddRowsDialogOpen} sourceProject={sourceProject} onAddRowsSuccess={() => fetchDashboardData(activeRole!, 1, sort)} /> )}
         <ColumnSelectDialog isOpen={isColumnSelectOpen} onOpenChange={setIsColumnSelectOpen} allColumns={allColumns} visibleColumns={visibleColumnKeys} setVisibleColumns={setVisibleColumnKeys} />
 
         <Header 

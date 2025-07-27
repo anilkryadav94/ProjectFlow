@@ -156,17 +156,22 @@ export async function bulkUpdateProjects(projectIds: string[], updateData: Parti
     
     const dataToUpdate: { [key: string]: any } = {};
 
-    // Copy all provided fields from updateData
-    Object.assign(dataToUpdate, updateData);
+    Object.keys(updateData).forEach(key => {
+        const typedKey = key as keyof Project;
+        if(updatableProjectFields.includes(typedKey as any)) {
+            dataToUpdate[typedKey] = updateData[typedKey];
+        }
+    });
 
-    // If an ID is provided, also update the corresponding name field
     if (updateData.processorId) {
         dataToUpdate.processor = users.find(u => u.id === updateData.processorId)?.name || '';
         dataToUpdate.workflowStatus = 'With Processor';
+        dataToUpdate.processing_status = 'Pending';
     }
     if (updateData.qaId) {
         dataToUpdate.qa = users.find(u => u.id === updateData.qaId)?.name || '';
-        if (!dataToUpdate.workflowStatus) dataToUpdate.workflowStatus = 'With QA';
+         if (!dataToUpdate.workflowStatus) dataToUpdate.workflowStatus = 'With QA';
+         if (!dataToUpdate.qa_status) dataToUpdate.qa_status = 'Pending';
     }
     if (updateData.caseManagerId) {
         dataToUpdate.case_manager = users.find(u => u.id === updateData.caseManagerId)?.name || '';
@@ -203,7 +208,6 @@ export async function updateProject(
         }
     }
     
-    // If name is updated, update the corresponding ID
     const users = await getAllUsers();
     if (dataToUpdate.processor) {
         dataToUpdate.processorId = users.find(u => u.name === dataToUpdate.processor)?.id || '';
@@ -344,30 +348,15 @@ export async function getPaginatedProjects(options: {
     const { page, limit: pageSize, filters, sort } = options;
     const projectsCollection = collection(db, "projects");
 
-    // Pass all filters to the builder. The builder now correctly handles
-    // ignoring clientName/process filters when a roleFilter is active.
-    const filtersForBuilder = {
-        ...filters,
-        // If a roleFilter is active, nullify the general filters so they aren't applied.
-        clientName: filters.roleFilter ? undefined : filters.clientName,
-        process: filters.roleFilter ? undefined : filters.process,
-    };
-    const filterConstraints = buildFilterConstraints(filtersForBuilder);
-    
+    // Temporarily remove all filtering logic for debugging.
     let queryConstraints: QueryConstraint[] = [];
-    if (filterConstraints.length > 0) {
-        queryConstraints.push(and(...filterConstraints));
-    }
     
-    const countQuery = query(projectsCollection, ...queryConstraints);
-    const totalCountSnapshot = await getCountFromServer(countQuery);
+    // Get total count without filters for now.
+    const totalCountSnapshot = await getCountFromServer(collection(db, "projects"));
     const totalCount = totalCountSnapshot.data().count;
 
-    if (sort.key && sort.key !== 'id') {
-        queryConstraints.push(orderBy(sort.key, sort.direction));
-    } else {
-        queryConstraints.push(orderBy('row_number', 'desc')); 
-    }
+    // Always sort by row_number
+    queryConstraints.push(orderBy('row_number', 'desc'));
 
     if (page > 1) {
         const paginationQueryConstraints = [...queryConstraints, limit((page - 1) * pageSize)];
@@ -411,10 +400,11 @@ export async function getProjectsForExport(options: {
     const { filters, sort, user } = options;
     const projectsCollection = collection(db, "projects");
     
-    const filterConstraints = buildFilterConstraints({
-        ...filters,
-        ...(filters.roleFilter && user ? { roleFilter: filters.roleFilter } : {})
-    });
+    // Only apply role filter if it exists, otherwise it's a general export
+    const effectiveFilters = filters.roleFilter && user ? { roleFilter: filters.roleFilter } : filters;
+
+    const filterConstraints = buildFilterConstraints(effectiveFilters);
+
 
     let queryConstraints: QueryConstraint[] = [];
     if (filterConstraints.length > 0) {
