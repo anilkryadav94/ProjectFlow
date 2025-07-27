@@ -53,12 +53,18 @@ function Dashboard({ user, error }: DashboardProps) {
   const [totalCount, setTotalCount] = React.useState(0);
   const [lastVisible, setLastVisible] = React.useState<DocumentData | null>(null);
 
-  const [dropdownOptions, setDropdownOptions] = React.useState({
-      clientNames: [] as string[],
-      processors: [] as { id: string, name: string }[],
-      qas: [] as { id: string, name: string }[],
-      caseManagers: [] as { id: string, name: string }[],
-      processes: [] as ProcessType[],
+  const [dropdownOptions, setDropdownOptions] = React.useState<{
+      clientNames: string[];
+      processors: { id: string, name: string }[];
+      qas: { id: string, name: string }[];
+      caseManagers: { id: string, name: string }[];
+      processes: ProcessType[];
+  }>({
+      clientNames: [],
+      processors: [],
+      qas: [],
+      caseManagers: [],
+      processes: [],
   });
 
   const [page, setPage] = React.useState(1);
@@ -107,7 +113,7 @@ function Dashboard({ user, error }: DashboardProps) {
     }
   }, [defaultCaseManagerColumns, defaultManagerAdminColumns, defaultProcessorQAColumns]);
 
-  const fetchClientSidePageData = React.useCallback(async (role: Role, currentPage: number, currentSort: typeof sort, currentFilters: any, lastDoc: DocumentData | null) => {
+  const fetchClientSidePageData = React.useCallback(async (role: Role, currentPage: number, currentFilters: any, lastDoc: DocumentData | null) => {
     if (!user) return;
     setIsLoading(true);
 
@@ -116,9 +122,16 @@ function Dashboard({ user, error }: DashboardProps) {
         let queryConstraints: QueryConstraint[] = [];
 
         // Role-based filtering using UIDs
-        if (role === 'Processor') queryConstraints.push(where("processorId", "==", user.id));
-        else if (role === 'QA') queryConstraints.push(where("qaId", "==", user.id));
-        else if (role === 'Case Manager') queryConstraints.push(where("caseManagerId", "==", user.id));
+        if (role === 'Processor') {
+            queryConstraints.push(where("processorId", "==", user.id));
+            queryConstraints.push(orderBy("processorId"));
+        } else if (role === 'QA') {
+            queryConstraints.push(where("qaId", "==", user.id));
+            queryConstraints.push(orderBy("qaId"));
+        } else if (role === 'Case Manager') {
+            queryConstraints.push(where("caseManagerId", "==", user.id));
+            queryConstraints.push(orderBy("caseManagerId"));
+        }
         
         if (currentFilters.clientName && currentFilters.clientName !== 'all') {
              queryConstraints.push(where('client_name', '==', currentFilters.clientName));
@@ -131,10 +144,6 @@ function Dashboard({ user, error }: DashboardProps) {
         const totalCountSnapshot = await getCountFromServer(countQuery);
         const totalCount = totalCountSnapshot.data().count;
 
-        if (currentSort.key) {
-            queryConstraints.push(orderBy(currentSort.key, currentSort.direction));
-        }
-
         if (currentPage > 1 && lastDoc) {
             queryConstraints.push(startAfter(lastDoc));
         }
@@ -145,7 +154,7 @@ function Dashboard({ user, error }: DashboardProps) {
 
         setLastVisible(projectSnapshot.docs[projectSnapshot.docs.length - 1] || null);
 
-        const projectList = projectSnapshot.docs.map(doc => {
+        let projectList = projectSnapshot.docs.map(doc => {
             const data = doc.data();
             const convertedData: { [key: string]: any } = {};
             for (const key in data) {
@@ -161,10 +170,21 @@ function Dashboard({ user, error }: DashboardProps) {
             } as Project;
         });
         
+        // Client-side sort by row_number
+        projectList = projectList.sort((a, b) => {
+            const numA = parseInt(a.row_number.replace('PF', ''), 10);
+            const numB = parseInt(b.row_number.replace('PF', ''), 10);
+            return sort.direction === 'desc' ? numB - numA : numA - numB;
+        });
+
         if (currentPage === 1) {
             setDashboardProjects(projectList);
         } else {
-            setDashboardProjects(prev => [...prev, ...projectList]);
+            setDashboardProjects(prev => [...prev, ...projectList].sort((a, b) => {
+               const numA = parseInt(a.row_number.replace('PF', ''), 10);
+               const numB = parseInt(b.row_number.replace('PF', ''), 10);
+               return sort.direction === 'desc' ? numB - numA : numA - numB;
+            }));
         }
         setTotalCount(totalCount);
 
@@ -176,7 +196,7 @@ function Dashboard({ user, error }: DashboardProps) {
     } finally {
         setIsLoading(false);
     }
-  }, [user, toast]);
+  }, [user, toast, sort.direction]);
 
 
     const fetchInitialData = React.useCallback(async () => {
@@ -228,8 +248,10 @@ function Dashboard({ user, error }: DashboardProps) {
         };
 
         const currentFilters = { clientName: clientNameFilter, process: processFilter };
-        fetchClientSidePageData(activeRole, 1, sort, currentFilters, null);
-    }, [activeRole, sort, clientNameFilter, processFilter, isManagerOrAdmin, fetchClientSidePageData]);
+        fetchClientSidePageData(activeRole, 1, currentFilters, null);
+    // This effect should only re-run when these specific filters change, not on sort change.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    }, [activeRole, clientNameFilter, processFilter, isManagerOrAdmin]);
 
 
   const handleFilterChange = () => {
@@ -238,7 +260,7 @@ function Dashboard({ user, error }: DashboardProps) {
     setDashboardProjects([]);
     setLastVisible(null);
     const currentFilters = { clientName: clientNameFilter, process: processFilter };
-    fetchClientSidePageData(activeRole, 1, sort, currentFilters, null);
+    fetchClientSidePageData(activeRole, 1, currentFilters, null);
   };
 
   const saveColumnLayout = (role: Role) => {
@@ -425,7 +447,7 @@ function Dashboard({ user, error }: DashboardProps) {
         if (!activeRole || isManagerOrAdmin) return;
         setPage(newPage);
         const currentFilters = { clientName: clientNameFilter, process: processFilter };
-        fetchClientSidePageData(activeRole, newPage, sort, currentFilters, lastVisible);
+        fetchClientSidePageData(activeRole, newPage, currentFilters, lastVisible);
     };
   
   if (!activeRole || (isLoading && page === 1)) {
@@ -653,3 +675,5 @@ function Dashboard({ user, error }: DashboardProps) {
     </div>
   );
 }
+
+    
