@@ -1,8 +1,11 @@
 
+"use client";
+
 import { 
     signInWithEmailAndPassword, 
     signOut, 
     onAuthStateChanged as onFirebaseAuthStateChanged,
+    createUserWithEmailAndPassword,
 } from 'firebase/auth';
 import { auth } from './firebase';
 import type { User, Role } from './data';
@@ -20,7 +23,6 @@ export function onAuthChanged(callback: (user: import('firebase/auth').User | nu
 
 export async function login(email: string, password: string): Promise<void> {
     const userCredential = await signInWithEmailAndPassword(auth, email, password);
-    // After successful sign-in, ensure their user document exists in Firestore.
     if (userCredential.user) {
         await UserService.ensureUserDocument(userCredential.user);
     }
@@ -45,7 +47,19 @@ export async function getSession(): Promise<{ user: User } | null> {
             }
         };
     } else {
-        console.warn(`User document not found in Firestore for UID: ${firebaseUser.uid}`);
+        console.warn(`User document not found in Firestore for UID: ${firebaseUser.uid}. Attempting to create it.`);
+        // Try to create the user document on the fly if it doesn't exist
+        await UserService.ensureUserDocument(firebaseUser);
+        const newUserDate = await UserService.getUserDocument(firebaseUser.uid);
+        if (newUserDate) {
+             return {
+                user: {
+                    id: firebaseUser.uid,
+                    email: firebaseUser.email,
+                    ...newUserDate
+                }
+            };
+        }
         return null;
     }
 }
@@ -58,8 +72,13 @@ export async function getUsers(): Promise<User[]> {
 }
 
 export async function addUser(email: string, password: string, name: string, roles: Role[]): Promise<void> {
-     // NOTE: This function does NOT create a Firebase Auth user. That must be done manually in the Firebase Console.
-    await UserService.addUserDocument({email, name, roles});
+    const userCredential = await createUserWithEmailAndPassword(auth, email, password);
+    const firebaseUser = userCredential.user;
+    if (firebaseUser) {
+        await UserService.addUserDocument(firebaseUser.uid, {email, name, roles});
+    } else {
+        throw new Error("Failed to create user in Firebase Authentication.");
+    }
 }
 
 
@@ -67,6 +86,8 @@ export async function updateUser(userId: string, data: { name?: string, roles?: 
     const { password, ...firestoreData } = data;
     await UserService.updateUserDocument(userId, firestoreData);
      if (password) {
+        // Changing password from an admin panel is complex and requires admin SDK.
+        // For this client-side panel, we will ignore password changes.
         console.warn(`Password change was requested for user ${userId} but was ignored. This must be done by the user themselves or via a backend with admin privileges.`);
     }
     return { success: true };

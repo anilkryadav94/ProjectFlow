@@ -19,11 +19,11 @@ export async function ensureUserDocument(firebaseUser: FirebaseUser): Promise<vo
     }
 }
 
-export async function getUserDocument(uid: string): Promise<Omit<User, 'id' | 'email'> | null> {
+export async function getUserDocument(uid: string): Promise<Omit<User, 'id' | 'email' | 'password'> | null> {
     const userDocRef = doc(db, 'users', uid);
     const userDocSnap = await getDoc(userDocRef);
     if (userDocSnap.exists()) {
-        return userDocSnap.data() as Omit<User, 'id' | 'email'>;
+        return userDocSnap.data() as Omit<User, 'id' | 'email' | 'password'>;
     }
     return null;
 }
@@ -37,25 +37,9 @@ export async function getAllUsers(): Promise<User[]> {
     } as User));
 }
 
-export async function addUserDocument(userData: Omit<User, 'id' | 'password'>): Promise<void> {
-    // This function creates the user document in Firestore.
-    // The corresponding Firebase Auth user must be created separately in the Firebase console.
-    const usersRef = collection(db, "users");
-    const q = query(usersRef, where("email", "==", userData.email));
-    const querySnapshot = await getDocs(q);
-
-    if (!querySnapshot.empty) {
-        throw new Error(`A user with email ${userData.email} already has a data document.`);
-    }
-
-    // We can't create the user with a real UID from here, so we add a temporary document.
-    // This is a known limitation when creating users from a client-side admin panel.
-    // The admin will need to create the user in Firebase Auth console,
-    // get the new UID, and then update this document ID in Firestore.
-    const tempId = `NEEDS_UID__${userData.email.replace(/@.*/, "")}`;
-    const newUserDocRef = doc(db, 'users', tempId);
+export async function addUserDocument(uid: string, userData: Omit<User, 'id' | 'password'>): Promise<void> {
+    const newUserDocRef = doc(db, 'users', uid);
     await setDoc(newUserDocRef, userData);
-    console.warn(`Firestore user document created for ${userData.email}. Please create a user in Firebase Auth and update this document's ID to the new UID.`);
 }
 
 
@@ -68,26 +52,28 @@ export async function updateUserDocument(userId: string, data: Partial<Omit<User
 
 
 export async function addBulkUserDocuments(newUsers: Omit<User, 'id' | 'password'>[]): Promise<{ addedCount: number; errors: any[] }> {
-    console.warn("Bulk user add only creates Firestore documents. Corresponding Firebase Auth users must be created manually.");
+    console.warn("Bulk user add only creates Firestore documents. Corresponding Firebase Auth users must be created manually or via a backend script.");
     
     let addedCount = 0;
     const errors: any[] = [];
-    const batch = writeBatch(db);
     
-    // This is a simplified approach for client-side bulk-add.
-    // It creates documents with temporary IDs. Admins must then create auth users
-    // and update these document IDs.
     for (const user of newUsers) {
-       try {
-            const tempId = `NEEDS_UID__${user.email.replace(/@.*/, "")}_${Date.now()}`;
-            const newUserDocRef = doc(db, 'users', tempId);
-            batch.set(newUserDocRef, user);
+        try {
+            // Check if user document already exists
+            const q = query(collection(db, "users"), where("email", "==", user.email));
+            const querySnapshot = await getDocs(q);
+            if (!querySnapshot.empty) {
+                errors.push({ email: user.email, error: "User document already exists." });
+                continue;
+            }
+            // Cannot create auth user from client, so this is document-only
+            const tempDocRef = doc(collection(db, "users"));
+            await setDoc(tempDocRef, user);
             addedCount++;
-       } catch (error) {
+        } catch (error) {
             errors.push({ email: user.email, error });
-       }
+        }
     }
     
-    await batch.commit();
     return { addedCount, errors };
 }
