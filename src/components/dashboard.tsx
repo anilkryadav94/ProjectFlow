@@ -139,63 +139,51 @@ function Dashboard({ user, error }: DashboardProps) {
     }
   }, [user, toast]);
 
-  React.useEffect(() => {
-    const initializeDashboard = async () => {
-        setIsLoading(true);
-        
-        const highestRole = roleHierarchy.find(role => user.roles.includes(role)) || user.roles[0];
-        const urlRole = searchParams.get('role') as Role | null;
-        const newActiveRole = urlRole && user.roles.includes(urlRole) ? urlRole : highestRole;
+    React.useEffect(() => {
+        const initializeDashboard = async () => {
+            const highestRole = roleHierarchy.find(role => user.roles.includes(role)) || user.roles[0];
+            const urlRole = searchParams.get('role') as Role | null;
+            const newActiveRole = urlRole && user.roles.includes(urlRole) ? urlRole : highestRole;
 
-        if (newActiveRole !== activeRole) {
             setActiveRole(newActiveRole);
             loadColumnLayout(newActiveRole);
-            setPage(1);
-            setSort({ key: 'row_number', direction: 'desc' });
-            setSearch('');
-            setClientNameFilter('all');
-            setProcessFilter('all');
-        }
-        
-        try {
-            const allUsers = await getUsers();
-            setDropdownOptions({
-                clientNames: [...new Set(allUsers.map(u => u.name).filter(Boolean))].sort(),
-                processes: ['Patent', 'TM', 'IDS', 'Project'] as ProcessType[],
-                processors: allUsers.filter(u => u.roles.includes('Processor')).map(u => u.name).sort(),
-                qas: allUsers.filter(u => u.roles.includes('QA')).map(u => u.name).sort(),
-                caseManagers: allUsers.filter(u => u.roles.includes('Case Manager')).map(u => u.name).sort(),
-            });
 
-        } catch(e) {
-            console.error("Failed to fetch dropdown data", e);
-            toast({ title: "Error", description: "Could not load filter options.", variant: "destructive" });
-        }
+            try {
+                const allUsers = await getUsers();
+                setDropdownOptions({
+                    clientNames: [...new Set(allUsers.map(u => u.name).filter(Boolean))].sort(),
+                    processes: ['Patent', 'TM', 'IDS', 'Project'] as ProcessType[],
+                    processors: allUsers.filter(u => u.roles.includes('Processor')).map(u => u.name).sort(),
+                    qas: allUsers.filter(u => u.roles.includes('QA')).map(u => u.name).sort(),
+                    caseManagers: allUsers.filter(u => u.roles.includes('Case Manager')).map(u => u.name).sort(),
+                });
+            } catch(e) {
+                console.error("Failed to fetch dropdown data", e);
+                toast({ title: "Error", description: "Could not load filter options.", variant: "destructive" });
+            } finally {
+                setIsLoading(false);
+            }
+        };
         
-        if (newActiveRole) {
-            const currentFilters = {
-                quickSearch: search,
-                searchColumn: searchColumn,
-                clientName: clientNameFilter,
-                process: processFilter,
-            };
-            await fetchPageData(newActiveRole, page, sort, currentFilters);
+        if (user) {
+            initializeDashboard();
         }
-    };
-    
-    if (user) {
-        initializeDashboard();
-    }
-  // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [user, searchParams]);
-  
-  React.useEffect(() => {
-    if (isLoading || isManagerOrAdmin || activeRole === 'Admin') return;
-    handleFilterChange();
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [clientNameFilter, processFilter]);
+    }, [user, searchParams, loadColumnLayout, toast]);
 
-  
+    React.useEffect(() => {
+        if (!activeRole) return;
+
+        const currentFilters = {
+            quickSearch: search,
+            searchColumn: searchColumn,
+            clientName: clientNameFilter,
+            process: processFilter,
+        };
+        
+        fetchPageData(activeRole, page, sort, currentFilters);
+    }, [activeRole, page, sort, fetchPageData, search, searchColumn, clientNameFilter, processFilter]);
+
+
   const handleFilterChange = () => {
     if (!activeRole) return;
     setPage(1); // Reset to first page on new search
@@ -207,19 +195,6 @@ function Dashboard({ user, error }: DashboardProps) {
     };
     fetchPageData(activeRole, 1, sort, currentFilters);
   };
-  
-  React.useEffect(() => {
-    if (!activeRole || isLoading) return;
-    const currentFilters = {
-      quickSearch: search,
-      searchColumn: searchColumn,
-      clientName: clientNameFilter,
-      process: processFilter,
-    };
-    fetchPageData(activeRole, page, sort, currentFilters);
-  // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [page, sort]);
-
 
   const saveColumnLayout = (role: Role) => {
     localStorage.setItem(`columnLayout-${role}`, JSON.stringify(visibleColumnKeys));
@@ -406,6 +381,8 @@ function Dashboard({ user, error }: DashboardProps) {
         const params = new URLSearchParams();
         params.set('view', 'chart');
         params.set('chartType', chartType);
+        params.set('advanced', 'true');
+        params.set('criteria', '[]');
         router.push(`/search?${params.toString()}`);
     }
   
@@ -632,5 +609,3 @@ function Dashboard({ user, error }: DashboardProps) {
     </div>
   );
 }
-
-    
