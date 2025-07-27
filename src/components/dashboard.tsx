@@ -23,6 +23,8 @@ import { ColumnSelectDialog } from './column-select-dialog';
 import { differenceInBusinessDays } from 'date-fns';
 import { getUsers } from '@/lib/auth';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import { db } from '@/lib/firebase';
+import { collection, query, where, orderBy, getDocs, limit, startAfter, getCountFromServer, Timestamp, QueryConstraint } from 'firebase/firestore';
 
 
 interface DashboardProps {
@@ -50,6 +52,8 @@ function Dashboard({ user, error }: DashboardProps) {
   const [dashboardProjects, setDashboardProjects] = React.useState<Project[]>([]);
   const [totalCount, setTotalCount] = React.useState(0);
   const [totalPages, setTotalPages] = React.useState(1);
+  const [lastVisible, setLastVisible] = React.useState<any>(null);
+
   const [dropdownOptions, setDropdownOptions] = React.useState({
       clientNames: [] as string[],
       processors: [] as string[],
@@ -104,43 +108,98 @@ function Dashboard({ user, error }: DashboardProps) {
     }
   }, [defaultCaseManagerColumns, defaultManagerAdminColumns, defaultProcessorQAColumns]);
 
+  const fetchClientSidePageData = React.useCallback(async (role: Role, currentPage: number, currentSort: typeof sort, currentFilters: any) => {
+    if (!user) return;
+    setIsLoading(true);
+
+    try {
+        const projectsCollection = collection(db, 'projects');
+        let queryConstraints: QueryConstraint[] = [];
+
+        // Role-based filtering
+        if (role === 'Processor') queryConstraints.push(where("processor", "==", user.name));
+        else if (role === 'QA') queryConstraints.push(where("qa", "==", user.name));
+        else if (role === 'Case Manager') queryConstraints.push(where("case_manager", "==", user.name));
+        
+        // Other filters
+        if (currentFilters.clientName && currentFilters.clientName !== 'all') {
+             queryConstraints.push(where('client_name', '==', currentFilters.clientName));
+        }
+        if (currentFilters.process && currentFilters.process !== 'all') {
+            queryConstraints.push(where('process', '==', currentFilters.process));
+        }
+
+        const countQuery = query(projectsCollection, ...queryConstraints);
+        const totalCountSnapshot = await getCountFromServer(countQuery);
+        const totalCount = totalCountSnapshot.data().count;
+        const totalPages = Math.ceil(totalCount / 50);
+
+        // Sorting
+        if (currentSort.key) {
+            queryConstraints.push(orderBy(currentSort.key, currentSort.direction));
+        }
+
+        // Pagination
+        if (currentPage > 1 && lastVisible) {
+            queryConstraints.push(startAfter(lastVisible));
+        }
+        queryConstraints.push(limit(50));
+        
+        const finalQuery = query(projectsCollection, ...queryConstraints);
+        const projectSnapshot = await getDocs(finalQuery);
+
+        setLastVisible(projectSnapshot.docs[projectSnapshot.docs.length - 1]);
+
+        const projectList = projectSnapshot.docs.map(doc => {
+            const data = doc.data();
+             const convertedData: { [key: string]: any } = {};
+            for (const key in data) {
+                if (data[key] instanceof Timestamp) {
+                    convertedData[key] = data[key].toDate().toISOString().split('T')[0];
+                } else {
+                    convertedData[key] = data[key];
+                }
+            }
+            return {
+                id: doc.id,
+                ...convertedData
+            } as Project;
+        });
+
+        setDashboardProjects(projectList);
+        setTotalCount(totalCount);
+        setTotalPages(totalPages);
+
+    } catch (error) {
+         console.error("Failed to fetch client-side projects:", error);
+        toast({ title: "Error", description: `Could not fetch project data. ${error instanceof Error ? error.message : ''}`, variant: "destructive" });
+        setDashboardProjects([]);
+        setTotalCount(0);
+    } finally {
+        setIsLoading(false);
+    }
+}, [user, toast, lastVisible]);
+
+
   const fetchPageData = React.useCallback(async (role: Role, currentPage: number, currentSort: typeof sort, currentFilters: any) => {
-    if (!user || role === 'Admin' || role === 'Manager') {
+    if (!user) return;
+    
+    // Manager/Admin views remain server-side as they don't have complex queries
+    if (role === 'Admin' || role === 'Manager') {
         setDashboardProjects([]);
         setTotalCount(0);
         setIsLoading(false);
         return;
     };
     
-    setIsLoading(true);
-    try {
-        const result = await getPaginatedProjects({
-            page: currentPage,
-            limit: 50,
-            sort: currentSort,
-            filters: { ...currentFilters, roleFilter: { role, userName: user.name } },
-        });
+    // Other roles use client-side fetching
+    await fetchClientSidePageData(role, currentPage, currentSort, currentFilters);
 
-        setDashboardProjects(result.projects);
-        setTotalCount(result.totalCount);
-        setTotalPages(result.totalPages);
-        
-    } catch (error) {
-        console.error("Failed to fetch projects:", error);
-        if (error instanceof Error && (error.message.includes("RESOURCE_EXHAUSTED") || error.message.includes("Quota exceeded"))) {
-             toast({ title: "Quota Exceeded", description: "The free data limit for today has been reached.", variant: "destructive" });
-        } else {
-            toast({ title: "Error", description: `Could not fetch project data.`, variant: "destructive" });
-        }
-        setDashboardProjects([]);
-        setTotalCount(0);
-    } finally {
-        setIsLoading(false);
-    }
-  }, [user, toast]);
+  }, [user, fetchClientSidePageData]);
 
     React.useEffect(() => {
         const initializeDashboard = async () => {
+            setIsLoading(true);
             const highestRole = roleHierarchy.find(role => user.roles.includes(role)) || user.roles[0];
             const urlRole = searchParams.get('role') as Role | null;
             const newActiveRole = urlRole && user.roles.includes(urlRole) ? urlRole : highestRole;
@@ -181,12 +240,13 @@ function Dashboard({ user, error }: DashboardProps) {
         };
         
         fetchPageData(activeRole, page, sort, currentFilters);
-    }, [activeRole, page, sort, fetchPageData, search, searchColumn, clientNameFilter, processFilter]);
+    }, [activeRole, page, sort, search, searchColumn, clientNameFilter, processFilter, fetchPageData]);
 
 
   const handleFilterChange = () => {
     if (!activeRole) return;
     setPage(1); // Reset to first page on new search
+    setLastVisible(null);
     const currentFilters = {
       quickSearch: search,
       searchColumn: searchColumn,
@@ -278,6 +338,7 @@ function Dashboard({ user, error }: DashboardProps) {
         router.push(`/search?${params.toString()}`);
     } else if (activeRole) {
         setPage(1); // Reset to first page on new search
+        setLastVisible(null);
         const currentFilters = {
             quickSearch: search,
             searchColumn: searchColumn,
@@ -385,6 +446,13 @@ function Dashboard({ user, error }: DashboardProps) {
         params.set('criteria', '[]');
         router.push(`/search?${params.toString()}`);
     }
+    
+    const onPageChange = (newPage: number) => {
+        setPage(newPage);
+        if (newPage === 1) {
+            setLastVisible(null);
+        }
+    };
   
   if (isLoading || !activeRole || visibleColumnKeys.length === 0) {
     return (
@@ -402,7 +470,7 @@ function Dashboard({ user, error }: DashboardProps) {
   }
   
   const columns = getColumns(isManagerOrAdmin, activeRole, rowSelection, setRowSelection, dashboardProjects, handleOpenEditDialog, handleAddRowsDialog, visibleColumnKeys);
-  const showSubHeader = dashboardProjects.length > 0;
+  const showSubHeader = dashboardProjects.length > 0 && !isManagerOrAdmin;
   
    const bulkUpdateFields: {
         value: keyof Project;
@@ -442,7 +510,7 @@ function Dashboard({ user, error }: DashboardProps) {
             clientNames={dropdownOptions.clientNames} processes={dropdownOptions.processes}
         />
         
-        {showSubHeader && activeRole !== 'Manager' && (
+        {showSubHeader && (
             <div className="flex-shrink-0 border-b bg-muted">
                 <div className="flex items-center justify-end gap-2 px-4 py-1">
                      {activeRole === 'Case Manager' ? (
@@ -600,7 +668,7 @@ function Dashboard({ user, error }: DashboardProps) {
                         activeRole={activeRole}
                         page={page}
                         totalPages={totalPages}
-                        onPageChange={setPage}
+                        onPageChange={onPageChange}
                         isFetching={isLoading}
                     />
                  </div>
@@ -609,5 +677,3 @@ function Dashboard({ user, error }: DashboardProps) {
     </div>
   );
 }
-
-    
