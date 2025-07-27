@@ -39,14 +39,18 @@ function buildFilterConstraints(
     const andConstraints: QueryConstraint[] = [];
     const dateFields = ['received_date', 'allocation_date', 'processing_date', 'qa_date', 'reportout_date', 'client_response_date'];
     
+    // --- SERVER-SIDE ROLE & STATUS FILTERING ---
     if (filters.roleFilter) {
         const { role, userId } = filters.roleFilter;
         if (role === 'Processor') {
             andConstraints.push(where("processorId", "==", userId));
+            andConstraints.push(where("workflowStatus", "==", "With Processor"));
         } else if (role === 'QA') {
             andConstraints.push(where("qaId", "==", userId));
+            andConstraints.push(where("workflowStatus", "==", "With QA"));
         } else if (role === 'Case Manager') {
             andConstraints.push(where("caseManagerId", "==", userId));
+            andConstraints.push(where("processing_status", "==", "Client Query"));
         }
     }
 
@@ -152,9 +156,11 @@ export async function bulkUpdateProjects(projectIds: string[], updateData: Parti
 
     if (updateData.processorId) {
         dataToUpdate.processor = users.find(u => u.id === updateData.processorId)?.name || '';
+        dataToUpdate.workflowStatus = 'With Processor';
     }
     if (updateData.qaId) {
         dataToUpdate.qa = users.find(u => u.id === updateData.qaId)?.name || '';
+        dataToUpdate.workflowStatus = 'With QA';
     }
     if (updateData.caseManagerId) {
         dataToUpdate.case_manager = users.find(u => u.id === updateData.caseManagerId)?.name || '';
@@ -221,6 +227,7 @@ export async function updateProject(
       dataToUpdate.client_response_date = serverTimestamp();
     } else if (submitAction === 'submit_for_qa') {
         dataToUpdate.workflowStatus = 'With QA';
+        dataToUpdate.qa_status = 'Pending';
         dataToUpdate.processing_date = serverTimestamp();
     } else if (submitAction === 'submit_qa') {
         dataToUpdate.workflowStatus = 'Completed';
@@ -323,6 +330,8 @@ export async function getPaginatedProjects(options: {
         searchColumn?: string;
         advanced?: { field: string; operator: string; value: any }[] | null;
         roleFilter?: { role: Role; userName: string; userId: string; };
+        clientName?: string;
+        process?: string;
     };
     sort: { key: string, direction: 'asc' | 'desc' };
 }) {
@@ -414,3 +423,5 @@ export async function getProjectsForExport(options: {
         } as Project;
     });
 }
+
+    

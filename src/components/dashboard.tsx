@@ -18,13 +18,13 @@ import { cn } from '@/lib/utils';
 import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from './ui/accordion';
 import { EditProjectDialog } from './edit-project-dialog';
 import { AddRowsDialog } from './add-rows-dialog';
-import { addRows, getProjectsForExport, bulkUpdateProjects } from '@/app/actions';
+import { getProjectsForExport, bulkUpdateProjects } from '@/app/actions';
 import { ColumnSelectDialog } from './column-select-dialog';
 import { differenceInBusinessDays } from 'date-fns';
 import { getUsers } from '@/lib/auth';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { db } from '@/lib/firebase';
-import { collection, query, where, orderBy, getDocs, limit, startAfter, getCountFromServer, Timestamp, QueryConstraint, DocumentData } from 'firebase/firestore';
+import { getPaginatedProjects } from '@/services/project-service';
+import { DocumentData } from 'firebase/firestore';
 
 
 interface DashboardProps {
@@ -51,7 +51,7 @@ function Dashboard({ user, error }: DashboardProps) {
   
   const [dashboardProjects, setDashboardProjects] = React.useState<Project[]>([]);
   const [totalCount, setTotalCount] = React.useState(0);
-  const [lastVisible, setLastVisible] = React.useState<DocumentData | null>(null);
+  const [totalPages, setTotalPages] = React.useState(1);
 
   const [dropdownOptions, setDropdownOptions] = React.useState<{
       clientNames: string[];
@@ -113,82 +113,26 @@ function Dashboard({ user, error }: DashboardProps) {
     }
   }, [defaultCaseManagerColumns, defaultManagerAdminColumns, defaultProcessorQAColumns]);
 
- const fetchClientSidePageData = React.useCallback(async (role: Role, currentPage: number, currentFilters: any, lastDoc: DocumentData | null) => {
-    if (!user) return;
+  const fetchDashboardData = React.useCallback(async (role: Role, currentPage: number, currentSort: any, filters: any) => {
+    if (!user || isManagerOrAdmin) return;
     setIsLoading(true);
 
     try {
-        const projectsCollection = collection(db, 'projects');
-        const baseConstraints: QueryConstraint[] = [];
-
-        // --- Role and Status Based Filtering ---
-        if (role === 'Processor') {
-            baseConstraints.push(where("processorId", "==", user.id));
-            baseConstraints.push(where("workflowStatus", "==", "With Processor"));
-            baseConstraints.push(where("processing_status", "in", ["Pending", "On Hold", "Re-Work", null, ""]));
-        } else if (role === 'QA') {
-            baseConstraints.push(where("qaId", "==", user.id));
-            baseConstraints.push(where("workflowStatus", "==", "With QA"));
-        } else if (role === 'Case Manager') {
-            baseConstraints.push(where("caseManagerId", "==", user.id));
-            baseConstraints.push(where("processing_status", "==", "Client Query"));
-        }
-        
-        const finalQueryConstraints: QueryConstraint[] = [...baseConstraints];
-
-        // --- Additional Dashboard Filters ---
-        if (currentFilters.clientName && currentFilters.clientName !== 'all') {
-             finalQueryConstraints.push(where('client_name', '==', currentFilters.clientName));
-        }
-        if (currentFilters.process && currentFilters.process !== 'all') {
-            finalQueryConstraints.push(where('process', '==', currentFilters.process));
-        }
-        
-        const countQuery = query(projectsCollection, ...finalQueryConstraints);
-        const totalCountSnapshot = await getCountFromServer(countQuery);
-        const total = totalCountSnapshot.data().count;
-        setTotalCount(total);
-        
-        if (total === 0 && currentPage === 1) {
-            setDashboardProjects([]);
-            setIsLoading(false);
-            return;
-        }
-
-        // --- Sorting & Pagination ---
-        finalQueryConstraints.push(orderBy("row_number", "desc"));
-
-        if (currentPage > 1 && lastDoc) {
-            finalQueryConstraints.push(startAfter(lastDoc));
-        }
-        finalQueryConstraints.push(limit(20)); 
-        
-        const finalQuery = query(projectsCollection, ...finalQueryConstraints);
-        const projectSnapshot = await getDocs(finalQuery);
-
-        setLastVisible(projectSnapshot.docs[projectSnapshot.docs.length - 1] || null);
-
-        let projectList = projectSnapshot.docs.map(doc => {
-            const data = doc.data();
-            const convertedData: { [key: string]: any } = {};
-            for (const key in data) {
-                if (data[key] instanceof Timestamp) {
-                    convertedData[key] = data[key].toDate().toISOString().split('T')[0];
-                } else {
-                    convertedData[key] = data[key];
-                }
+        const { projects, totalCount, totalPages } = await getPaginatedProjects({
+            page: currentPage,
+            limit: 20,
+            sort: currentSort,
+            filters: {
+                roleFilter: { role, userId: user.id, userName: user.name },
+                clientName: filters.clientName,
+                process: filters.process,
             }
-            return {
-                id: doc.id,
-                ...convertedData
-            } as Project;
         });
-        
-        if (currentPage === 1) {
-            setDashboardProjects(projectList);
-        } else {
-            setDashboardProjects(prev => [...prev, ...projectList]);
-        }
+
+        setDashboardProjects(projects);
+        setTotalCount(totalCount);
+        setTotalPages(totalPages);
+        setPage(currentPage);
 
     } catch (error: any) {
         console.error("Failed to fetch client-side projects:", error);
@@ -202,7 +146,7 @@ function Dashboard({ user, error }: DashboardProps) {
     } finally {
         setIsLoading(false);
     }
-  }, [user, toast]);
+  }, [user, isManagerOrAdmin, toast]);
 
 
     const fetchInitialData = React.useCallback(async () => {
@@ -236,17 +180,9 @@ function Dashboard({ user, error }: DashboardProps) {
         if (newActiveRole !== activeRole) {
             setActiveRole(newActiveRole);
             loadColumnLayout(newActiveRole);
+            setPage(1); // Reset page on role change
         }
     }, [user.roles, searchParams, activeRole, loadColumnLayout]);
-
-    const handleFilterChange = React.useCallback(() => {
-        if (!activeRole) return;
-        setPage(1);
-        setDashboardProjects([]);
-        setLastVisible(null);
-        const currentFilters = { clientName: clientNameFilter, process: processFilter };
-        fetchClientSidePageData(activeRole, 1, currentFilters, null);
-    }, [activeRole, clientNameFilter, processFilter, fetchClientSidePageData]);
 
     React.useEffect(() => {
         if (!activeRole || isManagerOrAdmin) {
@@ -257,8 +193,14 @@ function Dashboard({ user, error }: DashboardProps) {
             }
             return;
         };
-        handleFilterChange();
-    }, [activeRole, clientNameFilter, processFilter, isManagerOrAdmin, handleFilterChange]);
+        fetchDashboardData(activeRole, page, sort, { clientName: clientNameFilter, process: processFilter });
+    }, [activeRole, page, sort, clientNameFilter, processFilter, fetchDashboardData, isManagerOrAdmin]);
+    
+    // Effect to reset page to 1 when filters change
+    React.useEffect(() => {
+        setPage(1);
+    }, [clientNameFilter, processFilter]);
+
 
   const saveColumnLayout = (role: Role) => {
     localStorage.setItem(`columnLayout-${role}`, JSON.stringify(visibleColumnKeys));
@@ -305,12 +247,12 @@ function Dashboard({ user, error }: DashboardProps) {
             });
 
             try {
-                const result = await addRows(projectsToAdd);
+                const result = await bulkUpdateProjects(projectsToAdd.map(p => p.id).filter(Boolean), projectsToAdd[0]);
                 if (result.success) {
-                    toast({ title: "Bulk Add Complete", description: `${result.addedCount} projects have been added.` });
-                    if (activeRole) handleFilterChange();
+                    toast({ title: "Bulk Add Complete", description: `${projectsToAdd.length} projects have been added.` });
+                    if (activeRole) fetchDashboardData(activeRole, 1, sort, { clientName: 'all', process: 'all' });
                 } else {
-                    throw new Error(result.error || "An unknown error occurred during upload.");
+                    throw new Error("An unknown error occurred during upload.");
                 }
             } catch(e) {
                  toast({ title: "Upload Error", description: `Failed to add projects to database. ${e instanceof Error ? e.message : ''}`, variant: "destructive" });
@@ -342,7 +284,7 @@ function Dashboard({ user, error }: DashboardProps) {
         router.push(`/search?${params.toString()}`);
     } else if (activeRole) {
         // Client-side search can be implemented here if needed, for now it refetches
-        handleFilterChange();
+        fetchDashboardData(activeRole, 1, sort, { clientName: clientNameFilter, process: processFilter });
     }
   };
   
@@ -385,7 +327,9 @@ function Dashboard({ user, error }: DashboardProps) {
 
   const handleNonManagerDownload = async () => {
         const filters = {
-            roleFilter: activeRole ? { role: activeRole, userName: user.name, userId: user.id } : undefined
+            roleFilter: activeRole ? { role: activeRole, userName: user.name, userId: user.id } : undefined,
+            clientName: clientNameFilter,
+            process: processFilter,
         };
         
         const projectsToExport = await getProjectsForExport({ filters: filters as any, sort, user });
@@ -418,7 +362,7 @@ function Dashboard({ user, error }: DashboardProps) {
             const result = await bulkUpdateProjects({ projectIds, field: bulkUpdateField, value: bulkUpdateValue });
             if (result.success) {
                 toast({ title: "Success", description: `${projectIds.length} projects have been updated.` });
-                if (activeRole) handleFilterChange();
+                if (activeRole) fetchDashboardData(activeRole, page, sort, { clientName: clientNameFilter, process: processFilter });
                 setRowSelection({});
                 setBulkUpdateValue('');
             } else {
@@ -440,12 +384,6 @@ function Dashboard({ user, error }: DashboardProps) {
         router.push(`/search?${params.toString()}`);
     }
     
-    const onPageChange = (newPage: number) => {
-        if (!activeRole || isManagerOrAdmin) return;
-        setPage(newPage);
-        const currentFilters = { clientName: clientNameFilter, process: processFilter };
-        fetchClientSidePageData(activeRole, newPage, currentFilters, lastVisible);
-    };
   
   if (!activeRole || (isLoading && page === 1)) {
     return (
@@ -484,7 +422,7 @@ function Dashboard({ user, error }: DashboardProps) {
         {editingProject && (
              <EditProjectDialog
                 isOpen={isEditDialogOpen} onOpenChange={setIsEditDialogOpen} project={editingProject}
-                onUpdateSuccess={handleFilterChange}
+                onUpdateSuccess={() => fetchDashboardData(activeRole!, page, sort, { clientName: clientNameFilter, process: processFilter })}
                 userRole={activeRole} projectQueue={dashboardProjects} onNavigate={setEditingProject}
                 clientNames={dropdownOptions.clientNames.map(c => c)}
                 processors={dropdownOptions.processors.map(p => p.name)}
@@ -493,14 +431,14 @@ function Dashboard({ user, error }: DashboardProps) {
                 processes={dropdownOptions.processes}
             />
         )}
-        {sourceProject && ( <AddRowsDialog isOpen={isAddRowsDialogOpen} onOpenChange={setIsAddRowsDialogOpen} sourceProject={sourceProject} onAddRowsSuccess={handleFilterChange} /> )}
+        {sourceProject && ( <AddRowsDialog isOpen={isAddRowsDialogOpen} onOpenChange={setIsAddRowsDialogOpen} sourceProject={sourceProject} onAddRowsSuccess={() => fetchDashboardData(activeRole!, 1, sort, { clientName: 'all', process: 'all' })} /> )}
         <ColumnSelectDialog isOpen={isColumnSelectOpen} onOpenChange={setIsColumnSelectOpen} allColumns={allColumns} visibleColumns={visibleColumnKeys} setVisibleColumns={setVisibleColumnKeys} />
 
         <Header 
             user={user} activeRole={activeRole} setActiveRole={handleRoleSwitch}
             search={search} setSearch={setSearch} searchColumn={searchColumn} setSearchColumn={setSearchColumn}
-            onQuickSearch={handleQuickSearch} clientNameFilter={clientNameFilter} setClientNameFilter={(value) => { setClientNameFilter(value); }}
-            processFilter={processFilter} setProcessFilter={(value) => { setProcessFilter(value); }} isManagerOrAdmin={isManagerOrAdmin}
+            onQuickSearch={handleQuickSearch} clientNameFilter={clientNameFilter} setClientNameFilter={setClientNameFilter}
+            processFilter={processFilter} setProcessFilter={setProcessFilter} isManagerOrAdmin={isManagerOrAdmin}
             showManagerSearch={activeRole === 'Manager'}
             clientNames={dropdownOptions.clientNames.map(c => c)} processes={dropdownOptions.processes}
         />
@@ -514,7 +452,7 @@ function Dashboard({ user, error }: DashboardProps) {
                                 <>
                                     <span>{caseManagerTatInfo.greeting} </span>
                                     {caseManagerTatInfo.count > 0 && (
-                                        <span>{`${caseManagerTatInfo.count} ${caseManagerTatInfo.plural} Identified Outside TAT Threshold – Your Attention Required.`}</span>
+                                        <span>{`${caseManagerTatInfo.count} ${caseManagerTatInfo.plural} Emails Identified Outside TAT Threshold – Your Attention Required.`}</span>
                                     )}
                                 </>
                             )}
@@ -662,8 +600,8 @@ function Dashboard({ user, error }: DashboardProps) {
                         totalCount={totalCount}
                         activeRole={activeRole}
                         page={page}
-                        totalPages={Math.ceil(totalCount / 20)}
-                        onPageChange={onPageChange}
+                        totalPages={totalPages}
+                        onPageChange={setPage}
                         isFetching={isLoading}
                     />
                  </div>
@@ -672,3 +610,5 @@ function Dashboard({ user, error }: DashboardProps) {
     </div>
   );
 }
+
+    
