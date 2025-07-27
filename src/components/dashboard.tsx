@@ -1,3 +1,4 @@
+
 "use client";
 
 import * as React from 'react';
@@ -9,7 +10,7 @@ import { Header } from '@/components/header';
 import { UserManagementTable } from './user-management-table';
 import { Button } from './ui/button';
 import { useToast } from '@/hooks/use-toast';
-import { FileUp, Loader2, Upload, X, FileDown, Rows, Save, FileSpreadsheet } from 'lucide-react';
+import { FileUp, Loader2, Upload, X, FileDown, Rows, Save, FileSpreadsheet, BarChart } from 'lucide-react';
 import { AdvancedSearchForm, type SearchCriteria } from './advanced-search-form';
 import { useSearchParams, useRouter } from 'next/navigation';
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from './ui/card';
@@ -20,7 +21,6 @@ import { AddRowsDialog } from './add-rows-dialog';
 import { getPaginatedProjects, addRows, getProjectsForExport, bulkUpdateProjects } from '@/app/actions';
 import { ColumnSelectDialog } from './column-select-dialog';
 import { differenceInBusinessDays } from 'date-fns';
-import { ProjectInsights } from './project-insights';
 import { getUsers } from '@/lib/auth';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 
@@ -77,6 +77,9 @@ function Dashboard({ user, error }: DashboardProps) {
   const [bulkUpdateField, setBulkUpdateField] = React.useState<keyof Project>('processor');
   const [bulkUpdateValue, setBulkUpdateValue] = React.useState('');
   const [isBulkUpdating, setIsBulkUpdating] = React.useState(false);
+  
+  const [chartType, setChartType] = React.useState('projectsByStatus');
+
 
   const defaultProcessorQAColumns = [ 'actions', 'row_number', 'ref_number', 'client_name', 'process', 'processor', 'sender', 'subject_line', 'received_date', 'case_manager', 'allocation_date', 'processing_date', 'processing_status', 'qa_status', 'workflowStatus' ];
   const defaultCaseManagerColumns = [ 'actions', 'row_number', 'ref_number', 'application_number', 'country', 'patent_number', 'sender', 'subject_line', 'client_query_description', 'client_comments', 'clientquery_status', 'case_manager', 'qa_date', 'client_response_date' ];
@@ -102,7 +105,7 @@ function Dashboard({ user, error }: DashboardProps) {
   }, [defaultCaseManagerColumns, defaultManagerAdminColumns, defaultProcessorQAColumns]);
 
   const fetchPageData = React.useCallback(async (role: Role, currentPage: number, currentSort: typeof sort, currentFilters: any) => {
-    if (!user || role === 'Admin') {
+    if (!user || role === 'Admin' || role === 'Manager') {
         setDashboardProjects([]);
         setTotalCount(0);
         setIsLoading(false);
@@ -367,7 +370,6 @@ function Dashboard({ user, error }: DashboardProps) {
         const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
         const link = document.createElement("a");
         const url = URL.createObjectURL(blob);
-        link.setAttribute("href", url);
         link.setAttribute("download", `${activeRole}_dashboard_export_${new Date().toISOString().split('T')[0]}.csv`);
         link.style.visibility = 'hidden';
         document.body.appendChild(link);
@@ -399,6 +401,13 @@ function Dashboard({ user, error }: DashboardProps) {
             setIsBulkUpdating(false);
         }
     };
+    
+    const handleGenerateChart = () => {
+        const params = new URLSearchParams();
+        params.set('view', 'chart');
+        params.set('chartType', chartType);
+        router.push(`/search?${params.toString()}`);
+    }
   
   if (isLoading || !activeRole || visibleColumnKeys.length === 0) {
     return (
@@ -456,7 +465,7 @@ function Dashboard({ user, error }: DashboardProps) {
             clientNames={dropdownOptions.clientNames} processes={dropdownOptions.processes}
         />
         
-        {showSubHeader && (
+        {showSubHeader && activeRole !== 'Manager' && (
             <div className="flex-shrink-0 border-b bg-muted">
                 <div className="flex items-center justify-end gap-2 px-4 py-1">
                      {activeRole === 'Case Manager' ? (
@@ -528,11 +537,30 @@ function Dashboard({ user, error }: DashboardProps) {
                            </div>
                         </AccordionContent>
                     </AccordionItem>
-                     <AccordionItem value="ai-insights" className="border-0 bg-muted/30 shadow-md mb-4 rounded-lg">
-                        <AccordionTrigger className="px-4 py-3 hover:no-underline">AI Project Insights</AccordionTrigger>
+                    <AccordionItem value="charts" className="border-0 bg-muted/30 shadow-md mb-4 rounded-lg">
+                        <AccordionTrigger className="px-4 py-3 hover:no-underline">Work Status Charts</AccordionTrigger>
                         <AccordionContent>
                            <div className="p-1">
-                             <ProjectInsights />
+                             <Card>
+                                <CardHeader>
+                                  <CardTitle>Generate Data Charts</CardTitle>
+                                  <CardDescription>Select a chart type to visualize project data. The chart will be displayed on the search results page.</CardDescription>
+                                </CardHeader>
+                                <CardContent className="flex items-center gap-4">
+                                    <Select value={chartType} onValueChange={setChartType}>
+                                        <SelectTrigger className="w-[280px]">
+                                            <SelectValue placeholder="Select chart type" />
+                                        </SelectTrigger>
+                                        <SelectContent>
+                                            <SelectItem value="projectsByStatus">Projects by Status</SelectItem>
+                                        </SelectContent>
+                                    </Select>
+                                    <Button onClick={handleGenerateChart}>
+                                        <BarChart className="mr-2"/>
+                                        Generate Chart
+                                    </Button>
+                                </CardContent>
+                              </Card>
                            </div>
                         </AccordionContent>
                     </AccordionItem>
@@ -604,3 +632,5 @@ function Dashboard({ user, error }: DashboardProps) {
     </div>
   );
 }
+
+    

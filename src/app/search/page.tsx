@@ -7,7 +7,7 @@ import { Loader2, RotateCcw, Rows, Save, FileSpreadsheet } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 import Papa from "papaparse";
 
-import type { Project, Role, User, ProcessType } from '@/lib/data';
+import type { Project, Role, User, ProcessType, WorkflowStatus } from '@/lib/data';
 import { getSession, onAuthChanged, getUsers } from '@/lib/auth';
 import { getPaginatedProjects, bulkUpdateProjects, getProjectsForExport } from '@/app/actions';
 import { SearchCriteria } from '@/components/advanced-search-form';
@@ -21,7 +21,12 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { EditProjectDialog } from '@/components/edit-project-dialog';
 import { AddRowsDialog } from '@/components/add-rows-dialog';
 import type { SearchableColumn } from '@/components/dashboard';
+import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { Bar, BarChart, CartesianGrid, XAxis, YAxis } from "recharts";
+import { ChartContainer, ChartTooltip, ChartTooltipContent, ChartLegend, ChartLegendContent } from "@/components/ui/chart";
+import { workflowStatuses } from '@/lib/data';
 
+type ViewType = 'table' | 'chart';
 
 interface SearchResultsState {
     projects: Project[];
@@ -72,6 +77,8 @@ export default function SearchResultsPage() {
     const [isBulkUpdating, setIsBulkUpdating] = React.useState(false);
     const [search, setSearch] = React.useState(searchParams.get('quickSearch') || '');
     const [searchColumn, setSearchColumn] = React.useState<SearchableColumn>((searchParams.get('searchColumn') as SearchableColumn) || 'any');
+    const [view, setView] = React.useState<ViewType>((searchParams.get('view') as ViewType) || 'table');
+    const [chartData, setChartData] = React.useState<any[]>([]);
 
     const loadColumnLayout = (role: Role) => {
         const savedLayout = localStorage.getItem(`columnLayout-${role}`);
@@ -107,17 +114,49 @@ export default function SearchResultsPage() {
             if (searchParams.get('advanced') === 'true') {
                 advancedCriteria = JSON.parse(searchParams.get('criteria') || '[]');
             }
+            const currentView = (searchParams.get('view') as ViewType) || 'table';
+            const chartType = searchParams.get('chartType');
+            setView(currentView);
 
-            const [{ projects, totalCount, totalPages }, allUsers] = await Promise.all([
-                 getPaginatedProjects({
+            const filters = { quickSearch, searchColumn: searchColumnParam, advanced: advancedCriteria };
+
+            if (currentView === 'chart') {
+                const allProjectsForChart = await getProjectsForExport({ filters, sort: { key: sortKey, direction: sortDir } });
+                 if (chartType === 'projectsByStatus') {
+                    const statusCounts = workflowStatuses.reduce((acc, status) => {
+                        acc[status] = 0;
+                        return acc;
+                    }, {} as Record<WorkflowStatus, number>);
+
+                    allProjectsForChart.forEach(p => {
+                        if (p.workflowStatus) {
+                            statusCounts[p.workflowStatus]++;
+                        }
+                    });
+                    
+                    const newChartData = Object.entries(statusCounts).map(([name, value]) => ({ name, value }));
+                    setChartData(newChartData);
+                }
+                setDataState(s => ({...s, projects: [], totalCount: 0, totalPages: 1}));
+            } else {
+                 const [{ projects, totalCount, totalPages }] = await Promise.all([
+                     getPaginatedProjects({
+                        page,
+                        limit: 50,
+                        filters,
+                        sort: { key: sortKey, direction: sortDir },
+                    })
+                ]);
+                 setDataState({
+                    projects,
+                    totalCount,
+                    totalPages,
                     page,
-                    limit: 50,
-                    filters: { quickSearch, searchColumn: searchColumnParam, advanced: advancedCriteria },
                     sort: { key: sortKey, direction: sortDir },
-                }),
-                getUsers()
-            ]);
-            
+                });
+            }
+
+            const allUsers = await getUsers();
             setDropdownOptions({
                 clientNames: [...new Set(allUsers.map(u => u.name).filter(Boolean))].sort(),
                 processors: allUsers.filter(u => u.roles.includes('Processor')).map(u => u.name).sort(),
@@ -126,13 +165,7 @@ export default function SearchResultsPage() {
                 processes: ['Patent', 'TM', 'IDS', 'Project'] as ProcessType[],
             });
 
-            setDataState({
-                projects,
-                totalCount,
-                totalPages,
-                page,
-                sort: { key: sortKey, direction: sortDir },
-            });
+
         } catch (err) {
             console.error("Error fetching search results:", err);
             toast({ title: "Error", description: "Could not load search results.", variant: "destructive" });
@@ -177,6 +210,8 @@ export default function SearchResultsPage() {
         const params = new URLSearchParams();
         params.set('quickSearch', search);
         params.set('searchColumn', searchColumn);
+        params.delete('view'); // Reset to table view
+        params.delete('chartType');
         router.push(`/search?${params.toString()}`);
     };
 
@@ -304,7 +339,9 @@ export default function SearchResultsPage() {
         visibleColumnKeys
     );
     
-    const showSubHeader = dataState.projects.length > 0;
+    const showSubHeader = view === 'table' && dataState.projects.length > 0;
+    const chartConfig = { value: { label: "Count", color: "hsl(var(--chart-1))" } };
+
 
     return (
         <div className="flex flex-col h-screen bg-background w-full">
@@ -382,62 +419,89 @@ export default function SearchResultsPage() {
             )}
 
 
-            <main className="flex flex-col flex-grow overflow-y-auto transition-opacity duration-300">
-                 <div className="flex-grow flex flex-col overflow-y-auto">
-                    {Object.keys(rowSelection).length > 0 && (
-                        <div className="flex-shrink-0 flex items-center gap-4 p-4 border-b bg-muted/50">
-                            <span className="text-sm font-semibold">{Object.keys(rowSelection).length} selected</span>
-                            <div className="flex items-center gap-2">
-                                <Select value={bulkUpdateField} onValueChange={(v) => {
-                                    setBulkUpdateField(v as keyof Project);
-                                    setBulkUpdateValue('');
-                                }}>
-                                    <SelectTrigger className="w-[180px] h-9">
-                                        <SelectValue placeholder="Select field" />
-                                    </SelectTrigger>
-                                    <SelectContent>
-                                        {bulkUpdateFields.map(f => (
-                                            <SelectItem key={f.value} value={f.value}>{f.label}</SelectItem>
-                                        ))}
-                                    </SelectContent>
-                                </Select>
-                                
-                                <Select value={bulkUpdateValue} onValueChange={setBulkUpdateValue}>
-                                    <SelectTrigger className="w-[180px] h-9">
-                                        <SelectValue placeholder="Select new value" />
-                                    </SelectTrigger>
-                                    <SelectContent>
-                                        {selectedBulkUpdateField?.options.map(opt => (
-                                            <SelectItem key={opt} value={opt}>{opt}</SelectItem>
-                                        ))}
-                                    </SelectContent>
-                                </Select>
+            <main className="flex flex-col flex-grow overflow-y-auto transition-opacity duration-300 p-4">
+                 {view === 'table' ? (
+                     <div className="flex-grow flex flex-col overflow-y-auto">
+                        {Object.keys(rowSelection).length > 0 && (
+                            <div className="flex-shrink-0 flex items-center gap-4 p-4 border-b bg-muted/50">
+                                <span className="text-sm font-semibold">{Object.keys(rowSelection).length} selected</span>
+                                <div className="flex items-center gap-2">
+                                    <Select value={bulkUpdateField} onValueChange={(v) => {
+                                        setBulkUpdateField(v as keyof Project);
+                                        setBulkUpdateValue('');
+                                    }}>
+                                        <SelectTrigger className="w-[180px] h-9">
+                                            <SelectValue placeholder="Select field" />
+                                        </SelectTrigger>
+                                        <SelectContent>
+                                            {bulkUpdateFields.map(f => (
+                                                <SelectItem key={f.value} value={f.value}>{f.label}</SelectItem>
+                                            ))}
+                                        </SelectContent>
+                                    </Select>
+                                    
+                                    <Select value={bulkUpdateValue} onValueChange={setBulkUpdateValue}>
+                                        <SelectTrigger className="w-[180px] h-9">
+                                            <SelectValue placeholder="Select new value" />
+                                        </SelectTrigger>
+                                        <SelectContent>
+                                            {selectedBulkUpdateField?.options.map(opt => (
+                                                <SelectItem key={opt} value={opt}>{opt}</SelectItem>
+                                            ))}
+                                        </SelectContent>
+                                    </Select>
+                                </div>
+                                <Button size="sm" onClick={handleBulkUpdate} disabled={isBulkUpdating}>
+                                    {isBulkUpdating && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
+                                    Apply Update
+                                </Button>
                             </div>
-                            <Button size="sm" onClick={handleBulkUpdate} disabled={isBulkUpdating}>
-                                {isBulkUpdating && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
-                                Apply Update
-                            </Button>
+                        )}
+                        <div className="flex-grow">
+                            <DataTable 
+                                data={dataState.projects}
+                                columns={columns}
+                                sort={dataState.sort}
+                                setSort={(newSort) => setDataState(s => ({ ...s, sort: newSort as any }))}
+                                rowSelection={rowSelection}
+                                setRowSelection={setRowSelection}
+                                isManagerOrAdmin={true}
+                                totalCount={dataState.totalCount}
+                                activeRole="Manager"
+                                page={dataState.page}
+                                totalPages={dataState.totalPages}
+                                onPageChange={handlePageChange}
+                                isFetching={isLoading}
+                            />
                         </div>
-                    )}
-                    <div className="flex-grow">
-                        <DataTable 
-                            data={dataState.projects}
-                            columns={columns}
-                            sort={dataState.sort}
-                            setSort={(newSort) => setDataState(s => ({ ...s, sort: newSort as any }))}
-                            rowSelection={rowSelection}
-                            setRowSelection={setRowSelection}
-                            isManagerOrAdmin={true}
-                            totalCount={dataState.totalCount}
-                            activeRole="Manager"
-                            page={dataState.page}
-                            totalPages={dataState.totalPages}
-                            onPageChange={handlePageChange}
-                            isFetching={isLoading}
-                        />
                     </div>
-                </div>
+                 ) : (
+                    <Card>
+                        <CardHeader>
+                            <CardTitle>Projects by Status</CardTitle>
+                        </CardHeader>
+                        <CardContent>
+                             <ChartContainer config={chartConfig} className="w-full h-[400px]">
+                                <BarChart data={chartData} accessibilityLayer>
+                                    <CartesianGrid vertical={false} />
+                                    <XAxis
+                                    dataKey="name"
+                                    tickLine={false}
+                                    tickMargin={10}
+                                    axisLine={false}
+                                    />
+                                    <YAxis />
+                                    <ChartTooltip content={<ChartTooltipContent />} />
+                                     <ChartLegend content={<ChartLegendContent />} />
+                                    <Bar dataKey="value" fill="var(--color-value)" radius={4} />
+                                </BarChart>
+                            </ChartContainer>
+                        </CardContent>
+                    </Card>
+                 )}
             </main>
         </div>
     );
 }
+
+    
