@@ -139,7 +139,13 @@ function Dashboard({ user, error }: DashboardProps) {
 
         const countQuery = query(projectsCollection, ...queryConstraints);
         const totalCountSnapshot = await getCountFromServer(countQuery);
-        const totalCount = totalCountSnapshot.data().count;
+        const total = totalCountSnapshot.data().count;
+        setTotalCount(total);
+        if (total === 0) {
+            setDashboardProjects([]);
+            setIsLoading(false);
+            return;
+        }
 
         // Apply sorting
         queryConstraints.push(orderBy("row_number", sort.direction));
@@ -175,7 +181,6 @@ function Dashboard({ user, error }: DashboardProps) {
         } else {
             setDashboardProjects(prev => [...prev, ...projectList]);
         }
-        setTotalCount(totalCount);
 
     } catch (error) {
          console.error("Failed to fetch client-side projects:", error);
@@ -235,12 +240,15 @@ function Dashboard({ user, error }: DashboardProps) {
             }
             return;
         };
-
+        
+        setPage(1);
+        setDashboardProjects([]);
+        setLastVisible(null);
         const currentFilters = { clientName: clientNameFilter, process: processFilter };
         fetchClientSidePageData(activeRole, 1, currentFilters, null);
     // This effect should only re-run when these specific filters change, not on sort change.
     // eslint-disable-next-line react-hooks/exhaustive-deps
-    }, [activeRole, clientNameFilter, processFilter, isManagerOrAdmin, fetchClientSidePageData]);
+    }, [activeRole, clientNameFilter, processFilter, isManagerOrAdmin]);
 
 
   const handleFilterChange = () => {
@@ -491,8 +499,8 @@ function Dashboard({ user, error }: DashboardProps) {
         <Header 
             user={user} activeRole={activeRole} setActiveRole={handleRoleSwitch}
             search={search} setSearch={setSearch} searchColumn={searchColumn} setSearchColumn={setSearchColumn}
-            onQuickSearch={handleQuickSearch} clientNameFilter={clientNameFilter} setClientNameFilter={(value) => { setClientNameFilter(value); handleFilterChange(); }}
-            processFilter={processFilter} setProcessFilter={(value) => { setProcessFilter(value); handleFilterChange(); }} isManagerOrAdmin={isManagerOrAdmin}
+            onQuickSearch={handleQuickSearch} clientNameFilter={clientNameFilter} setClientNameFilter={(value) => { setClientNameFilter(value); }}
+            processFilter={processFilter} setProcessFilter={(value) => { setProcessFilter(value); }} isManagerOrAdmin={isManagerOrAdmin}
             showManagerSearch={activeRole === 'Manager'}
             clientNames={dropdownOptions.clientNames.map(c => c)} processes={dropdownOptions.processes}
         />
