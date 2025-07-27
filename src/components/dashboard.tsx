@@ -82,7 +82,7 @@ function Dashboard({ user, error }: DashboardProps) {
   const [sourceProject, setSourceProject] = React.useState<Project | null>(null);
   const [isColumnSelectOpen, setIsColumnSelectOpen] = React.useState(false);
 
-  const [bulkUpdateField, setBulkUpdateField] = React.useState<keyof Project>('processorId');
+  const [bulkUpdateField, setBulkUpdateField] = React.useState<keyof Project>('processor');
   const [bulkUpdateValue, setBulkUpdateValue] = React.useState('');
   const [isBulkUpdating, setIsBulkUpdating] = React.useState(false);
   
@@ -116,15 +116,13 @@ function Dashboard({ user, error }: DashboardProps) {
     if (!user) return;
     setIsLoading(true);
 
-    const isRoleBasedDashboard = role === 'Processor' || role === 'QA' || role === 'Case Manager';
-
     try {
         const { projects, totalCount, totalPages } = await getPaginatedProjects({
             page: currentPage,
             limit: 20,
             sort: currentSort,
             filters: {
-                roleFilter: isRoleBasedDashboard ? { role: role, userName: user.name, userId: user.id } : undefined,
+                roleFilter: { role: role, userName: user.name, userId: user.id },
             }
         });
 
@@ -574,7 +572,7 @@ function Dashboard({ user, error }: DashboardProps) {
                                     </SelectTrigger>
                                     <SelectContent>
                                         {selectedBulkUpdateField?.options.map(opt => (
-                                            <SelectItem key={opt.id} value={opt.id}>{opt.name}</SelectItem>
+                                            <SelectItem key={opt.name} value={opt.name}>{opt.name}</SelectItem>
                                         ))}
                                     </SelectContent>
                                 </Select>

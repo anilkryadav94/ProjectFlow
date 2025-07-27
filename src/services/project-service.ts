@@ -49,9 +49,7 @@ function buildFilterConstraints(
             andConstraints.push(where("qa", "==", userName));
             andConstraints.push(where("workflowStatus", "==", "With QA"));
         } else if (role === 'Case Manager') {
-            andConstraints.push(where("case_manager", "==", userName));
-            andConstraints.push(where("qa_status", "==", "Client Query"));
-            andConstraints.push(where("clientquery_status", "in", [null, ""]));
+            // This role has complex filtering handled separately in getPaginatedProjects
         }
     } else { // Manager/Admin Search filters
         if (filters.advanced && filters.advanced.length > 0) {
@@ -331,23 +329,93 @@ export async function addRows(projectsToAdd: Partial<Project>[]): Promise<number
   return projectsToAdd.length;
 }
 
+// Special handler for Case Manager to overcome Firestore query limitations
+async function getCaseManagerProjects(userName: string, pageSize: number, sort: any, lastVisibleDoc?: any) {
+    const projectsCollection = collection(db, "projects");
+
+    // Define base queries for each status we care about
+    const baseQueries = [
+        query(projectsCollection, where("case_manager", "==", userName), where("qa_status", "==", "Client Query"), where("clientquery_status", "==", "Pending")),
+        query(projectsCollection, where("case_manager", "==", userName), where("qa_status", "==", "Client Query"), where("clientquery_status", "==", "")),
+        query(projectsCollection, where("case_manager", "==", userName), where("qa_status", "==", "Client Query"), where("clientquery_status", "==", null))
+    ];
+    
+    // Fetch all documents from all queries
+    const allResults = await Promise.all(baseQueries.map(q => getDocs(q)));
+
+    // Combine and deduplicate results
+    const combinedDocs: { [key: string]: any } = {};
+    allResults.forEach(snapshot => {
+        snapshot.docs.forEach(doc => {
+            if (!combinedDocs[doc.id]) {
+                combinedDocs[doc.id] = { id: doc.id, ...convertTimestampsToDates(doc.data()) };
+            }
+        });
+    });
+
+    let projectList = Object.values(combinedDocs);
+    const totalCount = projectList.length;
+
+    // Manual sorting
+    projectList.sort((a, b) => {
+        const key = sort.key || 'row_number';
+        const dir = sort.direction === 'asc' ? 1 : -1;
+        if (a[key] < b[key]) return -1 * dir;
+        if (a[key] > b[key]) return 1 * dir;
+        return 0;
+    });
+
+    // Manual pagination
+    const startIndex = lastVisibleDoc ? projectList.findIndex(p => p.id === lastVisibleDoc.id) + 1 : 0;
+    const paginatedList = projectList.slice(startIndex, startIndex + pageSize);
+
+    return {
+        projects: paginatedList as Project[],
+        totalCount,
+        totalPages: Math.ceil(totalCount / pageSize),
+    };
+}
+
+
 export async function getPaginatedProjects(options: {
     page: number;
     limit: number;
     filters: {
-        quickSearch?: string;
-        searchColumn?: string;
-        advanced?: { field: string; operator: string; value: any }[] | null;
         roleFilter?: { role: Role; userName: string; userId: string };
-        clientName?: string;
-        process?: string;
     };
     sort: { key: string, direction: 'asc' | 'desc' };
 }) {
     const { page, limit: pageSize, filters, sort } = options;
-    const projectsCollection = collection(db, "projects");
+    
+    // Special handling for Case Manager
+    if (filters.roleFilter?.role === 'Case Manager') {
+        const { userName } = filters.roleFilter;
+        // For simplicity in this complex scenario, we'll fetch all and paginate manually.
+        // A more robust solution would involve more complex cursor management.
+        const result = await getCaseManagerProjects(userName, 1000, sort); // Fetch all
+        const startIndex = (page - 1) * pageSize;
+        const paginatedProjects = result.projects.slice(startIndex, startIndex + pageSize);
 
-    let queryConstraints: QueryConstraint[] = buildFilterConstraints(filters);
+        return {
+            projects: paginatedProjects,
+            totalCount: result.totalCount,
+            totalPages: Math.ceil(result.totalCount / pageSize),
+        };
+    }
+
+    const projectsCollection = collection(db, "projects");
+    let queryConstraints: QueryConstraint[] = [];
+    
+    if (filters.roleFilter) {
+        const { role, userName } = filters.roleFilter;
+        if (role === 'Processor') {
+            queryConstraints.push(where("processor", "==", userName));
+            queryConstraints.push(where("processing_status", "in", ["Pending", "On Hold", "Re-Work"]));
+        } else if (role === 'QA') {
+            queryConstraints.push(where("qa", "==", userName));
+            queryConstraints.push(where("workflowStatus", "==", "With QA"));
+        }
+    }
     
     // Count query should use the same filters
     const countQuery = query(projectsCollection, ...queryConstraints);
