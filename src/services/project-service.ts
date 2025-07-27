@@ -53,7 +53,7 @@ function buildFilterConstraints(
             andConstraints.push(where("processing_status", "==", "Client Query"));
         }
     } else {
-        // Apply these filters only if it's NOT a role-based dashboard view
+        // Apply these filters only if it's NOT a role-based dashboard view (e.g., Manager search)
         if (filters.clientName && filters.clientName !== 'all') {
             andConstraints.push(where('client_name', '==', filters.clientName));
         }
@@ -346,7 +346,13 @@ export async function getPaginatedProjects(options: {
 
     // Pass all filters to the builder. The builder now correctly handles
     // ignoring clientName/process filters when a roleFilter is active.
-    const filterConstraints = buildFilterConstraints(filters);
+    const filtersForBuilder = {
+        ...filters,
+        // If a roleFilter is active, nullify the general filters so they aren't applied.
+        clientName: filters.roleFilter ? undefined : filters.clientName,
+        process: filters.roleFilter ? undefined : filters.process,
+    };
+    const filterConstraints = buildFilterConstraints(filtersForBuilder);
     
     let queryConstraints: QueryConstraint[] = [];
     if (filterConstraints.length > 0) {
