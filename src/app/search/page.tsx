@@ -142,7 +142,7 @@ export default function SearchResultsPage() {
                  const [{ projects, totalCount, totalPages }] = await Promise.all([
                      getPaginatedProjects({
                         page,
-                        limit: 50,
+                        limit: 20,
                         filters,
                         sort: { key: sortKey, direction: sortDir },
                     })
@@ -503,5 +503,3 @@ export default function SearchResultsPage() {
         </div>
     );
 }
-
-    

@@ -106,7 +106,7 @@ export function DataTable({
     );
   };
   
-  const showPagination = isManagerOrAdmin && totalPages && totalPages > 1;
+  const showPagination = totalPages && totalPages > 1;
 
   return (
     <div className={cn("h-full flex flex-col")}>
@@ -182,5 +182,3 @@ export function DataTable({
     </div>
   )
 }
-
-    
