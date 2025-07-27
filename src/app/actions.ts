@@ -7,7 +7,9 @@ import * as ProjectService from '@/services/project-service';
 
 
 export async function getProjectsForUser(userName: string, roles: import("@/lib/data").Role[]): Promise<Project[]> {
-    return ProjectService.getProjectsForUser(userName, roles);
+    // This function is now less relevant for client-side dashboards but kept for potential future use.
+    // The main fetching logic is now client-side in the dashboard component.
+    return []; 
 }
 
 const bulkUpdateSchema = z.object({
@@ -66,12 +68,14 @@ export async function getPaginatedProjects(options: {
         quickSearch?: string;
         searchColumn?: string;
         advanced?: { field: string; operator: string; value: any }[] | null;
-        roleFilter?: { role: import("@/lib/data").Role; userName: string };
+        roleFilter?: { role: import("@/lib/data").Role; userName: string; userId: string };
         clientName?: string;
         process?: string;
     };
     sort: { key: string, direction: 'asc' | 'desc' };
 }) {
+    // This function is now primarily for the Manager/Admin search results page.
+    // Role-based dashboards use client-side fetching.
     return ProjectService.getPaginatedProjects(options);
 }
 
@@ -81,7 +85,7 @@ export async function getProjectsForExport(options: {
         quickSearch?: string;
         searchColumn?: string;
         advanced?: { field: string; operator: string; value: any }[] | null;
-        roleFilter?: { role: import("@/lib/data").Role; userName: string };
+        roleFilter?: { role: import("@/lib/data").Role; userName: string; userId: string };
         clientName?: string;
         process?: string;
     };

@@ -37,24 +37,30 @@ export type ProcessType = 'Patent' | 'TM' | 'IDS' | 'Project';
 
 export type Project = {
     id: string;
-    row_number: string; // New auto-generated field
-    ref_number: string | null; // User-editable field
+    row_number: string; 
+    ref_number: string | null;
     application_number: string | null;
     patent_number: string | null;
     client_name: string;
     process: ProcessType;
-    processor: string;
-    qa: string;
-    case_manager: string;
+
+    // Shift from names to UIDs for scalability
+    processor: string; // Keep name for display
+    processorId: string;
+    qa: string; // Keep name for display
+    qaId: string;
+    case_manager: string; // Keep name for display
+    caseManagerId: string;
+    
     manager_name: string | null;
     sender: string | null;
     subject_line: string | null;
-    received_date: string | null; // Stored as YYYY-MM-DD string
-    allocation_date: string | null; // Stored as YYYY-MM-DD string
-    processing_date: string | null; // Stored as YYYY-MM-DD string
-    qa_date: string | null; // Stored as YYYY-MM-DD string
-    reportout_date: string | null; // Stored as YYYY-MM-DD string
-    client_response_date: string | null; // Stored as YYYY-MM-DD string
+    received_date: string | null;
+    allocation_date: string | null;
+    processing_date: string | null; 
+    qa_date: string | null;
+    reportout_date: string | null;
+    client_response_date: string | null;
     country: string | null;
     document_type: string | null;
     action_taken: string | null;
@@ -74,15 +80,13 @@ export type Project = {
 };
 
 
-// Static lists are now used as fallbacks or for specific UI elements that might need a predefined list.
-// Most dropdowns are now populated dynamically from the database.
 export const projectStatuses: any[] = ["Pending", "Completed", "On Hold"];
 export const countries = ['USA', 'India', 'Canada', 'UK', 'Germany'];
 export const renewalAgents = ['Agent X', 'Agent Y'];
 export const documentTypes = ['Disclosure', 'Application', 'Office Action Response', 'Correspondence'];
 export const errorOptions: ('Yes' | 'No')[] = ['Yes', 'No'];
 export const emailForwardedOptions: ('Yes' | 'No')[] = ['Yes', 'No'];
-export const managerNames = ['Manager User']; // This might remain static if managers are predefined
+export const managerNames = ['Manager User']; 
 
 
 export let users: Omit<User, 'id'>[] = [
@@ -100,8 +104,6 @@ export let users: Omit<User, 'id'>[] = [
     { email: 'cm.bob@example.com', password: 'password', name: 'CM Bob', roles: ['Case Manager'] },
 ];
 
-// This function is for one-time seeding of the database.
-// It is now disabled from being called automatically as per user request.
 export async function seedDatabase() {
   /*
   const initialProjects: Omit<Project, 'id'>[] = [

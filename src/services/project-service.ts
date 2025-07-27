@@ -17,8 +17,8 @@ function convertTimestampsToDates(data: any): any {
 }
 
 const updatableProjectFields = [
-  'row_number', 'ref_number', 'application_number', 'patent_number', 'client_name', 'process', 'processor', 'qa', 
-  'case_manager', 'manager_name', 'sender', 'subject_line', 'country', 'document_type', 'action_taken', 
+  'row_number', 'ref_number', 'application_number', 'patent_number', 'client_name', 'process', 'processor', 'processorId', 'qa', 'qaId', 'case_manager', 'caseManagerId',
+  'manager_name', 'sender', 'subject_line', 'country', 'document_type', 'action_taken', 
   'renewal_agent', 'processing_status', 'qa_status', 'clientquery_status', 'error', 'rework_reason', 
   'qa_remark', 'client_query_description', 'client_comments', 'client_error_description', 
   'email_renaming', 'email_forwarded',
@@ -32,20 +32,20 @@ function buildFilterConstraints(
         advanced?: { field: string; operator: string; value: any }[] | null;
         clientName?: string;
         process?: string;
-        roleFilter?: { role: Role; userName: string };
+        roleFilter?: { role: Role; userName: string; userId: string };
     }
 ): QueryConstraint[] {
     const andConstraints: QueryConstraint[] = [];
     const dateFields = ['received_date', 'allocation_date', 'processing_date', 'qa_date', 'reportout_date', 'client_response_date'];
     
     if (filters.roleFilter) {
-        const { role, userName } = filters.roleFilter;
+        const { role, userId } = filters.roleFilter;
         if (role === 'Processor') {
-            andConstraints.push(where("processor", "==", userName));
+            andConstraints.push(where("processorId", "==", userId));
         } else if (role === 'QA') {
-            andConstraints.push(where("qa", "==", userName));
+            andConstraints.push(where("qaId", "==", userId));
         } else if (role === 'Case Manager') {
-            andConstraints.push(where("case_manager", "==", userName));
+            andConstraints.push(where("caseManagerId", "==", userId));
         }
     }
 
@@ -141,36 +141,6 @@ export async function getProjectById(id: string): Promise<Project | undefined> {
         return { id: projectDoc.id, ...convertTimestampsToDates(data) } as Project;
     }
     return undefined;
-}
-
-export async function getProjectsForUser(userName: string, roles: Role[]): Promise<Project[]> {
-    const projectsCollection = collection(db, "projects");
-    let projectsQuery;
-
-    const highestRole = roles.sort((a, b) => {
-        const roleOrder = ['Admin', 'Manager', 'QA', 'Case Manager', 'Processor'];
-        return roleOrder.indexOf(a) - roleOrder.indexOf(b);
-    })[0];
-
-    if (highestRole === 'Admin' || highestRole === 'Manager') {
-        projectsQuery = query(projectsCollection);
-    } else if (highestRole === 'Processor') {
-        projectsQuery = query(projectsCollection, where("processor", "==", userName));
-    } else if (highestRole === 'QA') {
-        projectsQuery = query(projectsCollection, where("qa", "==", userName));
-    } else if (highestRole === 'Case Manager') {
-        projectsQuery = query(projectsCollection, where("case_manager", "==", userName));
-    } else {
-        projectsQuery = query(projectsCollection, where("id", "==", "null"));
-    }
-
-    const projectSnapshot = await getDocs(projectsQuery);
-    return projectSnapshot.docs.map(doc => {
-        return {
-            id: doc.id,
-            ...convertTimestampsToDates(doc.data())
-        } as Project;
-    });
 }
 
 export async function bulkUpdateProjects(projectIds: string[], updateData: Partial<Project>): Promise<void> {
@@ -278,7 +248,9 @@ export async function addRows(projectsToAdd: Partial<Project>[]): Promise<number
       
       const newProject: Omit<Project, 'id'> = {
           row_number: "TBD",
-          ref_number: null, application_number: null, patent_number: null, client_name: '', process: 'Patent', processor: '', qa: '', case_manager: '', manager_name: null, sender: null, subject_line: null, received_date: null, allocation_date: null, processing_date: null, qa_date: null, reportout_date: null, client_response_date: null, country: null, document_type: null, action_taken: null, renewal_agent: null, workflowStatus: 'With Processor', processing_status: 'Pending', qa_status: 'Pending', clientquery_status: null, error: null, rework_reason: null, qa_remark: null, client_query_description: null, client_comments: null, client_error_description: null, email_renaming: null, email_forwarded: null,
+          ref_number: null, application_number: null, patent_number: null, client_name: '', process: 'Patent', 
+          processor: '', processorId: '', qa: '', qaId: '', case_manager: '', caseManagerId: '',
+          manager_name: null, sender: null, subject_line: null, received_date: null, allocation_date: null, processing_date: null, qa_date: null, reportout_date: null, client_response_date: null, country: null, document_type: null, action_taken: null, renewal_agent: null, workflowStatus: 'With Processor', processing_status: 'Pending', qa_status: 'Pending', clientquery_status: null, error: null, rework_reason: null, qa_remark: null, client_query_description: null, client_comments: null, client_error_description: null, email_renaming: null, email_forwarded: null,
       };
 
       const finalProjectData = { ...newProject, ...projectData, row_number: currentRowNumber };
@@ -312,9 +284,7 @@ export async function getPaginatedProjects(options: {
         quickSearch?: string;
         searchColumn?: string;
         advanced?: { field: string; operator: string; value: any }[] | null;
-        roleFilter?: { role: Role; userName: string };
-        clientName?: string;
-        process?: string;
+        roleFilter?: { role: Role; userName: string; userId: string; };
     };
     sort: { key: string, direction: 'asc' | 'desc' };
 }) {
@@ -370,7 +340,7 @@ export async function getProjectsForExport(options: {
         quickSearch?: string;
         searchColumn?: string;
         advanced?: { field: string; operator: string; value: any }[] | null;
-        roleFilter?: { role: Role; userName: string };
+        roleFilter?: { role: Role; userName: string; userId: string };
         clientName?: string;
         process?: string;
     };

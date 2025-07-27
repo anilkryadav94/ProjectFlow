@@ -18,13 +18,13 @@ import { cn } from '@/lib/utils';
 import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from './ui/accordion';
 import { EditProjectDialog } from './edit-project-dialog';
 import { AddRowsDialog } from './add-rows-dialog';
-import { getPaginatedProjects, addRows, getProjectsForExport, bulkUpdateProjects } from '@/app/actions';
+import { addRows, getProjectsForExport, bulkUpdateProjects } from '@/app/actions';
 import { ColumnSelectDialog } from './column-select-dialog';
 import { differenceInBusinessDays } from 'date-fns';
 import { getUsers } from '@/lib/auth';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { db } from '@/lib/firebase';
-import { collection, query, where, orderBy, getDocs, limit, startAfter, getCountFromServer, Timestamp, QueryConstraint } from 'firebase/firestore';
+import { collection, query, where, orderBy, getDocs, limit, startAfter, getCountFromServer, Timestamp, QueryConstraint, DocumentData } from 'firebase/firestore';
 
 
 interface DashboardProps {
@@ -51,14 +51,13 @@ function Dashboard({ user, error }: DashboardProps) {
   
   const [dashboardProjects, setDashboardProjects] = React.useState<Project[]>([]);
   const [totalCount, setTotalCount] = React.useState(0);
-  const [totalPages, setTotalPages] = React.useState(1);
-  const [lastVisible, setLastVisible] = React.useState<any>(null);
+  const [lastVisible, setLastVisible] = React.useState<DocumentData | null>(null);
 
   const [dropdownOptions, setDropdownOptions] = React.useState({
       clientNames: [] as string[],
-      processors: [] as string[],
-      qas: [] as string[],
-      caseManagers: [] as string[],
+      processors: [] as { id: string, name: string }[],
+      qas: [] as { id: string, name: string }[],
+      caseManagers: [] as { id: string, name: string }[],
       processes: [] as ProcessType[],
   });
 
@@ -78,7 +77,7 @@ function Dashboard({ user, error }: DashboardProps) {
   const [sourceProject, setSourceProject] = React.useState<Project | null>(null);
   const [isColumnSelectOpen, setIsColumnSelectOpen] = React.useState(false);
 
-  const [bulkUpdateField, setBulkUpdateField] = React.useState<keyof Project>('processor');
+  const [bulkUpdateField, setBulkUpdateField] = React.useState<keyof Project>('processorId');
   const [bulkUpdateValue, setBulkUpdateValue] = React.useState('');
   const [isBulkUpdating, setIsBulkUpdating] = React.useState(false);
   
@@ -108,7 +107,7 @@ function Dashboard({ user, error }: DashboardProps) {
     }
   }, [defaultCaseManagerColumns, defaultManagerAdminColumns, defaultProcessorQAColumns]);
 
-  const fetchClientSidePageData = React.useCallback(async (role: Role, currentPage: number, currentSort: typeof sort, currentFilters: any) => {
+  const fetchClientSidePageData = React.useCallback(async (role: Role, currentPage: number, currentSort: typeof sort, currentFilters: any, lastDoc: DocumentData | null) => {
     if (!user) return;
     setIsLoading(true);
 
@@ -116,12 +115,11 @@ function Dashboard({ user, error }: DashboardProps) {
         const projectsCollection = collection(db, 'projects');
         let queryConstraints: QueryConstraint[] = [];
 
-        // Role-based filtering
-        if (role === 'Processor') queryConstraints.push(where("processor", "==", user.name));
-        else if (role === 'QA') queryConstraints.push(where("qa", "==", user.name));
-        else if (role === 'Case Manager') queryConstraints.push(where("case_manager", "==", user.name));
+        // Role-based filtering using UIDs
+        if (role === 'Processor') queryConstraints.push(where("processorId", "==", user.id));
+        else if (role === 'QA') queryConstraints.push(where("qaId", "==", user.id));
+        else if (role === 'Case Manager') queryConstraints.push(where("caseManagerId", "==", user.id));
         
-        // Other filters
         if (currentFilters.clientName && currentFilters.clientName !== 'all') {
              queryConstraints.push(where('client_name', '==', currentFilters.clientName));
         }
@@ -132,27 +130,24 @@ function Dashboard({ user, error }: DashboardProps) {
         const countQuery = query(projectsCollection, ...queryConstraints);
         const totalCountSnapshot = await getCountFromServer(countQuery);
         const totalCount = totalCountSnapshot.data().count;
-        const totalPages = Math.ceil(totalCount / 50);
 
-        // Sorting
         if (currentSort.key) {
             queryConstraints.push(orderBy(currentSort.key, currentSort.direction));
         }
 
-        // Pagination
-        if (currentPage > 1 && lastVisible) {
-            queryConstraints.push(startAfter(lastVisible));
+        if (currentPage > 1 && lastDoc) {
+            queryConstraints.push(startAfter(lastDoc));
         }
-        queryConstraints.push(limit(50));
+        queryConstraints.push(limit(20)); // Use 20 as per spec
         
         const finalQuery = query(projectsCollection, ...queryConstraints);
         const projectSnapshot = await getDocs(finalQuery);
 
-        setLastVisible(projectSnapshot.docs[projectSnapshot.docs.length - 1]);
+        setLastVisible(projectSnapshot.docs[projectSnapshot.docs.length - 1] || null);
 
         const projectList = projectSnapshot.docs.map(doc => {
             const data = doc.data();
-             const convertedData: { [key: string]: any } = {};
+            const convertedData: { [key: string]: any } = {};
             for (const key in data) {
                 if (data[key] instanceof Timestamp) {
                     convertedData[key] = data[key].toDate().toISOString().split('T')[0];
@@ -165,10 +160,13 @@ function Dashboard({ user, error }: DashboardProps) {
                 ...convertedData
             } as Project;
         });
-
-        setDashboardProjects(projectList);
+        
+        if (currentPage === 1) {
+            setDashboardProjects(projectList);
+        } else {
+            setDashboardProjects(prev => [...prev, ...projectList]);
+        }
         setTotalCount(totalCount);
-        setTotalPages(totalPages);
 
     } catch (error) {
          console.error("Failed to fetch client-side projects:", error);
@@ -178,82 +176,69 @@ function Dashboard({ user, error }: DashboardProps) {
     } finally {
         setIsLoading(false);
     }
-}, [user, toast, lastVisible]);
+  }, [user, toast]);
 
 
-  const fetchPageData = React.useCallback(async (role: Role, currentPage: number, currentSort: typeof sort, currentFilters: any) => {
-    if (!user) return;
+    const fetchInitialData = React.useCallback(async () => {
+        setIsLoading(true);
+        try {
+            const allUsers = await getUsers();
+            setDropdownOptions({
+                clientNames: [...new Set(allUsers.map(u => u.name).filter(Boolean))].sort(),
+                processes: ['Patent', 'TM', 'IDS', 'Project'] as ProcessType[],
+                processors: allUsers.filter(u => u.roles.includes('Processor')).map(u => ({ id: u.id, name: u.name })).sort((a,b) => a.name.localeCompare(b.name)),
+                qas: allUsers.filter(u => u.roles.includes('QA')).map(u => ({ id: u.id, name: u.name })).sort((a,b) => a.name.localeCompare(b.name)),
+                caseManagers: allUsers.filter(u => u.roles.includes('Case Manager')).map(u => ({ id: u.id, name: u.name })).sort((a,b) => a.name.localeCompare(b.name)),
+            });
+        } catch(e) {
+            console.error("Failed to fetch dropdown data", e);
+            toast({ title: "Error", description: "Could not load filter options.", variant: "destructive" });
+        } finally {
+            setIsLoading(false);
+        }
+    }, [toast]);
     
-    // Manager/Admin views remain server-side as they don't have complex queries
-    if (role === 'Admin' || role === 'Manager') {
-        setDashboardProjects([]);
-        setTotalCount(0);
-        setIsLoading(false);
-        return;
-    };
-    
-    // Other roles use client-side fetching
-    await fetchClientSidePageData(role, currentPage, currentSort, currentFilters);
-
-  }, [user, fetchClientSidePageData]);
+    React.useEffect(() => {
+        fetchInitialData();
+    }, [fetchInitialData]);
 
     React.useEffect(() => {
-        const initializeDashboard = async () => {
-            setIsLoading(true);
-            const highestRole = roleHierarchy.find(role => user.roles.includes(role)) || user.roles[0];
-            const urlRole = searchParams.get('role') as Role | null;
-            const newActiveRole = urlRole && user.roles.includes(urlRole) ? urlRole : highestRole;
+        const highestRole = roleHierarchy.find(role => user.roles.includes(role)) || user.roles[0];
+        const urlRole = searchParams.get('role') as Role | null;
+        const newActiveRole = urlRole && user.roles.includes(urlRole) ? urlRole : highestRole;
 
+        if (newActiveRole !== activeRole) {
             setActiveRole(newActiveRole);
             loadColumnLayout(newActiveRole);
-
-            try {
-                const allUsers = await getUsers();
-                setDropdownOptions({
-                    clientNames: [...new Set(allUsers.map(u => u.name).filter(Boolean))].sort(),
-                    processes: ['Patent', 'TM', 'IDS', 'Project'] as ProcessType[],
-                    processors: allUsers.filter(u => u.roles.includes('Processor')).map(u => u.name).sort(),
-                    qas: allUsers.filter(u => u.roles.includes('QA')).map(u => u.name).sort(),
-                    caseManagers: allUsers.filter(u => u.roles.includes('Case Manager')).map(u => u.name).sort(),
-                });
-            } catch(e) {
-                console.error("Failed to fetch dropdown data", e);
-                toast({ title: "Error", description: "Could not load filter options.", variant: "destructive" });
-            } finally {
-                setIsLoading(false);
-            }
-        };
-        
-        if (user) {
-            initializeDashboard();
+            setPage(1);
+            setDashboardProjects([]);
+            setLastVisible(null);
+            setTotalCount(0);
         }
-    }, [user, searchParams, loadColumnLayout, toast]);
+    }, [user.roles, searchParams, activeRole, loadColumnLayout]);
 
     React.useEffect(() => {
-        if (!activeRole) return;
-
-        const currentFilters = {
-            quickSearch: search,
-            searchColumn: searchColumn,
-            clientName: clientNameFilter,
-            process: processFilter,
+        if (!activeRole || isManagerOrAdmin) {
+            if(isManagerOrAdmin) {
+                 setDashboardProjects([]);
+                 setTotalCount(0);
+                 setIsLoading(false);
+            }
+            return;
         };
-        
-        fetchPageData(activeRole, page, sort, currentFilters);
-    }, [activeRole, page, sort, search, searchColumn, clientNameFilter, processFilter, fetchPageData]);
+
+        const currentFilters = { clientName: clientNameFilter, process: processFilter };
+        fetchClientSidePageData(activeRole, 1, sort, currentFilters, null);
+    }, [activeRole, sort, clientNameFilter, processFilter, isManagerOrAdmin, fetchClientSidePageData]);
 
 
   const handleFilterChange = () => {
     if (!activeRole) return;
-    setPage(1); // Reset to first page on new search
+    setPage(1);
+    setDashboardProjects([]);
     setLastVisible(null);
-    const currentFilters = {
-      quickSearch: search,
-      searchColumn: searchColumn,
-      clientName: clientNameFilter,
-      process: processFilter,
-    };
-    fetchPageData(activeRole, 1, sort, currentFilters);
+    const currentFilters = { clientName: clientNameFilter, process: processFilter };
+    fetchClientSidePageData(activeRole, 1, sort, currentFilters, null);
   };
 
   const saveColumnLayout = (role: Role) => {
@@ -304,7 +289,7 @@ function Dashboard({ user, error }: DashboardProps) {
                 const result = await addRows(projectsToAdd);
                 if (result.success) {
                     toast({ title: "Bulk Add Complete", description: `${result.addedCount} projects have been added.` });
-                    if (activeRole) fetchPageData(activeRole, 1, sort, {});
+                    if (activeRole) handleFilterChange();
                 } else {
                     throw new Error(result.error || "An unknown error occurred during upload.");
                 }
@@ -337,15 +322,8 @@ function Dashboard({ user, error }: DashboardProps) {
         params.set('searchColumn', searchColumn);
         router.push(`/search?${params.toString()}`);
     } else if (activeRole) {
-        setPage(1); // Reset to first page on new search
-        setLastVisible(null);
-        const currentFilters = {
-            quickSearch: search,
-            searchColumn: searchColumn,
-            clientName: clientNameFilter,
-            process: processFilter,
-        };
-        fetchPageData(activeRole, 1, sort, currentFilters);
+        // Client-side search can be implemented here if needed, for now it refetches
+        handleFilterChange();
     }
   };
   
@@ -388,14 +366,10 @@ function Dashboard({ user, error }: DashboardProps) {
 
   const handleNonManagerDownload = async () => {
         const filters = {
-            quickSearch: search,
-            searchColumn: searchColumn,
-            clientName: clientNameFilter,
-            process: processFilter,
-            roleFilter: activeRole ? { role: activeRole, userName: user.name } : undefined
+            roleFilter: activeRole ? { role: activeRole, userName: user.name, userId: user.id } : undefined
         };
         
-        const projectsToExport = await getProjectsForExport({ filters: { ...filters, roleFilter: filters.roleFilter as any }, sort, user });
+        const projectsToExport = await getProjectsForExport({ filters: filters as any, sort, user });
 
         if (projectsToExport.length === 0) {
             toast({ title: "No data to export", variant: "destructive" });
@@ -425,7 +399,7 @@ function Dashboard({ user, error }: DashboardProps) {
             const result = await bulkUpdateProjects({ projectIds, field: bulkUpdateField, value: bulkUpdateValue });
             if (result.success) {
                 toast({ title: "Success", description: `${projectIds.length} projects have been updated.` });
-                if (activeRole) fetchPageData(activeRole, page, sort, {});
+                if (activeRole) handleFilterChange();
                 setRowSelection({});
                 setBulkUpdateValue('');
             } else {
@@ -448,13 +422,13 @@ function Dashboard({ user, error }: DashboardProps) {
     }
     
     const onPageChange = (newPage: number) => {
+        if (!activeRole || isManagerOrAdmin) return;
         setPage(newPage);
-        if (newPage === 1) {
-            setLastVisible(null);
-        }
+        const currentFilters = { clientName: clientNameFilter, process: processFilter };
+        fetchClientSidePageData(activeRole, newPage, sort, currentFilters, lastVisible);
     };
   
-  if (isLoading || !activeRole || visibleColumnKeys.length === 0) {
+  if (!activeRole || (isLoading && page === 1)) {
     return (
         <div className="flex h-screen w-full items-center justify-center bg-background">
             <div className="flex flex-col items-center gap-4">
@@ -475,14 +449,12 @@ function Dashboard({ user, error }: DashboardProps) {
    const bulkUpdateFields: {
         value: keyof Project;
         label: string;
-        options: readonly string[] | string[];
+        options: {id: string, name: string}[];
         type: 'select';
       }[] = [
-        { value: 'processor', label: 'Processor', options: dropdownOptions.processors, type: 'select' },
-        { value: 'qa', label: 'QA', options: dropdownOptions.qas, type: 'select' },
-        { value: 'case_manager', label: 'Case Manager', options: dropdownOptions.caseManagers, type: 'select' },
-        { value: 'client_name', label: 'Client Name', options: dropdownOptions.clientNames, type: 'select' },
-        { value: 'process', label: 'Process', options: dropdownOptions.processes, type: 'select' },
+        { value: 'processorId', label: 'Processor', options: dropdownOptions.processors, type: 'select' },
+        { value: 'qaId', label: 'QA', options: dropdownOptions.qas, type: 'select' },
+        { value: 'caseManagerId', label: 'Case Manager', options: dropdownOptions.caseManagers, type: 'select' },
       ];
     const selectedBulkUpdateField = bulkUpdateFields.find(f => f.value === bulkUpdateField);
 
@@ -493,21 +465,25 @@ function Dashboard({ user, error }: DashboardProps) {
         {editingProject && (
              <EditProjectDialog
                 isOpen={isEditDialogOpen} onOpenChange={setIsEditDialogOpen} project={editingProject}
-                onUpdateSuccess={() => {if(activeRole) fetchPageData(activeRole, page, sort, {})}}
+                onUpdateSuccess={handleFilterChange}
                 userRole={activeRole} projectQueue={dashboardProjects} onNavigate={setEditingProject}
-                clientNames={dropdownOptions.clientNames} processors={dropdownOptions.processors} qas={dropdownOptions.qas} caseManagers={dropdownOptions.caseManagers} processes={dropdownOptions.processes}
+                clientNames={dropdownOptions.clientNames.map(c => c)}
+                processors={dropdownOptions.processors.map(p => p.name)}
+                qas={dropdownOptions.qas.map(q => q.name)}
+                caseManagers={dropdownOptions.caseManagers.map(cm => cm.name)}
+                processes={dropdownOptions.processes}
             />
         )}
-        {sourceProject && ( <AddRowsDialog isOpen={isAddRowsDialogOpen} onOpenChange={setIsAddRowsDialogOpen} sourceProject={sourceProject} onAddRowsSuccess={() => {if(activeRole) fetchPageData(activeRole, page, sort, {})}} /> )}
+        {sourceProject && ( <AddRowsDialog isOpen={isAddRowsDialogOpen} onOpenChange={setIsAddRowsDialogOpen} sourceProject={sourceProject} onAddRowsSuccess={handleFilterChange} /> )}
         <ColumnSelectDialog isOpen={isColumnSelectOpen} onOpenChange={setIsColumnSelectOpen} allColumns={allColumns} visibleColumns={visibleColumnKeys} setVisibleColumns={setVisibleColumnKeys} />
 
         <Header 
             user={user} activeRole={activeRole} setActiveRole={handleRoleSwitch}
             search={search} setSearch={setSearch} searchColumn={searchColumn} setSearchColumn={setSearchColumn}
-            onQuickSearch={handleQuickSearch} clientNameFilter={clientNameFilter} setClientNameFilter={setClientNameFilter}
-            processFilter={processFilter} setProcessFilter={setProcessFilter} isManagerOrAdmin={isManagerOrAdmin}
+            onQuickSearch={handleQuickSearch} clientNameFilter={clientNameFilter} setClientNameFilter={(value) => { setClientNameFilter(value); handleFilterChange(); }}
+            processFilter={processFilter} setProcessFilter={(value) => { setProcessFilter(value); handleFilterChange(); }} isManagerOrAdmin={isManagerOrAdmin}
             showManagerSearch={activeRole === 'Manager'}
-            clientNames={dropdownOptions.clientNames} processes={dropdownOptions.processes}
+            clientNames={dropdownOptions.clientNames.map(c => c)} processes={dropdownOptions.processes}
         />
         
         {showSubHeader && (
@@ -613,7 +589,7 @@ function Dashboard({ user, error }: DashboardProps) {
                         <AccordionTrigger className="px-4 py-3 hover:no-underline">Advanced Search</AccordionTrigger>
                         <AccordionContent>
                            <div className="p-1">
-                             <AdvancedSearchForm onSearch={handleAdvancedSearch} initialCriteria={null} processors={dropdownOptions.processors} qas={dropdownOptions.qas} clientNames={dropdownOptions.clientNames} processes={dropdownOptions.processes} />
+                             <AdvancedSearchForm onSearch={handleAdvancedSearch} initialCriteria={null} processors={dropdownOptions.processors.map(p=>p.name)} qas={dropdownOptions.qas.map(q=>q.name)} clientNames={dropdownOptions.clientNames.map(c=>c)} processes={dropdownOptions.processes} />
                            </div>
                         </AccordionContent>
                     </AccordionItem>
@@ -645,7 +621,7 @@ function Dashboard({ user, error }: DashboardProps) {
                                     </SelectTrigger>
                                     <SelectContent>
                                         {selectedBulkUpdateField?.options.map(opt => (
-                                            <SelectItem key={opt} value={opt}>{opt}</SelectItem>
+                                            <SelectItem key={opt.id} value={opt.id}>{opt.name}</SelectItem>
                                         ))}
                                     </SelectContent>
                                 </Select>
@@ -667,7 +643,7 @@ function Dashboard({ user, error }: DashboardProps) {
                         totalCount={totalCount}
                         activeRole={activeRole}
                         page={page}
-                        totalPages={totalPages}
+                        totalPages={Math.ceil(totalCount / 20)}
                         onPageChange={onPageChange}
                         isFetching={isLoading}
                     />
