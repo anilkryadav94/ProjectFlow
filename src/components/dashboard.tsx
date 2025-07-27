@@ -124,13 +124,10 @@ function Dashboard({ user, error }: DashboardProps) {
         // Role-based filtering using UIDs
         if (role === 'Processor') {
             queryConstraints.push(where("processorId", "==", user.id));
-            queryConstraints.push(orderBy("processorId"));
         } else if (role === 'QA') {
             queryConstraints.push(where("qaId", "==", user.id));
-            queryConstraints.push(orderBy("qaId"));
         } else if (role === 'Case Manager') {
             queryConstraints.push(where("caseManagerId", "==", user.id));
-            queryConstraints.push(orderBy("caseManagerId"));
         }
         
         if (currentFilters.clientName && currentFilters.clientName !== 'all') {
@@ -143,6 +140,9 @@ function Dashboard({ user, error }: DashboardProps) {
         const countQuery = query(projectsCollection, ...queryConstraints);
         const totalCountSnapshot = await getCountFromServer(countQuery);
         const totalCount = totalCountSnapshot.data().count;
+
+        // Apply sorting
+        queryConstraints.push(orderBy("row_number", sort.direction));
 
         if (currentPage > 1 && lastDoc) {
             queryConstraints.push(startAfter(lastDoc));
@@ -170,27 +170,16 @@ function Dashboard({ user, error }: DashboardProps) {
             } as Project;
         });
         
-        // Client-side sort by row_number
-        projectList = projectList.sort((a, b) => {
-            const numA = parseInt(a.row_number.replace('PF', ''), 10);
-            const numB = parseInt(b.row_number.replace('PF', ''), 10);
-            return sort.direction === 'desc' ? numB - numA : numA - numB;
-        });
-
         if (currentPage === 1) {
             setDashboardProjects(projectList);
         } else {
-            setDashboardProjects(prev => [...prev, ...projectList].sort((a, b) => {
-               const numA = parseInt(a.row_number.replace('PF', ''), 10);
-               const numB = parseInt(b.row_number.replace('PF', ''), 10);
-               return sort.direction === 'desc' ? numB - numA : numA - numB;
-            }));
+            setDashboardProjects(prev => [...prev, ...projectList]);
         }
         setTotalCount(totalCount);
 
     } catch (error) {
          console.error("Failed to fetch client-side projects:", error);
-        toast({ title: "Error", description: `Could not fetch project data. ${error instanceof Error ? error.message : ''}`, variant: "destructive" });
+        toast({ title: "Error", description: `Could not fetch project data. This may require creating a new Firestore index. See console for details.`, variant: "destructive" });
         setDashboardProjects([]);
         setTotalCount(0);
     } finally {
@@ -251,7 +240,7 @@ function Dashboard({ user, error }: DashboardProps) {
         fetchClientSidePageData(activeRole, 1, currentFilters, null);
     // This effect should only re-run when these specific filters change, not on sort change.
     // eslint-disable-next-line react-hooks/exhaustive-deps
-    }, [activeRole, clientNameFilter, processFilter, isManagerOrAdmin]);
+    }, [activeRole, clientNameFilter, processFilter, isManagerOrAdmin, fetchClientSidePageData]);
 
 
   const handleFilterChange = () => {
@@ -675,5 +664,3 @@ function Dashboard({ user, error }: DashboardProps) {
     </div>
   );
 }
-
-    

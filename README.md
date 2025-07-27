@@ -34,3 +34,16 @@ GEMINI_API_KEY="your-api-key-here"
 ```
 
 The Genkit SDK will automatically use this environment variable to make calls to the Gemini API.
+
+### Firestore Index Requirement
+
+This application requires a specific Firestore composite index to efficiently query and sort data for the user dashboards.
+
+**If you see an error in the browser console about a missing index**, you MUST create it.
+
+1.  Look for an error message in your browser's developer console that starts with `FirebaseError: The query requires an index.`
+2.  The error message will contain a long URL. **Copy this entire URL.**
+3.  Paste the URL into a new browser tab and press Enter.
+4.  This will take you directly to the index creation screen in your Firebase project's console with all the fields pre-filled.
+5.  Click the **"Create Index"** button. The index will take a few minutes to build. Once it's ready, your application will be able to fetch data correctly.
+```
