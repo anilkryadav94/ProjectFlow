@@ -119,13 +119,13 @@ function Dashboard({ user, error }: DashboardProps) {
 
     try {
         const projectsCollection = collection(db, 'projects');
-        let baseConstraints: QueryConstraint[] = [];
+        const baseConstraints: QueryConstraint[] = [];
 
         // --- Role and Status Based Filtering ---
         if (role === 'Processor') {
             baseConstraints.push(where("processorId", "==", user.id));
             baseConstraints.push(where("workflowStatus", "==", "With Processor"));
-            baseConstraints.push(where("processing_status", "in", ["Pending", "On Hold", "Re-Work"]));
+            baseConstraints.push(where("processing_status", "in", ["Pending", "On Hold", "Re-Work", null, ""]));
         } else if (role === 'QA') {
             baseConstraints.push(where("qaId", "==", user.id));
             baseConstraints.push(where("workflowStatus", "==", "With QA"));
@@ -134,7 +134,7 @@ function Dashboard({ user, error }: DashboardProps) {
             baseConstraints.push(where("processing_status", "==", "Client Query"));
         }
         
-        let finalQueryConstraints = [...baseConstraints];
+        const finalQueryConstraints: QueryConstraint[] = [...baseConstraints];
 
         // --- Additional Dashboard Filters ---
         if (currentFilters.clientName && currentFilters.clientName !== 'all') {
@@ -239,6 +239,15 @@ function Dashboard({ user, error }: DashboardProps) {
         }
     }, [user.roles, searchParams, activeRole, loadColumnLayout]);
 
+    const handleFilterChange = React.useCallback(() => {
+        if (!activeRole) return;
+        setPage(1);
+        setDashboardProjects([]);
+        setLastVisible(null);
+        const currentFilters = { clientName: clientNameFilter, process: processFilter };
+        fetchClientSidePageData(activeRole, 1, currentFilters, null);
+    }, [activeRole, clientNameFilter, processFilter, fetchClientSidePageData]);
+
     React.useEffect(() => {
         if (!activeRole || isManagerOrAdmin) {
             if(isManagerOrAdmin) {
@@ -248,23 +257,8 @@ function Dashboard({ user, error }: DashboardProps) {
             }
             return;
         };
-        
-        setPage(1);
-        setDashboardProjects([]);
-        setLastVisible(null);
-        const currentFilters = { clientName: clientNameFilter, process: processFilter };
-        fetchClientSidePageData(activeRole, 1, currentFilters, null);
-    }, [activeRole, clientNameFilter, processFilter, isManagerOrAdmin, fetchClientSidePageData]);
-
-
-  const handleFilterChange = React.useCallback(() => {
-    if (!activeRole) return;
-    setPage(1);
-    setDashboardProjects([]);
-    setLastVisible(null);
-    const currentFilters = { clientName: clientNameFilter, process: processFilter };
-    fetchClientSidePageData(activeRole, 1, currentFilters, null);
-  }, [activeRole, clientNameFilter, processFilter, fetchClientSidePageData]);
+        handleFilterChange();
+    }, [activeRole, clientNameFilter, processFilter, isManagerOrAdmin, handleFilterChange]);
 
   const saveColumnLayout = (role: Role) => {
     localStorage.setItem(`columnLayout-${role}`, JSON.stringify(visibleColumnKeys));
@@ -678,5 +672,3 @@ function Dashboard({ user, error }: DashboardProps) {
     </div>
   );
 }
-
-    
