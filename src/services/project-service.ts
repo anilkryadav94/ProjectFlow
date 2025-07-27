@@ -31,7 +31,7 @@ function buildFilterConstraints(
         quickSearch?: string;
         searchColumn?: string;
         advanced?: { field: string; operator: string; value: any }[] | null;
-        roleFilter?: { role: Role; userName: string; };
+        roleFilter?: { role: Role; userName: string; userId: string; };
         clientName?: string;
         process?: string;
     }
@@ -45,14 +45,13 @@ function buildFilterConstraints(
         if (role === 'Processor') {
             andConstraints.push(where("processor", "==", userName));
             andConstraints.push(where("processing_status", "in", ["Pending", "On Hold", "Re-Work"]));
-
         } else if (role === 'QA') {
             andConstraints.push(where("qa", "==", userName));
             andConstraints.push(where("workflowStatus", "==", "With QA"));
-
         } else if (role === 'Case Manager') {
             andConstraints.push(where("case_manager", "==", userName));
-            andConstraints.push(where("processing_status", "==", "Client Query"));
+            andConstraints.push(where("qa_status", "==", "Client Query"));
+            andConstraints.push(where("clientquery_status", "in", [null, ""]));
         }
     } else { // Manager/Admin Search filters
         if (filters.advanced && filters.advanced.length > 0) {
@@ -339,7 +338,7 @@ export async function getPaginatedProjects(options: {
         quickSearch?: string;
         searchColumn?: string;
         advanced?: { field: string; operator: string; value: any }[] | null;
-        roleFilter?: { role: Role; userName: string; };
+        roleFilter?: { role: Role; userName: string; userId: string };
         clientName?: string;
         process?: string;
     };
@@ -392,7 +391,7 @@ export async function getProjectsForExport(options: {
         quickSearch?: string;
         searchColumn?: string;
         advanced?: { field: string; operator: string; value: any }[] | null;
-        roleFilter?: { role: Role; userName: string; };
+        roleFilter?: { role: Role; userName: string; userId: string };
         clientName?: string;
         process?: string;
     };
@@ -420,5 +419,3 @@ export async function getProjectsForExport(options: {
         } as Project;
     });
 }
-
-    
