@@ -1,4 +1,5 @@
-import { db } from "@/lib/db";
+
+import { db } from "@/lib/firebase";
 import { collection, getDocs, doc, writeBatch, updateDoc, serverTimestamp, addDoc, getDoc, query, orderBy, limit, Timestamp, where, startAfter, getCountFromServer, QueryConstraint, or, and } from "firebase/firestore";
 import type { Project, Role, User } from "@/lib/data";
 
@@ -63,7 +64,14 @@ function buildFilterConstraints(
             const isDate = dateFields.includes(criterion.field);
             let value = criterion.value;
             if (isDate && value && typeof value === 'string') {
-                value = Timestamp.fromDate(new Date(value));
+                try {
+                  const date = new Date(value);
+                  if(!isNaN(date.getTime())) {
+                    value = Timestamp.fromDate(date);
+                  }
+                } catch (e) {
+                  // ignore invalid date
+                }
             }
             
             switch (criterion.operator) {
@@ -72,7 +80,7 @@ function buildFilterConstraints(
                     andConstraints.push(where(criterion.field, '==', value));
                     break;
                 case 'in':
-                     const values = typeof value === 'string' ? value.split(',').map(s => s.trim()) : [];
+                     const values = typeof value === 'string' ? value.split(',').map((s:string) => s.trim()) : [];
                      if (values.length > 0) {
                         andConstraints.push(where(criterion.field, 'in', values));
                      }

@@ -1,4 +1,5 @@
-import { db } from '@/lib/db';
+
+import { db } from '@/lib/firebase';
 import { doc, getDoc, setDoc, collection, getDocs, updateDoc, query, where, writeBatch } from 'firebase/firestore';
 import type { User, Role } from '@/lib/data';
 import type { User as FirebaseUser } from 'firebase/auth';
@@ -37,18 +38,26 @@ export async function getAllUsers(): Promise<User[]> {
 }
 
 export async function addUserDocument(userData: Omit<User, 'id' | 'password'>): Promise<void> {
+    // This function creates the user document in Firestore.
+    // The corresponding Firebase Auth user must be created separately in the Firebase console.
     const usersRef = collection(db, "users");
     const q = query(usersRef, where("email", "==", userData.email));
     const querySnapshot = await getDocs(q);
+
     if (!querySnapshot.empty) {
         throw new Error(`A user with email ${userData.email} already has a data document.`);
     }
 
+    // We can't create the user with a real UID from here, so we add a temporary document.
+    // This is a known limitation when creating users from a client-side admin panel.
+    // The admin will need to create the user in Firebase Auth console,
+    // get the new UID, and then update this document ID in Firestore.
     const tempId = `NEEDS_UID__${userData.email.replace(/@.*/, "")}`;
     const newUserDocRef = doc(db, 'users', tempId);
     await setDoc(newUserDocRef, userData);
     console.warn(`Firestore user document created for ${userData.email}. Please create a user in Firebase Auth and update this document's ID to the new UID.`);
 }
+
 
 export async function updateUserDocument(userId: string, data: Partial<Omit<User, 'id' | 'password'>>): Promise<void> {
     if (Object.keys(data).length > 0) {
@@ -57,6 +66,7 @@ export async function updateUserDocument(userId: string, data: Partial<Omit<User
     }
 }
 
+
 export async function addBulkUserDocuments(newUsers: Omit<User, 'id' | 'password'>[]): Promise<{ addedCount: number; errors: any[] }> {
     console.warn("Bulk user add only creates Firestore documents. Corresponding Firebase Auth users must be created manually.");
     
@@ -64,6 +74,9 @@ export async function addBulkUserDocuments(newUsers: Omit<User, 'id' | 'password
     const errors: any[] = [];
     const batch = writeBatch(db);
     
+    // This is a simplified approach for client-side bulk-add.
+    // It creates documents with temporary IDs. Admins must then create auth users
+    // and update these document IDs.
     for (const user of newUsers) {
        try {
             const tempId = `NEEDS_UID__${user.email.replace(/@.*/, "")}_${Date.now()}`;

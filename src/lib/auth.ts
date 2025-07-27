@@ -1,9 +1,10 @@
+
 import { 
     signInWithEmailAndPassword, 
     signOut, 
     onAuthStateChanged as onFirebaseAuthStateChanged,
 } from 'firebase/auth';
-import { auth } from './db';
+import { auth } from './firebase';
 import type { User, Role } from './data';
 import * as UserService from '@/services/user-service';
 
