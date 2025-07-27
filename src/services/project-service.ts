@@ -52,14 +52,16 @@ function buildFilterConstraints(
             andConstraints.push(where("caseManagerId", "==", userId));
             andConstraints.push(where("processing_status", "==", "Client Query"));
         }
+    } else {
+        // Apply these filters only if it's NOT a role-based dashboard view
+        if (filters.clientName && filters.clientName !== 'all') {
+            andConstraints.push(where('client_name', '==', filters.clientName));
+        }
+        if (filters.process && filters.process !== 'all') {
+            andConstraints.push(where('process', '==', filters.process));
+        }
     }
 
-    if (filters.clientName && filters.clientName !== 'all') {
-        andConstraints.push(where('client_name', '==', filters.clientName));
-    }
-    if (filters.process && filters.process !== 'all') {
-        andConstraints.push(where('process', '==', filters.process));
-    }
 
     if (filters.advanced && filters.advanced.length > 0) {
         filters.advanced.forEach(criterion => {
@@ -152,15 +154,19 @@ export async function bulkUpdateProjects(projectIds: string[], updateData: Parti
     const batch = writeBatch(db);
     const users = await getAllUsers();
     
-    const dataToUpdate: Partial<Project> = { ...updateData };
+    const dataToUpdate: { [key: string]: any } = {};
 
+    // Copy all provided fields from updateData
+    Object.assign(dataToUpdate, updateData);
+
+    // If an ID is provided, also update the corresponding name field
     if (updateData.processorId) {
         dataToUpdate.processor = users.find(u => u.id === updateData.processorId)?.name || '';
         dataToUpdate.workflowStatus = 'With Processor';
     }
     if (updateData.qaId) {
         dataToUpdate.qa = users.find(u => u.id === updateData.qaId)?.name || '';
-        dataToUpdate.workflowStatus = 'With QA';
+        if (!dataToUpdate.workflowStatus) dataToUpdate.workflowStatus = 'With QA';
     }
     if (updateData.caseManagerId) {
         dataToUpdate.case_manager = users.find(u => u.id === updateData.caseManagerId)?.name || '';
@@ -338,6 +344,8 @@ export async function getPaginatedProjects(options: {
     const { page, limit: pageSize, filters, sort } = options;
     const projectsCollection = collection(db, "projects");
 
+    // Pass all filters to the builder. The builder now correctly handles
+    // ignoring clientName/process filters when a roleFilter is active.
     const filterConstraints = buildFilterConstraints(filters);
     
     let queryConstraints: QueryConstraint[] = [];
@@ -423,5 +431,3 @@ export async function getProjectsForExport(options: {
         } as Project;
     });
 }
-
-    
