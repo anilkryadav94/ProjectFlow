@@ -121,13 +121,15 @@ function Dashboard({ user, error }: DashboardProps) {
         const projectsCollection = collection(db, 'projects');
         let queryConstraints: QueryConstraint[] = [];
 
-        // Role-based filtering using UIDs
         if (role === 'Processor') {
             queryConstraints.push(where("processorId", "==", user.id));
+            queryConstraints.push(where("workflowStatus", "==", "With Processor"));
         } else if (role === 'QA') {
             queryConstraints.push(where("qaId", "==", user.id));
+            queryConstraints.push(where("workflowStatus", "==", "With QA"));
         } else if (role === 'Case Manager') {
             queryConstraints.push(where("caseManagerId", "==", user.id));
+            queryConstraints.push(where("processing_status", "==", "Client Query"));
         }
         
         if (currentFilters.clientName && currentFilters.clientName !== 'all') {
@@ -137,23 +139,22 @@ function Dashboard({ user, error }: DashboardProps) {
             queryConstraints.push(where('process', '==', currentFilters.process));
         }
 
+        queryConstraints.push(orderBy("row_number", "desc"));
+
         const countQuery = query(projectsCollection, ...queryConstraints);
         const totalCountSnapshot = await getCountFromServer(countQuery);
         const total = totalCountSnapshot.data().count;
         setTotalCount(total);
-        if (total === 0) {
+        if (total === 0 && currentPage === 1) {
             setDashboardProjects([]);
             setIsLoading(false);
             return;
         }
 
-        // Apply sorting
-        queryConstraints.push(orderBy("row_number", sort.direction));
-
         if (currentPage > 1 && lastDoc) {
             queryConstraints.push(startAfter(lastDoc));
         }
-        queryConstraints.push(limit(20)); // Use 20 as per spec
+        queryConstraints.push(limit(20)); 
         
         const finalQuery = query(projectsCollection, ...queryConstraints);
         const projectSnapshot = await getDocs(finalQuery);
@@ -190,7 +191,7 @@ function Dashboard({ user, error }: DashboardProps) {
     } finally {
         setIsLoading(false);
     }
-  }, [user, toast, sort.direction]);
+  }, [user, toast]);
 
 
     const fetchInitialData = React.useCallback(async () => {
@@ -246,19 +247,19 @@ function Dashboard({ user, error }: DashboardProps) {
         setLastVisible(null);
         const currentFilters = { clientName: clientNameFilter, process: processFilter };
         fetchClientSidePageData(activeRole, 1, currentFilters, null);
-    // This effect should only re-run when these specific filters change, not on sort change.
+    // This effect should only re-run when these specific filters change.
     // eslint-disable-next-line react-hooks/exhaustive-deps
-    }, [activeRole, clientNameFilter, processFilter, isManagerOrAdmin]);
+    }, [activeRole, clientNameFilter, processFilter, isManagerOrAdmin, fetchClientSidePageData]);
 
 
-  const handleFilterChange = () => {
+  const handleFilterChange = React.useCallback(() => {
     if (!activeRole) return;
     setPage(1);
     setDashboardProjects([]);
     setLastVisible(null);
     const currentFilters = { clientName: clientNameFilter, process: processFilter };
     fetchClientSidePageData(activeRole, 1, currentFilters, null);
-  };
+  }, [activeRole, clientNameFilter, processFilter, fetchClientSidePageData]);
 
   const saveColumnLayout = (role: Role) => {
     localStorage.setItem(`columnLayout-${role}`, JSON.stringify(visibleColumnKeys));
