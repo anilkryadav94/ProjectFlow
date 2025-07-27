@@ -113,7 +113,7 @@ function Dashboard({ user, error }: DashboardProps) {
     }
   }, [defaultCaseManagerColumns, defaultManagerAdminColumns, defaultProcessorQAColumns]);
 
-  const fetchClientSidePageData = React.useCallback(async (role: Role, currentPage: number, currentFilters: any, lastDoc: DocumentData | null) => {
+ const fetchClientSidePageData = React.useCallback(async (role: Role, currentPage: number, currentFilters: any, lastDoc: DocumentData | null) => {
     if (!user) return;
     setIsLoading(true);
 
@@ -121,9 +121,11 @@ function Dashboard({ user, error }: DashboardProps) {
         const projectsCollection = collection(db, 'projects');
         let queryConstraints: QueryConstraint[] = [];
 
+        // --- Role and Status Based Filtering ---
         if (role === 'Processor') {
             queryConstraints.push(where("processorId", "==", user.id));
             queryConstraints.push(where("workflowStatus", "==", "With Processor"));
+            queryConstraints.push(where("processing_status", "in", ["Pending", "On Hold", "Re-Work"]));
         } else if (role === 'QA') {
             queryConstraints.push(where("qaId", "==", user.id));
             queryConstraints.push(where("workflowStatus", "==", "With QA"));
@@ -132,6 +134,7 @@ function Dashboard({ user, error }: DashboardProps) {
             queryConstraints.push(where("processing_status", "==", "Client Query"));
         }
         
+        // --- Additional Dashboard Filters ---
         if (currentFilters.clientName && currentFilters.clientName !== 'all') {
              queryConstraints.push(where('client_name', '==', currentFilters.clientName));
         }
@@ -139,18 +142,21 @@ function Dashboard({ user, error }: DashboardProps) {
             queryConstraints.push(where('process', '==', currentFilters.process));
         }
 
+        // --- Sorting ---
         queryConstraints.push(orderBy("row_number", "desc"));
 
-        const countQuery = query(projectsCollection, ...queryConstraints);
+        const countQuery = query(projectsCollection, ...queryConstraints.filter(c => c.type !== 'orderBy')); // Count without ordering
         const totalCountSnapshot = await getCountFromServer(countQuery);
         const total = totalCountSnapshot.data().count;
         setTotalCount(total);
+        
         if (total === 0 && currentPage === 1) {
             setDashboardProjects([]);
             setIsLoading(false);
             return;
         }
 
+        // --- Pagination ---
         if (currentPage > 1 && lastDoc) {
             queryConstraints.push(startAfter(lastDoc));
         }
@@ -183,9 +189,13 @@ function Dashboard({ user, error }: DashboardProps) {
             setDashboardProjects(prev => [...prev, ...projectList]);
         }
 
-    } catch (error) {
-         console.error("Failed to fetch client-side projects:", error);
-        toast({ title: "Error", description: `Could not fetch project data. This may require creating a new Firestore index. See console for details.`, variant: "destructive" });
+    } catch (error: any) {
+        console.error("Failed to fetch client-side projects:", error);
+        if (error.code === 'failed-precondition') {
+             toast({ title: "Firestore Index Required", description: `A database index is needed for this query. Please check the browser console for a link to create it.`, variant: "destructive", duration: 10000 });
+        } else {
+             toast({ title: "Error", description: `Could not fetch project data: ${error.message}`, variant: "destructive" });
+        }
         setDashboardProjects([]);
         setTotalCount(0);
     } finally {
@@ -249,7 +259,7 @@ function Dashboard({ user, error }: DashboardProps) {
         fetchClientSidePageData(activeRole, 1, currentFilters, null);
     // This effect should only re-run when these specific filters change.
     // eslint-disable-next-line react-hooks/exhaustive-deps
-    }, [activeRole, clientNameFilter, processFilter, isManagerOrAdmin, fetchClientSidePageData]);
+    }, [activeRole, clientNameFilter, processFilter, isManagerOrAdmin]);
 
 
   const handleFilterChange = React.useCallback(() => {
