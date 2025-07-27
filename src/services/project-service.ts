@@ -31,9 +31,9 @@ function buildFilterConstraints(
         quickSearch?: string;
         searchColumn?: string;
         advanced?: { field: string; operator: string; value: any }[] | null;
+        roleFilter?: { role: Role; userName: string; };
         clientName?: string;
         process?: string;
-        roleFilter?: { role: Role; userName: string; userId: string };
     }
 ): QueryConstraint[] {
     const andConstraints: QueryConstraint[] = [];
@@ -44,15 +44,17 @@ function buildFilterConstraints(
         const { role, userName } = filters.roleFilter;
         if (role === 'Processor') {
             andConstraints.push(where("processor", "==", userName));
+            andConstraints.push(where("processing_status", "in", ["Pending", "On Hold", "Re-Work"]));
+
         } else if (role === 'QA') {
             andConstraints.push(where("qa", "==", userName));
+            andConstraints.push(where("workflowStatus", "==", "With QA"));
+
         } else if (role === 'Case Manager') {
             andConstraints.push(where("case_manager", "==", userName));
+            andConstraints.push(where("processing_status", "==", "Client Query"));
         }
-    }
-
-    // Manager/Admin Search filters
-    if (!filters.roleFilter) {
+    } else { // Manager/Admin Search filters
         if (filters.advanced && filters.advanced.length > 0) {
             filters.advanced.forEach(criterion => {
                 if (!criterion.field || !criterion.operator) return;
@@ -153,20 +155,27 @@ export async function bulkUpdateProjects(projectIds: string[], updateData: Parti
             dataToUpdate[typedKey] = updateData[typedKey];
         }
     });
+    
+    // Ensure name and ID are updated together
+    if (updateData.processor) {
+        dataToUpdate.processorId = users.find(u => u.name === updateData.processor)?.id || '';
+    }
+    if (updateData.qa) {
+        dataToUpdate.qaId = users.find(u => u.name === updateData.qa)?.id || '';
+    }
+    if (updateData.case_manager) {
+        dataToUpdate.caseManagerId = users.find(u => u.name === updateData.case_manager)?.id || '';
+    }
 
-    if (updateData.processorId) {
-        dataToUpdate.processor = users.find(u => u.id === updateData.processorId)?.name || '';
+    if (dataToUpdate.processor) {
         dataToUpdate.workflowStatus = 'With Processor';
         dataToUpdate.processing_status = 'Pending';
     }
-    if (updateData.qaId) {
-        dataToUpdate.qa = users.find(u => u.id === updateData.qaId)?.name || '';
+    if (dataToUpdate.qa) {
          if (!dataToUpdate.workflowStatus) dataToUpdate.workflowStatus = 'With QA';
          if (!dataToUpdate.qa_status) dataToUpdate.qa_status = 'Pending';
     }
-    if (updateData.caseManagerId) {
-        dataToUpdate.case_manager = users.find(u => u.id === updateData.caseManagerId)?.name || '';
-    }
+    
 
     projectIds.forEach(id => {
         const projectRef = doc(db, 'projects', id);
@@ -330,7 +339,7 @@ export async function getPaginatedProjects(options: {
         quickSearch?: string;
         searchColumn?: string;
         advanced?: { field: string; operator: string; value: any }[] | null;
-        roleFilter?: { role: Role; userName: string; userId: string; };
+        roleFilter?: { role: Role; userName: string; };
         clientName?: string;
         process?: string;
     };
@@ -339,11 +348,7 @@ export async function getPaginatedProjects(options: {
     const { page, limit: pageSize, filters, sort } = options;
     const projectsCollection = collection(db, "projects");
 
-    let queryConstraints: QueryConstraint[] = [];
-    const filterConstraints = buildFilterConstraints(filters);
-    if(filterConstraints.length > 0) {
-        queryConstraints.push(and(...filterConstraints));
-    }
+    let queryConstraints: QueryConstraint[] = buildFilterConstraints(filters);
     
     // Count query should use the same filters
     const countQuery = query(projectsCollection, ...queryConstraints);
@@ -387,7 +392,7 @@ export async function getProjectsForExport(options: {
         quickSearch?: string;
         searchColumn?: string;
         advanced?: { field: string; operator: string; value: any }[] | null;
-        roleFilter?: { role: Role; userName: string; userId: string };
+        roleFilter?: { role: Role; userName: string; };
         clientName?: string;
         process?: string;
     };
@@ -397,13 +402,7 @@ export async function getProjectsForExport(options: {
     const { filters, sort, user } = options;
     const projectsCollection = collection(db, "projects");
     
-    const filterConstraints = buildFilterConstraints(filters);
-
-
-    let queryConstraints: QueryConstraint[] = [];
-    if (filterConstraints.length > 0) {
-        queryConstraints.push(and(...filterConstraints));
-    }
+    const queryConstraints = buildFilterConstraints(filters);
     
     if (sort.key && sort.key !== 'id') {
         queryConstraints.push(orderBy(sort.key, sort.direction));
@@ -421,3 +420,5 @@ export async function getProjectsForExport(options: {
         } as Project;
     });
 }
+
+    
