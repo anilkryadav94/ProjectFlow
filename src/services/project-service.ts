@@ -2,6 +2,7 @@
 import { db } from "@/lib/firebase";
 import { collection, getDocs, doc, writeBatch, updateDoc, serverTimestamp, addDoc, getDoc, query, orderBy, limit, Timestamp, where, startAfter, getCountFromServer, QueryConstraint, or, and } from "firebase/firestore";
 import type { Project, Role, User } from "@/lib/data";
+import { getAllUsers } from "./user-service";
 
 
 // == HELPERS ==
@@ -145,9 +146,23 @@ export async function getProjectById(id: string): Promise<Project | undefined> {
 
 export async function bulkUpdateProjects(projectIds: string[], updateData: Partial<Project>): Promise<void> {
     const batch = writeBatch(db);
+    const users = await getAllUsers();
+    
+    const dataToUpdate: Partial<Project> = { ...updateData };
+
+    if (updateData.processorId) {
+        dataToUpdate.processor = users.find(u => u.id === updateData.processorId)?.name || '';
+    }
+    if (updateData.qaId) {
+        dataToUpdate.qa = users.find(u => u.id === updateData.qaId)?.name || '';
+    }
+    if (updateData.caseManagerId) {
+        dataToUpdate.case_manager = users.find(u => u.id === updateData.caseManagerId)?.name || '';
+    }
+
     projectIds.forEach(id => {
         const projectRef = doc(db, 'projects', id);
-        batch.update(projectRef, updateData);
+        batch.update(projectRef, dataToUpdate);
     });
     await batch.commit();
 }
@@ -176,6 +191,18 @@ export async function updateProject(
         }
     }
     
+    // If name is updated, update the corresponding ID
+    const users = await getAllUsers();
+    if (dataToUpdate.processor) {
+        dataToUpdate.processorId = users.find(u => u.name === dataToUpdate.processor)?.id || '';
+    }
+    if (dataToUpdate.qa) {
+        dataToUpdate.qaId = users.find(u => u.name === dataToUpdate.qa)?.id || '';
+    }
+    if (dataToUpdate.case_manager) {
+        dataToUpdate.caseManagerId = users.find(u => u.name === dataToUpdate.case_manager)?.id || '';
+    }
+
     const dateFields: (keyof Project)[] = ['received_date', 'allocation_date', 'processing_date', 'qa_date', 'reportout_date', 'client_response_date'];
     for (const dateField of dateFields) {
         if (dataToUpdate[dateField] && typeof dataToUpdate[dateField] === 'string') {
@@ -242,6 +269,7 @@ export async function addRows(projectsToAdd: Partial<Project>[]): Promise<number
   const projectsCollection = collection(db, 'projects');
   const batch = writeBatch(db);
   let currentRowNumber = await getNextRowNumber();
+  const users = await getAllUsers();
   
   for (const projectData of projectsToAdd) {
       const newProjectRef = doc(projectsCollection);
@@ -255,6 +283,16 @@ export async function addRows(projectsToAdd: Partial<Project>[]): Promise<number
 
       const finalProjectData = { ...newProject, ...projectData, row_number: currentRowNumber };
       
+      if (finalProjectData.processor) {
+          finalProjectData.processorId = users.find(u => u.name === finalProjectData.processor)?.id || '';
+      }
+      if (finalProjectData.qa) {
+          finalProjectData.qaId = users.find(u => u.name === finalProjectData.qa)?.id || '';
+      }
+      if (finalProjectData.case_manager) {
+          finalProjectData.caseManagerId = users.find(u => u.name === finalProjectData.case_manager)?.id || '';
+      }
+
       const yearPrefix = currentRowNumber.slice(0, 4);
       const sequence = parseInt(currentRowNumber.slice(4), 10) + 1;
       currentRowNumber = `${yearPrefix}${sequence.toString().padStart(5, '0')}`;
