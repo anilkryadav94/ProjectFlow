@@ -298,17 +298,18 @@ export async function updateProject(
     }
 
     if (submitAction === 'client_submit') {
-      dataToUpdate.workflowStatus = 'With QA'; // Return to QA after client responds
+      dataToUpdate.workflowStatus = 'With QA'; 
+      dataToUpdate.qa_status = 'Pending';
       dataToUpdate.client_response_date = serverTimestamp();
     } else if (submitAction === 'submit_for_qa') {
         dataToUpdate.workflowStatus = 'With QA';
         dataToUpdate.qa_status = 'Pending';
         dataToUpdate.processing_date = serverTimestamp();
     } else if (submitAction === 'submit_qa') {
-        if (dataToUpdate.qa_status === 'Client Query') {
+        if (clientData.qa_status === 'Client Query') {
              dataToUpdate.workflowStatus = 'With Client';
-             dataToUpdate.clientquery_status = 'Pending'; // Explicitly set to pending
-        } else if (dataToUpdate.qa_status === 'Complete') {
+             dataToUpdate.clientquery_status = 'Pending';
+        } else if (clientData.qa_status === 'Complete') {
             dataToUpdate.workflowStatus = 'Completed';
         } else { // For 'NTP', 'Already Processed'
             dataToUpdate.workflowStatus = 'Completed';

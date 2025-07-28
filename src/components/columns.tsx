@@ -77,12 +77,6 @@ export const allColumns: { key: keyof Project | 'actions' | 'select', header: st
         } else if (project.workflowStatus === 'With QA') {
             statusText = `QA: ${project.qa_status}`;
             statusColorClass = statusColors[project.qa_status] || statusColors['With QA'];
-        } else if (project.workflowStatus === 'With Client') {
-            statusText = 'With Client';
-            statusColorClass = statusColors['With Client'];
-        } else if (project.workflowStatus === 'Completed') {
-             statusText = `QA: ${project.qa_status}`;
-             statusColorClass = statusColors['Completed'];
         }
         
         return (
