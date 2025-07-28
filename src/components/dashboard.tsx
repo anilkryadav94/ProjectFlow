@@ -76,7 +76,7 @@ function Dashboard({ user, error }: DashboardProps) {
   const [processFilter, setProcessFilter] = React.useState<string | 'all'>('all');
   const [rowSelection, setRowSelection] = React.useState<Record<string, boolean>>({});
   const [selectedFile, setSelectedFile] = React.useState<File | null>(null);
-  const [isUploading, setIsUploading] = React.useState(isUploading);
+  const [isUploading, setIsUploading] = React.useState(false);
   const [isDownloading, setIsDownloading] = React.useState(false);
   
   const [isEditDialogOpen, setIsEditDialogOpen] = React.useState(false);
@@ -621,4 +621,3 @@ function Dashboard({ user, error }: DashboardProps) {
   );
 }
 
-    
