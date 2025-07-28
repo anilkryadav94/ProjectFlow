@@ -71,6 +71,11 @@ export async function getUsers(): Promise<User[]> {
     return UserService.getAllUsers();
 }
 
+export async function getClients(): Promise<User[]> {
+    return UserService.getClients();
+}
+
+
 export async function addUser(email: string, password: string, name: string, roles: Role[]): Promise<void> {
     const userCredential = await createUserWithEmailAndPassword(auth, email, password);
     const firebaseUser = userCredential.user;
@@ -97,3 +102,5 @@ export async function updateUser(userId: string, data: { name?: string, roles?: 
 export async function addBulkUsers(newUsers: (Omit<User, 'id'|'password'> & { password?: string })[]): Promise<{ addedCount: number, errors: any[] }> {
     return UserService.addBulkUserDocuments(newUsers);
 }
+
+    

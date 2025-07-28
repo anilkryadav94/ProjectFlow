@@ -13,7 +13,7 @@ import { useToast } from '@/hooks/use-toast';
 import { FileUp, Loader2, Upload, X, FileDown, Rows, Save, FileSpreadsheet, BarChart } from 'lucide-react';
 import { AdvancedSearchForm, type SearchCriteria } from './advanced-search-form';
 import { useSearchParams, useRouter } from 'next/navigation';
-import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from './ui/card';
+import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from '@/components/ui/card';
 import { cn } from '@/lib/utils';
 import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from './ui/accordion';
 import { EditProjectDialog } from './edit-project-dialog';
@@ -21,7 +21,7 @@ import { AddRowsDialog } from './add-rows-dialog';
 import { getProjectsForExport, bulkUpdateProjects } from '@/app/actions';
 import { ColumnSelectDialog } from './column-select-dialog';
 import { differenceInBusinessDays } from 'date-fns';
-import { getUsers } from '@/lib/auth';
+import { getUsers, getClients } from '@/lib/auth';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { getPaginatedProjects } from '@/services/project-service';
 
@@ -112,7 +112,7 @@ function Dashboard({ user, error }: DashboardProps) {
     }
   }, [defaultCaseManagerColumns, defaultManagerAdminColumns, defaultProcessorQAColumns]);
 
-  const fetchDashboardData = React.useCallback(async (role: Role, currentPage: number, currentSort: any) => {
+  const fetchDashboardData = React.useCallback(async (role: Role, currentPage: number, currentSort: any, currentClientFilter: string, currentProcessFilter: string) => {
     if (!user) return;
     setIsLoading(true);
 
@@ -123,6 +123,8 @@ function Dashboard({ user, error }: DashboardProps) {
             sort: currentSort,
             filters: {
                 roleFilter: { role: role, userName: user.name, userId: user.id },
+                clientName: currentClientFilter === 'all' ? undefined : currentClientFilter,
+                process: currentProcessFilter === 'all' ? undefined : currentProcessFilter,
             }
         });
 
@@ -149,9 +151,9 @@ function Dashboard({ user, error }: DashboardProps) {
     const fetchInitialData = React.useCallback(async () => {
         setIsLoading(true);
         try {
-            const allUsers = await getUsers();
+            const [allUsers, clientUsers] = await Promise.all([getUsers(), getClients()]);
             setDropdownOptions({
-                clientNames: [...new Set(allUsers.map(u => u.name).filter(Boolean))].sort(),
+                clientNames: clientUsers.map(u => u.name).sort(),
                 processes: ['Patent', 'TM', 'IDS', 'Project'] as ProcessType[],
                 processors: allUsers.filter(u => u.roles.includes('Processor')).map(u => ({ id: u.id, name: u.name })).sort((a,b) => a.name.localeCompare(b.name)),
                 qas: allUsers.filter(u => u.roles.includes('QA')).map(u => ({ id: u.id, name: u.name })).sort((a,b) => a.name.localeCompare(b.name)),
@@ -188,13 +190,10 @@ function Dashboard({ user, error }: DashboardProps) {
             setIsLoading(false);
             return;
         };
-        fetchDashboardData(activeRole, page, sort);
-    }, [activeRole, page, sort, fetchDashboardData]);
+        fetchDashboardData(activeRole, page, sort, clientNameFilter, processFilter);
+    }, [activeRole, page, sort, clientNameFilter, processFilter, fetchDashboardData]);
     
-    // Effect to reset page to 1 when filters change
-    React.useEffect(() => {
-        setPage(1);
-    }, [clientNameFilter, processFilter]);
+    // Effect to reset page to 1 when filters change - this is now handled by the main effect.
 
 
   const saveColumnLayout = (role: Role) => {
@@ -246,7 +245,7 @@ function Dashboard({ user, error }: DashboardProps) {
                 // const result = await addRows(projectsToAdd);
                 // if (result.success) {
                 //     toast({ title: "Bulk Add Complete", description: `${result.addedCount} projects have been added.` });
-                //     if (activeRole) fetchDashboardData(activeRole, 1, sort);
+                //     if (activeRole) fetchDashboardData(activeRole, 1, sort, clientNameFilter, processFilter);
                 // } else {
                 //     throw new Error(result.error || "An unknown error occurred during upload.");
                 // }
@@ -278,9 +277,6 @@ function Dashboard({ user, error }: DashboardProps) {
         params.set('quickSearch', search);
         params.set('searchColumn', searchColumn);
         router.push(`/search?${params.toString()}`);
-    } else if (activeRole) {
-        // Client-side search can be implemented here if needed, for now it refetches
-        fetchDashboardData(activeRole, 1, sort);
     }
   };
   
@@ -321,14 +317,14 @@ function Dashboard({ user, error }: DashboardProps) {
     return { count: outsideTatCount, greeting: `Hi ${user.name}, ${greeting}!`, plural: outsideTatCount === 1 ? 'Email' : 'Emails' };
   }, [activeRole, dashboardProjects, user.name]);
 
-  const handleNonManagerDownload = async () => {
+  const handleDashboardDownload = async () => {
         const filters = {
             roleFilter: activeRole ? { role: activeRole, userName: user.name, userId: user.id } : undefined,
-            clientName: clientNameFilter,
-            process: processFilter,
+            clientName: clientNameFilter === 'all' ? undefined : clientNameFilter,
+            process: processFilter === 'all' ? undefined : processFilter,
         };
         
-        const projectsToExport = await getProjectsForExport({ filters: filters as any, sort, user });
+        const projectsToExport = await getProjectsForExport({ filters: filters as any, sort, user, visibleColumns: visibleColumnKeys });
 
         if (projectsToExport.length === 0) {
             toast({ title: "No data to export", variant: "destructive" });
@@ -358,7 +354,7 @@ function Dashboard({ user, error }: DashboardProps) {
             await bulkUpdateProjects(projectIds, { [bulkUpdateField]: bulkUpdateValue } as any);
 
             toast({ title: "Success", description: `${projectIds.length} projects have been updated.` });
-            if (activeRole) fetchDashboardData(activeRole, page, sort);
+            if (activeRole) fetchDashboardData(activeRole, page, sort, clientNameFilter, processFilter);
             setRowSelection({});
             setBulkUpdateValue('');
 
@@ -416,7 +412,7 @@ function Dashboard({ user, error }: DashboardProps) {
         {editingProject && (
              <EditProjectDialog
                 isOpen={isEditDialogOpen} onOpenChange={setIsEditDialogOpen} project={editingProject}
-                onUpdateSuccess={() => fetchDashboardData(activeRole!, page, sort)}
+                onUpdateSuccess={() => fetchDashboardData(activeRole!, page, sort, clientNameFilter, processFilter)}
                 userRole={activeRole} projectQueue={dashboardProjects} onNavigate={setEditingProject}
                 clientNames={dropdownOptions.clientNames.map(c => c)}
                 processors={dropdownOptions.processors.map(p => p.name)}
@@ -425,8 +421,8 @@ function Dashboard({ user, error }: DashboardProps) {
                 processes={dropdownOptions.processes}
             />
         )}
-        {sourceProject && ( <AddRowsDialog isOpen={isAddRowsDialogOpen} onOpenChange={setIsAddRowsDialogOpen} sourceProject={sourceProject} onAddRowsSuccess={() => fetchDashboardData(activeRole!, 1, sort)} /> )}
-        <ColumnSelectDialog isOpen={isColumnSelectOpen} onOpenChange={setIsColumnSelectOpen} allColumns={allColumns} visibleColumns={visibleColumnKeys} setVisibleColumns={setVisibleColumnKeys} />
+        {sourceProject && ( <AddRowsDialog isOpen={isAddRowsDialogOpen} onOpenChange={setIsAddRowsDialogOpen} sourceProject={sourceProject} onAddRowsSuccess={() => fetchDashboardData(activeRole!, 1, sort, clientNameFilter, processFilter)} /> )}
+        <ColumnSelectDialog isOpen={isColumnSelectOpen} onOpenChange={setIsColumnSelectOpen} allColumns={allColumns} visibleColumns={visibleColumnKeys} setVisibleColumns={setVisibleColumns} />
 
         <Header 
             user={user} activeRole={activeRole} setActiveRole={handleRoleSwitch}
@@ -434,7 +430,7 @@ function Dashboard({ user, error }: DashboardProps) {
             onQuickSearch={handleQuickSearch} clientNameFilter={clientNameFilter} setClientNameFilter={setClientNameFilter}
             processFilter={processFilter} setProcessFilter={setProcessFilter} isManagerOrAdmin={isManagerOrAdmin}
             showManagerSearch={activeRole === 'Manager'}
-            clientNames={dropdownOptions.clientNames.map(c => c)} processes={dropdownOptions.processes}
+            clientNames={dropdownOptions.clientNames} processes={dropdownOptions.processes}
         />
         
         {showSubHeader && (
@@ -463,7 +459,7 @@ function Dashboard({ user, error }: DashboardProps) {
                             </Button>
                         </>
                     )}
-                    <Button variant="outline" className="h-7 px-2 text-xs" onClick={handleNonManagerDownload} disabled={dashboardProjects.length === 0 || isLoading}>
+                    <Button variant="outline" className="h-7 px-2 text-xs" onClick={handleDashboardDownload} disabled={dashboardProjects.length === 0 || isLoading}>
                         <FileSpreadsheet className="mr-1.5 h-3.5 w-3.5" />
                          Download
                     </Button>
@@ -540,7 +536,7 @@ function Dashboard({ user, error }: DashboardProps) {
                         <AccordionTrigger className="px-4 py-3 hover:no-underline">Advanced Search</AccordionTrigger>
                         <AccordionContent>
                            <div className="p-1">
-                             <AdvancedSearchForm onSearch={handleAdvancedSearch} initialCriteria={null} processors={dropdownOptions.processors.map(p=>p.name)} qas={dropdownOptions.qas.map(q=>q.name)} clientNames={dropdownOptions.clientNames.map(c=>c)} processes={dropdownOptions.processes} />
+                             <AdvancedSearchForm onSearch={handleAdvancedSearch} initialCriteria={null} processors={dropdownOptions.processors.map(p=>p.name)} qas={dropdownOptions.qas.map(q=>q.name)} clientNames={dropdownOptions.clientNames} processes={dropdownOptions.processes} />
                            </div>
                         </AccordionContent>
                     </AccordionItem>
@@ -572,7 +568,7 @@ function Dashboard({ user, error }: DashboardProps) {
                                     </SelectTrigger>
                                     <SelectContent>
                                         {selectedBulkUpdateField?.options.map(opt => (
-                                            <SelectItem key={opt.name} value={opt.name}>{opt.name}</SelectItem>
+                                            <SelectItem key={opt.id} value={opt.name}>{opt.name}</SelectItem>
                                         ))}
                                     </SelectContent>
                                 </Select>
@@ -604,3 +600,5 @@ function Dashboard({ user, error }: DashboardProps) {
     </div>
   );
 }
+
+    

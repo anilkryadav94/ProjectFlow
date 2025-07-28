@@ -92,6 +92,9 @@ export async function getProjectsForExport(options: {
     };
     sort: { key: string, direction: 'asc' | 'desc' };
     user?: User;
-}): Promise<Project[]> {
+    visibleColumns?: string[];
+}): Promise<Partial<Project>[]> {
     return ProjectService.getProjectsForExport(options);
 }
+
+    

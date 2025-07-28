@@ -51,6 +51,15 @@ function buildFilterConstraints(
         } else if (role === 'Case Manager') {
             // This role has complex filtering handled separately in getPaginatedProjects
         }
+
+        // Apply secondary filters for role-based dashboards
+        if (filters.clientName) {
+            andConstraints.push(where("client_name", "==", filters.clientName));
+        }
+        if (filters.process) {
+            andConstraints.push(where("process", "==", filters.process));
+        }
+
     } else { // Manager/Admin Search filters
         if (filters.advanced && filters.advanced.length > 0) {
             filters.advanced.forEach(criterion => {
@@ -93,21 +102,32 @@ function buildFilterConstraints(
             });
         }
         
-        if (filters.quickSearch && filters.searchColumn && filters.searchColumn !== 'any') {
-            const isDateSearch = dateFields.includes(filters.searchColumn);
-            if (isDateSearch) {
-                 try {
-                    const date = new Date(filters.quickSearch);
-                    if (!isNaN(date.getTime())) {
-                        const startOfDay = Timestamp.fromDate(new Date(date.setHours(0, 0, 0, 0)));
-                        const endOfDay = Timestamp.fromDate(new Date(date.setHours(23, 59, 59, 999)));
-                        andConstraints.push(where(filters.searchColumn, '>=', startOfDay));
-                        andConstraints.push(where(filters.searchColumn, '<=', endOfDay));
-                    }
-                 } catch (e) { /* Ignore invalid date */ }
+        if (filters.quickSearch && filters.searchColumn) {
+             if (filters.searchColumn === 'any') {
+                // OR queries are complex in Firestore. This is a simplified version.
+                // For a robust solution, a dedicated search field (e.g., an array of keywords) is needed.
+                // We will search across a few key fields. This requires a composite index for each `or` condition.
+                andConstraints.push(or(
+                    where('row_number', '==', filters.quickSearch),
+                    where('ref_number', '==', filters.quickSearch),
+                    where('application_number', '==', filters.quickSearch)
+                ));
             } else {
-                 andConstraints.push(where(filters.searchColumn, '>=', filters.quickSearch));
-                 andConstraints.push(where(filters.searchColumn, '<=', filters.quickSearch + '\uf8ff'));
+                 const isDateSearch = dateFields.includes(filters.searchColumn);
+                if (isDateSearch) {
+                     try {
+                        const date = new Date(filters.quickSearch);
+                        if (!isNaN(date.getTime())) {
+                            const startOfDay = Timestamp.fromDate(new Date(date.setHours(0, 0, 0, 0)));
+                            const endOfDay = Timestamp.fromDate(new Date(date.setHours(23, 59, 59, 999)));
+                            andConstraints.push(where(filters.searchColumn, '>=', startOfDay));
+                            andConstraints.push(where(filters.searchColumn, '<=', endOfDay));
+                        }
+                     } catch (e) { /* Ignore invalid date */ }
+                } else {
+                     andConstraints.push(where(filters.searchColumn, '>=', filters.quickSearch));
+                     andConstraints.push(where(filters.searchColumn, '<=', filters.quickSearch + '\uf8ff'));
+                }
             }
         }
     }
@@ -335,9 +355,7 @@ async function getCaseManagerProjects(userName: string, pageSize: number, sort: 
 
     // Define base queries for each status we care about
     const baseQueries = [
-        query(projectsCollection, where("case_manager", "==", userName), where("qa_status", "==", "Client Query"), where("clientquery_status", "==", "Pending")),
-        query(projectsCollection, where("case_manager", "==", userName), where("qa_status", "==", "Client Query"), where("clientquery_status", "==", "")),
-        query(projectsCollection, where("case_manager", "==", userName), where("qa_status", "==", "Client Query"), where("clientquery_status", "==", null))
+        query(projectsCollection, where("case_manager", "==", userName), where("qa_status", "==", "Client Query"), where("clientquery_status", "in", ["Pending", null, ""])),
     ];
     
     // Fetch all documents from all queries
@@ -381,7 +399,12 @@ export async function getPaginatedProjects(options: {
     page: number;
     limit: number;
     filters: {
+        quickSearch?: string;
+        searchColumn?: string;
+        advanced?: { field: string; operator: string; value: any }[] | null;
         roleFilter?: { role: Role; userName: string; userId: string };
+        clientName?: string;
+        process?: string;
     };
     sort: { key: string, direction: 'asc' | 'desc' };
 }) {
@@ -404,18 +427,7 @@ export async function getPaginatedProjects(options: {
     }
 
     const projectsCollection = collection(db, "projects");
-    let queryConstraints: QueryConstraint[] = [];
-    
-    if (filters.roleFilter) {
-        const { role, userName } = filters.roleFilter;
-        if (role === 'Processor') {
-            queryConstraints.push(where("processor", "==", userName));
-            queryConstraints.push(where("processing_status", "in", ["Pending", "On Hold", "Re-Work"]));
-        } else if (role === 'QA') {
-            queryConstraints.push(where("qa", "==", userName));
-            queryConstraints.push(where("workflowStatus", "==", "With QA"));
-        }
-    }
+    let queryConstraints: QueryConstraint[] = buildFilterConstraints(filters);
     
     // Count query should use the same filters
     const countQuery = query(projectsCollection, ...queryConstraints);
@@ -465,8 +477,9 @@ export async function getProjectsForExport(options: {
     };
     sort: { key: string, direction: 'asc' | 'desc' };
     user?: User;
-}): Promise<Project[]> {
-    const { filters, sort, user } = options;
+    visibleColumns?: string[];
+}): Promise<Partial<Project>[]> {
+    const { filters, sort, visibleColumns = [] } = options;
     const projectsCollection = collection(db, "projects");
     
     const queryConstraints = buildFilterConstraints(filters);
@@ -480,10 +493,26 @@ export async function getProjectsForExport(options: {
     const finalQuery = query(projectsCollection, ...queryConstraints);
     const projectSnapshot = await getDocs(finalQuery);
 
-    return projectSnapshot.docs.map(doc => {
-        return {
+    const dataToExport = projectSnapshot.docs.map(doc => {
+        const fullProject = {
             id: doc.id,
             ...convertTimestampsToDates(doc.data())
         } as Project;
+        
+        if (visibleColumns.length > 0) {
+            const filteredProject: Partial<Project> = {};
+            visibleColumns.forEach(key => {
+                 if (key !== 'select' && key !== 'actions') {
+                    filteredProject[key as keyof Project] = fullProject[key as keyof Project];
+                }
+            });
+            return filteredProject;
+        }
+
+        return fullProject;
     });
+
+    return dataToExport;
 }
+
+    

@@ -37,6 +37,17 @@ export async function getAllUsers(): Promise<User[]> {
     } as User));
 }
 
+export async function getClients(): Promise<User[]> {
+    const usersCollection = collection(db, 'users');
+    const q = query(usersCollection, where("roles", "array-contains", "Case Manager"));
+    const clientSnapshot = await getDocs(q);
+    return clientSnapshot.docs.map(doc => ({
+        id: doc.id,
+        ...doc.data()
+    } as User));
+}
+
+
 export async function addUserDocument(uid: string, userData: Omit<User, 'id' | 'password'>): Promise<void> {
     const newUserDocRef = doc(db, 'users', uid);
     await setDoc(newUserDocRef, userData);
@@ -77,3 +88,5 @@ export async function addBulkUserDocuments(newUsers: Omit<User, 'id' | 'password
     
     return { addedCount, errors };
 }
+
+    

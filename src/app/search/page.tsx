@@ -8,7 +8,7 @@ import { useToast } from '@/hooks/use-toast';
 import Papa from "papaparse";
 
 import type { Project, Role, User, ProcessType, WorkflowStatus } from '@/lib/data';
-import { getSession, onAuthChanged, getUsers } from '@/lib/auth';
+import { getSession, onAuthChanged, getUsers, getClients } from '@/lib/auth';
 import { getPaginatedProjects, bulkUpdateProjects, getProjectsForExport } from '@/app/actions';
 import { SearchCriteria } from '@/components/advanced-search-form';
 import { allColumns, getColumns } from '@/components/columns';
@@ -139,14 +139,12 @@ export default function SearchResultsPage() {
                 }
                 setDataState(s => ({...s, projects: [], totalCount: 0, totalPages: 1}));
             } else {
-                 const [{ projects, totalCount, totalPages }] = await Promise.all([
-                     getPaginatedProjects({
-                        page,
-                        limit: 20,
-                        filters,
-                        sort: { key: sortKey, direction: sortDir },
-                    })
-                ]);
+                 const { projects, totalCount, totalPages } = await getPaginatedProjects({
+                    page,
+                    limit: 20,
+                    filters,
+                    sort: { key: sortKey, direction: sortDir },
+                });
                  setDataState({
                     projects,
                     totalCount,
@@ -156,9 +154,9 @@ export default function SearchResultsPage() {
                 });
             }
 
-            const allUsers = await getUsers();
+            const [allUsers, clientUsers] = await Promise.all([getUsers(), getClients()]);
             setDropdownOptions({
-                clientNames: [...new Set(allUsers.map(u => u.name).filter(Boolean))].sort(),
+                clientNames: clientUsers.map(u => u.name).sort(),
                 processors: allUsers.filter(u => u.roles.includes('Processor')).map(u => u.name).sort(),
                 qas: allUsers.filter(u => u.roles.includes('QA')).map(u => u.name).sort(),
                 caseManagers: allUsers.filter(u => u.roles.includes('Case Manager')).map(u => u.name).sort(),
@@ -230,6 +228,7 @@ export default function SearchResultsPage() {
             const projectsToExport = await getProjectsForExport({
                 filters: { quickSearch, searchColumn: searchColumnParam, advanced: advancedCriteria },
                 sort: { key: sortKey, direction: sortDir },
+                visibleColumns: visibleColumnKeys,
             });
 
             if (projectsToExport.length === 0) {
@@ -237,7 +236,7 @@ export default function SearchResultsPage() {
                 return;
             }
 
-            const csv = Papa.unparse(projectsToExport);
+            const csv = Papa.unparse(projectsToExport as any);
             const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
             const link = document.createElement("a");
             const url = URL.createObjectURL(blob);
@@ -503,3 +502,5 @@ export default function SearchResultsPage() {
         </div>
     );
 }
+
+    
