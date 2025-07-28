@@ -82,7 +82,7 @@ function Dashboard({ user, error }: DashboardProps) {
   const [sourceProject, setSourceProject] = React.useState<Project | null>(null);
   const [isColumnSelectOpen, setIsColumnSelectOpen] = React.useState(false);
 
-  const [bulkUpdateField, setBulkUpdateField] = React.useState<keyof Project>('processor');
+  const [bulkUpdateField, setBulkUpdateField] = React.useState<keyof Project>('processorId');
   const [bulkUpdateValue, setBulkUpdateValue] = React.useState('');
   const [isBulkUpdating, setIsBulkUpdating] = React.useState(false);
   
@@ -193,7 +193,10 @@ function Dashboard({ user, error }: DashboardProps) {
         fetchDashboardData(activeRole, page, sort, clientNameFilter, processFilter);
     }, [activeRole, page, sort, clientNameFilter, processFilter, fetchDashboardData]);
     
-    // Effect to reset page to 1 when filters change - this is now handled by the main effect.
+    // Effect to reset page to 1 when filters change
+    React.useEffect(() => {
+        setPage(1);
+    }, [clientNameFilter, processFilter]);
 
 
   const saveColumnLayout = (role: Role) => {
@@ -351,7 +354,7 @@ function Dashboard({ user, error }: DashboardProps) {
         
         setIsBulkUpdating(true);
         try {
-            await bulkUpdateProjects(projectIds, { [bulkUpdateField]: bulkUpdateValue } as any);
+            await bulkUpdateProjects({ projectIds, field: bulkUpdateField, value: bulkUpdateValue });
 
             toast({ title: "Success", description: `${projectIds.length} projects have been updated.` });
             if (activeRole) fetchDashboardData(activeRole, page, sort, clientNameFilter, processFilter);
@@ -422,7 +425,7 @@ function Dashboard({ user, error }: DashboardProps) {
             />
         )}
         {sourceProject && ( <AddRowsDialog isOpen={isAddRowsDialogOpen} onOpenChange={setIsAddRowsDialogOpen} sourceProject={sourceProject} onAddRowsSuccess={() => fetchDashboardData(activeRole!, 1, sort, clientNameFilter, processFilter)} /> )}
-        <ColumnSelectDialog isOpen={isColumnSelectOpen} onOpenChange={setIsColumnSelectOpen} allColumns={allColumns} visibleColumns={visibleColumnKeys} setVisibleColumns={setVisibleColumns} />
+        <ColumnSelectDialog isOpen={isColumnSelectOpen} onOpenChange={setIsColumnSelectOpen} allColumns={allColumns} visibleColumns={visibleColumnKeys} setVisibleColumns={setVisibleColumnKeys} />
 
         <Header 
             user={user} activeRole={activeRole} setActiveRole={handleRoleSwitch}
@@ -543,9 +546,9 @@ function Dashboard({ user, error }: DashboardProps) {
                 </Accordion>
               </div>
             ) : (
-                 <div className="flex-grow flex flex-col">
+                 <div className="flex-grow flex flex-col p-4 gap-4">
                     {Object.keys(rowSelection).length > 0 && (
-                        <div className="flex-shrink-0 flex items-center gap-4 p-4 border-b bg-muted/50">
+                        <div className="flex-shrink-0 flex items-center gap-4 p-4 border rounded-md bg-muted/50">
                             <span className="text-sm font-semibold">{Object.keys(rowSelection).length} selected</span>
                             <div className="flex items-center gap-2">
                                 <Select value={bulkUpdateField} onValueChange={(v) => {
@@ -568,7 +571,7 @@ function Dashboard({ user, error }: DashboardProps) {
                                     </SelectTrigger>
                                     <SelectContent>
                                         {selectedBulkUpdateField?.options.map(opt => (
-                                            <SelectItem key={opt.id} value={opt.name}>{opt.name}</SelectItem>
+                                            <SelectItem key={opt.id} value={opt.id}>{opt.name}</SelectItem>
                                         ))}
                                     </SelectContent>
                                 </Select>
@@ -600,5 +603,3 @@ function Dashboard({ user, error }: DashboardProps) {
     </div>
   );
 }
-
-    
