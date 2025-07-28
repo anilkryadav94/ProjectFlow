@@ -28,7 +28,7 @@ export const processorSubmissionStatuses: ProcessorStatus[] = ['Processed', 'NTP
 export type QAStatus = 'Pending' | 'Complete' | 'NTP' | 'Client Query' | 'Already Processed';
 export const qaStatuses: QAStatus[] = ['Pending', 'Complete', 'NTP', 'Client Query', 'Already Processed'];
 export const allQaStatuses: QAStatus[] = qaStatuses;
-export const qaSubmissionStatuses: QAStatus[] = ['Complete', 'NTP', 'Client Query', 'Already Processed'];
+export const qaSubmissionStatuses: QAStatus[] = ['Complete', 'NTP', 'Already Processed', 'Client Query'];
 
 export type ClientStatus = 'Approved' | 'Clarification Required' | 'Pending';
 export const clientStatuses: ClientStatus[] = ['Pending', 'Approved', 'Clarification Required'];
