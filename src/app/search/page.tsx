@@ -27,6 +27,9 @@ import { ChartContainer, ChartTooltip, ChartTooltipContent, ChartLegend, ChartLe
 import { workflowStatuses } from '@/lib/data';
 import { getAllClients, type Client } from '@/services/client-service';
 import { getAllProcesses, type Process } from '@/services/process-service';
+import { getAllCountries, type Country } from '@/services/country-service';
+import { getAllDocumentTypes, type DocumentType } from '@/services/document-type-service';
+import { getAllRenewalAgents, type RenewalAgent } from '@/services/renewal-agent-service';
 
 
 type ViewType = 'table' | 'chart';
@@ -64,6 +67,9 @@ export default function SearchResultsPage() {
         qas: [] as string[],
         caseManagers: [] as string[],
         processes: [] as Process[],
+        countries: [] as Country[],
+        documentTypes: [] as DocumentType[],
+        renewalAgents: [] as RenewalAgent[],
     });
 
     // UI state
@@ -157,14 +163,20 @@ export default function SearchResultsPage() {
                 });
             }
 
-            const [allUsers, clients, processes] = await Promise.all([
+            const [allUsers, clients, processes, countries, documentTypes, renewalAgents] = await Promise.all([
                 getUsers(),
                 getAllClients(),
-                getAllProcesses()
+                getAllProcesses(),
+                getAllCountries(),
+                getAllDocumentTypes(),
+                getAllRenewalAgents()
             ]);
             setDropdownOptions({
                 clients,
                 processes,
+                countries,
+                documentTypes,
+                renewalAgents,
                 processors: allUsers.filter(u => u.roles.includes('Processor')).map(u => u.name).sort(),
                 qas: allUsers.filter(u => u.roles.includes('QA')).map(u => u.name).sort(),
                 caseManagers: allUsers.filter(u => u.roles.includes('Case Manager')).map(u => u.name).sort(),
@@ -360,6 +372,9 @@ export default function SearchResultsPage() {
                     qas={dropdownOptions.qas}
                     caseManagers={dropdownOptions.caseManagers}
                     processes={dropdownOptions.processes.map(p => p.name)}
+                    countries={dropdownOptions.countries.map(c => c.name)}
+                    documentTypes={dropdownOptions.documentTypes.map(d => d.name)}
+                    renewalAgents={dropdownOptions.renewalAgents.map(r => r.name)}
                 />
             )}
             {sourceProject && (
@@ -389,7 +404,7 @@ export default function SearchResultsPage() {
                 onQuickSearch={handleQuickSearch}
                 isManagerOrAdmin={true}
                 showManagerSearch={true}
-                clientNames={dropdownOptions.clients.map(c => c.name)}
+                clients={dropdownOptions.clients}
                 processes={dropdownOptions.processes}
             />
             
@@ -506,3 +521,5 @@ export default function SearchResultsPage() {
         </div>
     );
 }
+
+    
