@@ -33,7 +33,7 @@ const updatableProjectFields = [
 
 
 function generateSearchableText(project: Partial<Project>): string[] {
-    const searchableFields = [
+    const searchableFields: (string | null | undefined)[] = [
         project.row_number,
         project.ref_number,
         project.application_number,
@@ -48,6 +48,7 @@ function generateSearchableText(project: Partial<Project>): string[] {
         project.country,
         project.processing_status,
         project.qa_status,
+        project.workflowStatus,
     ];
 
     const tokens = new Set<string>();
@@ -304,7 +305,7 @@ export async function updateProject(
         }
     } else if (submitAction === 'client_submit') {
       dataToUpdate.workflowStatus = 'With QA'; 
-      dataToUpdate.qa_status = 'Pending'; // Reset for QA
+      dataToUpdate.qa_status = 'Pending'; 
       dataToUpdate.client_response_date = serverTimestamp();
     } else if (submitAction === 'submit_for_qa') {
         dataToUpdate.workflowStatus = 'With QA';
@@ -313,7 +314,7 @@ export async function updateProject(
     } else if (submitAction === 'submit_qa') {
         if (clientData.qa_status === 'Complete') {
             dataToUpdate.workflowStatus = 'Completed';
-        } else { // For 'NTP', 'Already Processed'
+        } else { 
             dataToUpdate.workflowStatus = 'Completed';
         }
         dataToUpdate.qa_date = serverTimestamp();
