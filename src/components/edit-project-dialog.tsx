@@ -345,8 +345,20 @@ export function EditProjectDialog({
   const renderCaseManagerForm = () => (
     <div className="space-y-6">
         <Card>
-            <CardHeader><CardTitle>Client Query Details</CardTitle></CardHeader>
-            <CardContent>
+            <CardHeader>
+                <CardTitle>Client Query Details</CardTitle>
+                <CardDescription>Review the project context and the query before responding.</CardDescription>
+            </CardHeader>
+            <CardContent className="space-y-4">
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    <FormItem><FormLabel>From</FormLabel><Input value={project?.sender ?? ''} readOnly /></FormItem>
+                    <FormItem><FormLabel>Email Date</FormLabel><Input value={project?.received_date ?? ''} readOnly /></FormItem>
+                    <FormItem className="md:col-span-2"><FormLabel>Subject</FormLabel><Input value={project?.subject_line ?? ''} readOnly /></FormItem>
+                    <FormItem><FormLabel>Ref Number</FormLabel><Input value={project?.ref_number ?? ''} readOnly /></FormItem>
+                    <FormItem><FormLabel>Country</FormLabel><Input value={project?.country ?? ''} readOnly /></FormItem>
+                    <FormItem><FormLabel>Application No.</FormLabel><Input value={project?.application_number ?? ''} readOnly /></FormItem>
+                    <FormItem><FormLabel>Patent No.</FormLabel><Input value={project?.patent_number ?? ''} readOnly /></FormItem>
+                </div>
                 <FormItem>
                     <FormLabel>Query from QA/Processor</FormLabel>
                     <Textarea value={project?.client_query_description ?? ''} readOnly className="h-24 bg-muted/50" />
