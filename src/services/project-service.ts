@@ -107,14 +107,9 @@ function buildFilterConstraints(
         
         if (filters.quickSearch && filters.searchColumn) {
              if (filters.searchColumn === 'any') {
-                // OR queries are complex in Firestore. This is a simplified version.
-                // For a robust solution, a dedicated search field (e.g., an array of keywords) is needed.
-                // We will search across a few key fields. This requires a composite index for each `or` condition.
-                andConstraints.push(or(
-                    where('row_number', '==', filters.quickSearch),
-                    where('ref_number', '==', filters.quickSearch),
-                    where('application_number', '==', filters.quickSearch)
-                ));
+                // OR queries are complex and require many indexes. Default to searching ref_number.
+                andConstraints.push(where('ref_number', '>=', filters.quickSearch));
+                andConstraints.push(where('ref_number', '<=', filters.quickSearch + '\uf8ff'));
             } else {
                  const isDateSearch = dateFields.includes(filters.searchColumn);
                 if (isDateSearch) {
@@ -387,10 +382,11 @@ async function getCaseManagerProjects(options: {
     const { userName, clientName, process } = options;
     const projectsCollection = collection(db, "projects");
 
-    const baseConstraints = [
+    let baseConstraints: QueryConstraint[] = [
         where("case_manager", "==", userName),
         where("qa_status", "==", "Client Query"),
     ];
+
     if (clientName) {
         baseConstraints.push(where("client_name", "==", clientName));
     }
@@ -399,7 +395,7 @@ async function getCaseManagerProjects(options: {
     }
     
     // We need to query for null, "", and "Pending" separately due to Firestore limitations.
-    const q1 = query(projectsCollection, ...baseConstraints, where("clientquery_status", "in", ["", "Pending"]));
+    const q1 = query(projectsCollection, ...baseConstraints, where("clientquery_status", "in", ["Pending", ""]));
     const q2 = query(projectsCollection, ...baseConstraints, where("clientquery_status", "==", null));
 
     const [s1, s2] = await Promise.all([
