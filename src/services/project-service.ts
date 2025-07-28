@@ -1,4 +1,5 @@
 
+
 import { db } from "@/lib/firebase";
 import { collection, getDocs, doc, writeBatch, updateDoc, serverTimestamp, addDoc, getDoc, query, orderBy, limit, Timestamp, where, startAfter, getCountFromServer, QueryConstraint, or, and } from "firebase/firestore";
 import type { Project, Role, User } from "@/lib/data";
@@ -222,15 +223,6 @@ export async function bulkUpdateProjects(projectIds: string[], updateData: Parti
         dataToUpdate.case_manager = users.find(u => u.id === updateData.caseManagerId)?.name || '';
     }
 
-    if (dataToUpdate.processorId) {
-        dataToUpdate.workflowStatus = 'With Processor';
-        dataToUpdate.processing_status = 'Pending';
-    }
-    if (dataToUpdate.qaId) {
-         if (!dataToUpdate.workflowStatus) dataToUpdate.workflowStatus = 'With QA';
-         if (!dataToUpdate.qa_status) dataToUpdate.qa_status = 'Pending';
-    }
-
     // Ensure metadata collections are updated
     if (dataToUpdate.client_name) await ensureClientExists(dataToUpdate.client_name);
     if (dataToUpdate.process) await ensureProcessExists(dataToUpdate.process);
@@ -238,15 +230,16 @@ export async function bulkUpdateProjects(projectIds: string[], updateData: Parti
     if (dataToUpdate.document_type) await ensureDocumentTypeExists(dataToUpdate.document_type);
     if (dataToUpdate.renewal_agent) await ensureRenewalAgentExists(dataToUpdate.renewal_agent);
 
-    // Regenerate searchable text
-    const tempProjectDataForSearch = { ...updateData };
-    dataToUpdate.searchable_text = generateSearchableText(tempProjectDataForSearch);
-    
-
-    projectIds.forEach(id => {
+    for (const id of projectIds) {
         const projectRef = doc(db, 'projects', id);
-        batch.update(projectRef, dataToUpdate);
-    });
+        const docSnap = await getDoc(projectRef);
+        if (docSnap.exists()) {
+            const existingData = docSnap.data();
+            const mergedData = { ...existingData, ...dataToUpdate };
+            dataToUpdate.searchable_text = generateSearchableText(mergedData);
+            batch.update(projectRef, dataToUpdate);
+        }
+    }
     await batch.commit();
 }
 
@@ -609,3 +602,4 @@ export async function getProjectsForExport(options: {
 
     return dataToExport;
 }
+
