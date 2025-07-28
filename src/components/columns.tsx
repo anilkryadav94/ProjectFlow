@@ -69,8 +69,9 @@ export const allColumns: { key: keyof Project | 'actions' | 'select', header: st
       header: "Workflow Status",
       render: (project: Project) => {
         let statusText: string = project.workflowStatus;
-        let statusColorClass = statusColors[project.workflowStatus];
+        let statusColorClass: string = statusColors[project.workflowStatus] || "bg-gray-500/20 text-gray-700"; // Default color
 
+        // This simplified logic directly reflects the database `workflowStatus`.
         if (project.workflowStatus === 'With Processor') {
             statusText = project.processing_status;
             statusColorClass = statusColors[project.processing_status];
@@ -78,6 +79,8 @@ export const allColumns: { key: keyof Project | 'actions' | 'select', header: st
             statusText = `QA: ${project.qa_status}`;
             statusColorClass = statusColors[project.qa_status] || statusColors['With QA'];
         }
+        // For 'With Client' and 'Completed', the statusText is already correct from project.workflowStatus
+        // The color is also correctly picked up from the statusColors map.
         
         return (
           <Badge variant="outline" className={cn("capitalize", statusColorClass)}>
