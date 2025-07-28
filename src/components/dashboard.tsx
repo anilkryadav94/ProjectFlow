@@ -439,7 +439,7 @@ function Dashboard({ user, error }: DashboardProps) {
             onQuickSearch={handleQuickSearch} clientNameFilter={clientNameFilter} setClientNameFilter={setClientNameFilter}
             processFilter={processFilter} setProcessFilter={setProcessFilter} isManagerOrAdmin={isManagerOrAdmin}
             showManagerSearch={activeRole === 'Manager'}
-            clientNames={dropdownOptions.clients.map(c => c.name)} processes={dropdownOptions.processes.map(p => p.name) as ProcessType[]}
+            clientNames={dropdownOptions.clients.map(c => c.name)} processes={dropdownOptions.processes}
         />
         
         {showSubHeader && (

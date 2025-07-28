@@ -393,7 +393,7 @@ export default function SearchResultsPage() {
                 isManagerOrAdmin={true}
                 showManagerSearch={true}
                 clientNames={dropdownOptions.clients.map(c => c.name)}
-                processes={dropdownOptions.processes.map(p => p.name) as ProcessType[]}
+                processes={dropdownOptions.processes}
             />
             
             {showSubHeader && (

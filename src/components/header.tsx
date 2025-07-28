@@ -25,6 +25,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from ".
 import { Input } from "./ui/input";
 import type { SearchableColumn } from "./dashboard"
 import Link from "next/link"
+import type { Process } from "@/services/process-service"
 
 
 interface TaskPagination {
@@ -56,7 +57,7 @@ interface HeaderProps {
     showManagerSearch?: boolean;
     
     clientNames: string[];
-    processes: ProcessType[];
+    processes: Process[];
     children?: React.ReactNode;
     taskPagination?: TaskPagination;
 }
@@ -211,7 +212,7 @@ export function Header({
                       <SelectContent>
                         <SelectItem value="all">All Processes</SelectItem>
                         {processes.map(p => (
-                            <SelectItem key={p} value={p}>{p}</SelectItem>
+                            <SelectItem key={p.id} value={p.name}>{p.name}</SelectItem>
                         ))}
                       </SelectContent>
                     </Select>
