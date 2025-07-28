@@ -29,6 +29,7 @@ import { type Project } from "@/lib/data";
 import { addRows } from "@/app/actions";
 import { useToast } from "@/hooks/use-toast";
 import { Loader2 } from "lucide-react";
+import { Separator } from "./ui/separator";
 
 const fieldsToCopy = [
   { id: 'subject_line', label: 'Subject' },
@@ -40,6 +41,8 @@ const fieldsToCopy = [
   { id: 'received_date', label: 'Email Date' },
   { id: 'allocation_date', label: 'Allocation Date' },
 ] as const;
+
+const allFieldIds = fieldsToCopy.map(f => f.id);
 
 type FieldToCopyId = typeof fieldsToCopy[number]['id'];
 
@@ -75,6 +78,16 @@ export function AddRowsDialog({
       count: 1,
     },
   });
+
+  const selectedFields = form.watch('fields');
+
+  const handleSelectAll = (checked: boolean) => {
+    if (checked) {
+      form.setValue('fields', allFieldIds);
+    } else {
+      form.setValue('fields', []);
+    }
+  };
 
   const onSubmit = async (data: AddRowsFormValues) => {
     setIsSubmitting(true);
@@ -139,9 +152,23 @@ export function AddRowsDialog({
                 name="fields"
                 render={() => (
                   <FormItem>
-                    <div className="mb-4">
+                    <div className="mb-2">
                       <FormLabel className="text-base">Fields to Copy</FormLabel>
                     </div>
+                     <div className="flex items-center space-x-3 rounded-md border p-4">
+                        <Checkbox
+                            id="select-all"
+                            checked={selectedFields.length === allFieldIds.length}
+                            onCheckedChange={handleSelectAll}
+                        />
+                        <label
+                            htmlFor="select-all"
+                            className="text-sm font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70"
+                        >
+                            Select / Deselect All
+                        </label>
+                    </div>
+                    <Separator className="my-4"/>
                     <div className="grid grid-cols-2 gap-4">
                       {fieldsToCopy.map((item) => (
                         <FormField

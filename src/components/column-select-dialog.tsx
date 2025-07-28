@@ -13,8 +13,10 @@ import {
 } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
 import { ScrollArea } from "@/components/ui/scroll-area";
-import { ArrowLeft, ArrowRight, ChevronsUpDown, ChevronUp, ChevronDown } from "lucide-react";
+import { ArrowLeft, ArrowRight, ChevronUp, ChevronDown } from "lucide-react";
 import { cn } from "@/lib/utils";
+import { Checkbox } from "./ui/checkbox";
+import { Separator } from "./ui/separator";
 
 interface ColumnSelectItem {
   key: string;
@@ -36,21 +38,41 @@ export function ColumnSelectDialog({
   visibleColumns: visibleColumnKeys,
   setVisibleColumns: setVisibleColumnKeys,
 }: ColumnSelectDialogProps) {
-  const [selectedAvailable, setSelectedAvailable] = React.useState<string | null>(null);
+  const [selectedAvailable, setSelectedAvailable] = React.useState<Set<string>>(new Set());
   const [selectedVisible, setSelectedVisible] = React.useState<string | null>(null);
-  
+
   const availableColumns = allColumns.filter(
     (col) => !visibleColumnKeys.includes(col.key) && !['select', 'actions'].includes(col.key)
   );
-  
+
   const visibleColumnsData = visibleColumnKeys
     .map((key) => allColumns.find((col) => col.key === key))
     .filter((col): col is ColumnSelectItem => !!col);
 
+  const handleToggleAvailable = (key: string) => {
+    setSelectedAvailable(prev => {
+        const newSet = new Set(prev);
+        if (newSet.has(key)) {
+            newSet.delete(key);
+        } else {
+            newSet.add(key);
+        }
+        return newSet;
+    });
+  };
+
+  const handleSelectAllAvailable = (checked: boolean) => {
+    if (checked) {
+        setSelectedAvailable(new Set(availableColumns.map(c => c.key)));
+    } else {
+        setSelectedAvailable(new Set());
+    }
+  };
+
   const handleMoveToVisible = () => {
-    if (selectedAvailable) {
-      setVisibleColumnKeys([...visibleColumnKeys, selectedAvailable]);
-      setSelectedAvailable(null);
+    if (selectedAvailable.size > 0) {
+      setVisibleColumnKeys([...visibleColumnKeys, ...Array.from(selectedAvailable)]);
+      setSelectedAvailable(new Set());
     }
   };
 
@@ -66,12 +88,11 @@ export function ColumnSelectDialog({
 
     const index = visibleColumnKeys.indexOf(selectedVisible);
     if (index === -1) return;
-    
+
     if (direction === 'up' && index > 0) {
         const newOrder = [...visibleColumnKeys];
-        // Cannot move 'actions' or 'select' from the first positions if they exist
         const immovablePrefix = newOrder.filter(k => k === 'select' || k === 'actions').length;
-        if(index <= immovablePrefix) return;
+        if (index <= immovablePrefix) return;
 
         [newOrder[index - 1], newOrder[index]] = [newOrder[index], newOrder[index - 1]];
         setVisibleColumnKeys(newOrder);
@@ -81,7 +102,6 @@ export function ColumnSelectDialog({
         setVisibleColumnKeys(newOrder);
     }
   };
-
 
   return (
     <Dialog open={isOpen} onOpenChange={onOpenChange}>
@@ -96,15 +116,30 @@ export function ColumnSelectDialog({
           {/* Available Columns */}
           <div className="flex flex-col h-full border rounded-md">
             <h3 className="p-2 text-sm font-semibold border-b bg-muted">Available Columns</h3>
+             <div className="p-2 border-b">
+                <div className="flex items-center space-x-3">
+                    <Checkbox
+                        id="select-all-available"
+                        checked={availableColumns.length > 0 && selectedAvailable.size === availableColumns.length}
+                        onCheckedChange={handleSelectAllAvailable}
+                    />
+                    <label
+                        htmlFor="select-all-available"
+                        className="text-sm font-medium leading-none"
+                    >
+                        Select / Deselect All
+                    </label>
+                </div>
+            </div>
             <ScrollArea className="h-[350px]">
               <div className="p-2 space-y-1">
                 {availableColumns.map((col) => (
                   <div
                     key={col.key}
-                    onClick={() => setSelectedAvailable(col.key)}
+                    onClick={() => handleToggleAvailable(col.key)}
                     className={cn(
                       "p-2 rounded-md cursor-pointer hover:bg-muted text-xs",
-                      selectedAvailable === col.key && "bg-primary text-primary-foreground"
+                      selectedAvailable.has(col.key) && "bg-primary text-primary-foreground"
                     )}
                   >
                     {col.header}
@@ -116,7 +151,7 @@ export function ColumnSelectDialog({
 
           {/* Controls */}
           <div className="flex flex-col gap-2">
-            <Button size="icon" variant="outline" onClick={handleMoveToVisible} disabled={!selectedAvailable}>
+            <Button size="icon" variant="outline" onClick={handleMoveToVisible} disabled={selectedAvailable.size === 0}>
               <ArrowRight className="h-4 w-4" />
             </Button>
             <Button size="icon" variant="outline" onClick={handleMoveToAvailable} disabled={!selectedVisible || ['actions', 'select'].includes(selectedVisible)}>
