@@ -76,7 +76,8 @@ function Dashboard({ user, error }: DashboardProps) {
   const [processFilter, setProcessFilter] = React.useState<string | 'all'>('all');
   const [rowSelection, setRowSelection] = React.useState<Record<string, boolean>>({});
   const [selectedFile, setSelectedFile] = React.useState<File | null>(null);
-  const [isUploading, setIsUploading] = React.useState(false);
+  const [isUploading, setIsUploading] = React.useState(isUploading);
+  const [isDownloading, setIsDownloading] = React.useState(false);
   
   const [isEditDialogOpen, setIsEditDialogOpen] = React.useState(false);
   const [editingProject, setEditingProject] = React.useState<Project | null>(null);
@@ -327,28 +328,38 @@ function Dashboard({ user, error }: DashboardProps) {
   }, [activeRole, dashboardProjects, user.name]);
 
   const handleDashboardDownload = async () => {
+    if (!activeRole) return;
+    setIsDownloading(true);
+    try {
         const filters = {
-            roleFilter: activeRole ? { role: activeRole, userName: user.name, userId: user.id } : undefined,
+            roleFilter: { role: activeRole, userName: user.name, userId: user.id },
             clientName: clientNameFilter === 'all' ? undefined : clientNameFilter,
             process: processFilter === 'all' ? undefined : processFilter,
         };
         
-        const projectsToExport = await getProjectsForExport({ filters: filters as any, sort, user, visibleColumns: visibleColumnKeys });
+        const projectsToExport = await getProjectsForExport({ filters, sort, user, visibleColumns: visibleColumnKeys });
 
         if (projectsToExport.length === 0) {
             toast({ title: "No data to export", variant: "destructive" });
             return;
         }
 
-        const csv = Papa.unparse(projectsToExport);
+        const csv = Papa.unparse(projectsToExport as any);
         const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
         const link = document.createElement("a");
         const url = URL.createObjectURL(blob);
+        link.setAttribute("href", url);
         link.setAttribute("download", `${activeRole}_dashboard_export_${new Date().toISOString().split('T')[0]}.csv`);
         link.style.visibility = 'hidden';
         document.body.appendChild(link);
         link.click();
         document.body.removeChild(link);
+    } catch(err) {
+        console.error("Download Error", err);
+        toast({ title: "Error", description: "Could not download project data.", variant: "destructive" });
+    } finally {
+        setIsDownloading(false);
+    }
   };
   
     const handleBulkUpdate = async () => {
@@ -468,8 +479,8 @@ function Dashboard({ user, error }: DashboardProps) {
                             </Button>
                         </>
                     )}
-                    <Button variant="outline" className="h-7 px-2 text-xs" onClick={handleDashboardDownload} disabled={dashboardProjects.length === 0 || isLoading}>
-                        <FileSpreadsheet className="mr-1.5 h-3.5 w-3.5" />
+                    <Button variant="outline" className="h-7 px-2 text-xs" onClick={handleDashboardDownload} disabled={dashboardProjects.length === 0 || isDownloading}>
+                         {isDownloading ? <Loader2 className="mr-1.5 h-3.5 w-3.5 animate-spin" /> : <FileSpreadsheet className="mr-1.5 h-3.5 w-3.5" />}
                          Download
                     </Button>
                 </div>
@@ -609,3 +620,5 @@ function Dashboard({ user, error }: DashboardProps) {
     </div>
   );
 }
+
+    

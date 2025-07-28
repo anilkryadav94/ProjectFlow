@@ -50,8 +50,6 @@ function buildFilterConstraints(
         } else if (role === 'QA') {
             andConstraints.push(where("qa", "==", userName));
             andConstraints.push(where("workflowStatus", "==", "With QA"));
-        } else if (role === 'Case Manager') {
-            // This role has complex filtering handled separately in getPaginatedProjects
         }
 
         // Apply secondary filters for role-based dashboards
@@ -378,21 +376,16 @@ export async function addRows(projectsToAdd: Partial<Project>[]): Promise<number
 // Special handler for Case Manager to overcome Firestore query limitations
 async function getCaseManagerProjects(options: {
     userName: string;
-    pageSize: number;
-    sort: { key: string; direction: 'asc' | 'desc' };
-    lastVisibleDoc?: any;
     clientName?: string;
     process?: string;
 }) {
-    const { userName, pageSize, sort, lastVisibleDoc, clientName, process } = options;
+    const { userName, clientName, process } = options;
     const projectsCollection = collection(db, "projects");
 
-    // Define base queries for each status we care about for Case Manager
     const baseConstraints = [
         where("case_manager", "==", userName),
         where("qa_status", "==", "Client Query"),
     ];
-
     if (clientName) {
         baseConstraints.push(where("client_name", "==", clientName));
     }
@@ -400,53 +393,27 @@ async function getCaseManagerProjects(options: {
         baseConstraints.push(where("process", "==", process));
     }
     
-    // Firestore limitation: `in` query with `null` is tricky. We query for each state separately.
-    const queries = [
-        query(projectsCollection, ...baseConstraints, where("clientquery_status", "==", "Pending")),
-        query(projectsCollection, ...baseConstraints, where("clientquery_status", "==", "")),
-        query(projectsCollection, ...baseConstraints, where("clientquery_status", "==", null)),
-    ];
-    
-    // Fetch all documents from all queries
-    const allResults = await Promise.all(queries.map(q => getDocs(q)));
+    const statusQuery = query(projectsCollection, ...baseConstraints, where("clientquery_status", "in", ["", "Pending"]));
+    const nullStatusQuery = query(projectsCollection, ...baseConstraints, where("clientquery_status", "==", null));
 
-    // Combine and deduplicate results
+    const [statusSnapshot, nullStatusSnapshot] = await Promise.all([
+        getDocs(statusQuery),
+        getDocs(nullStatusQuery)
+    ]);
+    
     const combinedDocs: { [key: string]: any } = {};
-    allResults.forEach(snapshot => {
-        snapshot.docs.forEach(doc => {
-            if (!combinedDocs[doc.id]) {
-                combinedDocs[doc.id] = { id: doc.id, ...convertTimestampsToDates(doc.data()) };
-            }
-        });
+    statusSnapshot.docs.forEach(doc => {
+        if (!combinedDocs[doc.id]) {
+            combinedDocs[doc.id] = { id: doc.id, ...convertTimestampsToDates(doc.data()) };
+        }
+    });
+    nullStatusSnapshot.docs.forEach(doc => {
+        if (!combinedDocs[doc.id]) {
+            combinedDocs[doc.id] = { id: doc.id, ...convertTimestampsToDates(doc.data()) };
+        }
     });
 
-    let projectList = Object.values(combinedDocs);
-    const totalCount = projectList.length;
-
-    // Manual sorting
-    projectList.sort((a, b) => {
-        const key = sort.key || 'row_number';
-        const dir = sort.direction === 'asc' ? 1 : -1;
-        const valA = a[key];
-        const valB = b[key];
-        
-        if (valA === null || valA === undefined) return 1;
-        if (valB === null || valB === undefined) return -1;
-        
-        if (valA < valB) return -1 * dir;
-        if (valA > valB) return 1 * dir;
-        return 0;
-    });
-    
-    // Manual pagination (lastVisibleDoc is complex with manual merging, so we use page number)
-    const startIndex = lastVisibleDoc ? projectList.findIndex(p => p.id === lastVisibleDoc.id) + 1 : 0;
-    const paginatedList = projectList.slice(startIndex, startIndex + pageSize);
-
-    return {
-        projects: paginatedList as Project[],
-        totalCount,
-        totalPages: Math.ceil(totalCount / pageSize),
-    };
+    return Object.values(combinedDocs) as Project[];
 }
 
 
@@ -465,39 +432,46 @@ export async function getPaginatedProjects(options: {
 }) {
     const { page, limit: pageSize, filters, sort } = options;
     
-    // Special handling for Case Manager due to complex query needs
     if (filters.roleFilter?.role === 'Case Manager') {
         const { userName } = filters.roleFilter;
-        // The Case Manager function now handles its own pagination, sorting, and filtering.
-        const result = await getCaseManagerProjects({
+        let allProjects = await getCaseManagerProjects({
             userName,
-            pageSize: 1000, // Fetch all to manually sort and paginate
-            sort,
             clientName: filters.clientName,
             process: filters.process
         });
+        
+        allProjects.sort((a, b) => {
+            const key = sort.key || 'row_number';
+            const dir = sort.direction === 'asc' ? 1 : -1;
+            const valA = a[key];
+            const valB = b[key];
+            if (valA === null || valA === undefined) return 1;
+            if (valB === null || valB === undefined) return -1;
+            if (valA < valB) return -1 * dir;
+            if (valA > valB) return 1 * dir;
+            return 0;
+        });
+
+        const totalCount = allProjects.length;
         const startIndex = (page - 1) * pageSize;
-        const paginatedProjects = result.projects.slice(startIndex, startIndex + pageSize);
+        const paginatedProjects = allProjects.slice(startIndex, startIndex + pageSize);
 
         return {
             projects: paginatedProjects,
-            totalCount: result.totalCount,
-            totalPages: Math.ceil(result.totalCount / pageSize),
+            totalCount,
+            totalPages: Math.ceil(totalCount / pageSize),
         };
     }
 
     const projectsCollection = collection(db, "projects");
     let queryConstraints: QueryConstraint[] = buildFilterConstraints(filters);
     
-    // Count query should use the same filters
     const countQuery = query(projectsCollection, ...queryConstraints);
     const totalCountSnapshot = await getCountFromServer(countQuery);
     const totalCount = totalCountSnapshot.data().count;
 
-    // Add sorting
     queryConstraints.push(orderBy(sort.key || 'row_number', sort.direction || 'desc'));
 
-    // Pagination logic
     if (page > 1) {
         const paginationQueryConstraints = [...queryConstraints, limit((page - 1) * pageSize)];
         const tempPaginationQuery = query(projectsCollection, ...paginationQueryConstraints);
@@ -508,7 +482,6 @@ export async function getPaginatedProjects(options: {
         }
     }
     
-    // Final query with limit
     const finalQueryConstraints = [...queryConstraints, limit(pageSize)];
     const finalQuery = query(projectsCollection, ...finalQueryConstraints);
     const projectSnapshot = await getDocs(finalQuery);
@@ -541,47 +514,43 @@ export async function getProjectsForExport(options: {
 }): Promise<Partial<Project>[]> {
     const { filters, sort, visibleColumns = [] } = options;
     
-    // Special handling for Case Manager export
+    let allProjects: Project[] = [];
+
     if (filters.roleFilter?.role === 'Case Manager') {
-        const result = await getCaseManagerProjects({
-             userName: filters.roleFilter.userName,
-             pageSize: 5000, // A large number to get all records for export
-             sort,
-             clientName: filters.clientName,
-             process: filters.process,
+        allProjects = await getCaseManagerProjects({
+            userName: filters.roleFilter.userName,
+            clientName: filters.clientName,
+            process: filters.process,
         });
-        return result.projects.map(p => {
-             if (visibleColumns.length > 0) {
-                const filteredProject: Partial<Project> = {};
-                visibleColumns.forEach(key => {
-                    if (key !== 'select' && key !== 'actions') {
-                        filteredProject[key as keyof Project] = p[key as keyof Project];
-                    }
-                });
-                return filteredProject;
-            }
-            return p;
-        });
-    }
-
-    const projectsCollection = collection(db, "projects");
-    const queryConstraints = buildFilterConstraints(filters);
-    
-    if (sort.key && sort.key !== 'id') {
-        queryConstraints.push(orderBy(sort.key, sort.direction));
     } else {
-        queryConstraints.push(orderBy('row_number', 'desc')); 
-    }
-
-    const finalQuery = query(projectsCollection, ...queryConstraints);
-    const projectSnapshot = await getDocs(finalQuery);
-
-    const dataToExport = projectSnapshot.docs.map(doc => {
-        const fullProject = {
+        const projectsCollection = collection(db, "projects");
+        const queryConstraints = buildFilterConstraints(filters);
+        queryConstraints.push(orderBy(sort.key || 'row_number', sort.direction || 'desc'));
+        
+        const finalQuery = query(projectsCollection, ...queryConstraints);
+        const projectSnapshot = await getDocs(finalQuery);
+        allProjects = projectSnapshot.docs.map(doc => ({
             id: doc.id,
             ...convertTimestampsToDates(doc.data())
-        } as Project;
-        
+        } as Project));
+    }
+    
+    // Manual sort for Case Manager results, already sorted for others
+    if (filters.roleFilter?.role === 'Case Manager') {
+        allProjects.sort((a, b) => {
+            const key = sort.key || 'row_number';
+            const dir = sort.direction === 'asc' ? 1 : -1;
+            const valA = a[key];
+            const valB = b[key];
+            if (valA === null || valA === undefined) return 1;
+            if (valB === null || valB === undefined) return -1;
+            if (valA < valB) return -1 * dir;
+            if (valA > valB) return 1 * dir;
+            return 0;
+        });
+    }
+
+    const dataToExport = allProjects.map(fullProject => {
         if (visibleColumns.length > 0) {
             const filteredProject: Partial<Project> = {};
             visibleColumns.forEach(key => {
@@ -591,28 +560,25 @@ export async function getProjectsForExport(options: {
             });
             return filteredProject;
         }
-
         return fullProject;
     });
 
     return dataToExport;
 }
 
-export async function getDistinctClientNames(): Promise<string[]> {
-    const projectsCollection = collection(db, "projects");
-    const projectSnapshot = await getDocs(projectsCollection);
+export async function getDistinctClientNames(): Promise<Client[]> {
+    const clientsCollection = collection(db, "clients");
+    const q = query(clientsCollection, orderBy("name", "asc"));
+    const clientSnapshot = await getDocs(q);
     
-    if (projectSnapshot.empty) {
+    if (clientSnapshot.empty) {
         return [];
     }
-
-    const clientNames = new Set<string>();
-    projectSnapshot.docs.forEach(doc => {
-        const data = doc.data();
-        if (data.client_name) {
-            clientNames.add(data.client_name);
-        }
-    });
-
-    return Array.from(clientNames).sort();
+    
+    return clientSnapshot.docs.map(doc => ({
+        id: doc.id,
+        name: doc.data().name,
+    }));
 }
+
+    

@@ -7,7 +7,7 @@ import { Loader2, RotateCcw, Rows, Save, FileSpreadsheet } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 import Papa from "papaparse";
 
-import type { Project, Role, User, ProcessType, WorkflowStatus } from '@/lib/data';
+import type { Project, Role, User, WorkflowStatus } from '@/lib/data';
 import { getSession, onAuthChanged, getUsers } from '@/lib/auth';
 import { getPaginatedProjects, bulkUpdateProjects, getProjectsForExport } from '@/app/actions';
 import { SearchCriteria } from '@/components/advanced-search-form';
@@ -270,15 +270,12 @@ export default function SearchResultsPage() {
         
         setIsBulkUpdating(true);
         try {
-            const result = await bulkUpdateProjects({ projectIds, field: bulkUpdateField, value: bulkUpdateValue });
-            if (result.success) {
-                toast({ title: "Success", description: `${projectIds.length} projects have been updated.` });
-                fetchPageData(); // Refresh data
-                setRowSelection({});
-                setBulkUpdateValue('');
-            } else {
-                throw new Error("An unknown error occurred.");
-            }
+            await bulkUpdateProjects({ projectIds, field: bulkUpdateField, value: bulkUpdateValue });
+            toast({ title: "Success", description: `${projectIds.length} projects have been updated.` });
+            fetchPageData(); // Refresh data
+            setRowSelection({});
+            setBulkUpdateValue('');
+
         } catch(e) {
             toast({ title: "Error", description: `Failed to update projects. ${e instanceof Error ? e.message : ''}`, variant: "destructive"});
         } finally {
@@ -362,7 +359,7 @@ export default function SearchResultsPage() {
                     processors={dropdownOptions.processors}
                     qas={dropdownOptions.qas}
                     caseManagers={dropdownOptions.caseManagers}
-                    processes={dropdownOptions.processes.map(p => p.name) as ProcessType[]}
+                    processes={dropdownOptions.processes.map(p => p.name)}
                 />
             )}
             {sourceProject && (
