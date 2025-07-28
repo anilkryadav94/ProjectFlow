@@ -15,8 +15,8 @@ export type User = {
     roles: Role[];
 };
 
-export type WorkflowStatus = 'Pending Allocation' | 'With Processor' | 'With QA' | 'Completed';
-export const workflowStatuses: WorkflowStatus[] = ['Pending Allocation', 'With Processor', 'With QA', 'Completed'];
+export type WorkflowStatus = 'Pending Allocation' | 'With Processor' | 'With QA' | 'With Client' | 'Completed';
+export const workflowStatuses: WorkflowStatus[] = ['Pending Allocation', 'With Processor', 'With QA', 'With Client', 'Completed'];
 
 export type ProcessorStatus = 'Pending' | 'On Hold' | 'Re-Work' | 'Processed' | 'NTP' | 'Client Query' | 'Already Processed';
 export const processorStatuses: ProcessorStatus[] = ['Pending', 'On Hold', 'Re-Work', 'Processed', 'NTP', 'Client Query', 'Already Processed'];
@@ -30,8 +30,8 @@ export const qaStatuses: QAStatus[] = ['Pending', 'Complete', 'NTP', 'Client Que
 export const allQaStatuses: QAStatus[] = qaStatuses;
 export const qaSubmissionStatuses: QAStatus[] = ['Complete', 'NTP', 'Client Query', 'Already Processed'];
 
-export type ClientStatus = 'Approved' | 'Clarification Required';
-export const clientStatuses: ClientStatus[] = ['Approved', 'Clarification Required'];
+export type ClientStatus = 'Approved' | 'Clarification Required' | 'Pending';
+export const clientStatuses: ClientStatus[] = ['Pending', 'Approved', 'Clarification Required'];
 
 export type ProcessType = 'Patent' | 'TM' | 'IDS' | 'Project';
 

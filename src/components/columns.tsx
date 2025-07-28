@@ -13,6 +13,7 @@ const statusColors: Record<string, string> = {
   "Pending Allocation": "bg-gray-500/20 text-gray-700 border-gray-500/30",
   "With Processor": "bg-blue-500/20 text-blue-700 border-blue-500/30",
   "With QA": "bg-purple-500/20 text-purple-700 border-purple-500/30",
+  "With Client": "bg-orange-500/20 text-orange-800 border-orange-500/30 font-bold",
   "Completed": "bg-green-500/20 text-green-700 border-green-500/30",
 
   // Processor Statuses
@@ -70,7 +71,11 @@ export const allColumns: { key: keyof Project | 'actions' | 'select', header: st
         let statusText: string = project.workflowStatus;
         let statusColorClass = statusColors[project.workflowStatus];
 
-        if (project.workflowStatus === 'With Processor') {
+        // Derived "With Client" status
+        if (project.qa_status === 'Client Query' && (!project.clientquery_status || project.clientquery_status === 'Pending')) {
+            statusText = 'With Client';
+            statusColorClass = statusColors['With Client'];
+        } else if (project.workflowStatus === 'With Processor') {
             statusText = project.processing_status;
             statusColorClass = statusColors[project.processing_status];
         } else if (project.workflowStatus === 'With QA') {

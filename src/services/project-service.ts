@@ -22,7 +22,7 @@ function convertTimestampsToDates(data: any): any {
 const updatableProjectFields = [
   'row_number', 'ref_number', 'application_number', 'patent_number', 'client_name', 'process', 'processor', 'processorId', 'qa', 'qaId', 'case_manager', 'caseManagerId',
   'manager_name', 'sender', 'subject_line', 'country', 'document_type', 'action_taken', 
-  'renewal_agent', 'processing_status', 'qa_status', 'clientquery_status', 'error', 'rework_reason', 
+  'renewal_agent', 'processing_status', 'qa_status', 'clientquery_status', 'error', 'rework_reason', 'workflowStatus',
   'qa_remark', 'client_query_description', 'client_comments', 'client_error_description', 
   'email_renaming', 'email_forwarded',
   'received_date', 'allocation_date', 'processing_date', 'qa_date', 'reportout_date', 'client_response_date'
@@ -257,7 +257,7 @@ export async function updateProject(
     }
 
     if (submitAction === 'client_submit') {
-      dataToUpdate.workflowStatus = 'With QA';
+      dataToUpdate.workflowStatus = 'With Client';
       dataToUpdate.qa_status = 'Pending';
       dataToUpdate.client_response_date = serverTimestamp();
     } else if (submitAction === 'submit_for_qa') {
@@ -265,7 +265,11 @@ export async function updateProject(
         dataToUpdate.qa_status = 'Pending';
         dataToUpdate.processing_date = serverTimestamp();
     } else if (submitAction === 'submit_qa') {
-        dataToUpdate.workflowStatus = 'Completed';
+        if (dataToUpdate.qa_status === 'Client Query') {
+             dataToUpdate.workflowStatus = 'With Client';
+        } else {
+             dataToUpdate.workflowStatus = 'Completed';
+        }
         dataToUpdate.qa_date = serverTimestamp();
     } else if (submitAction === 'send_rework') {
         dataToUpdate.workflowStatus = 'With Processor';
@@ -393,21 +397,22 @@ async function getCaseManagerProjects(options: {
         baseConstraints.push(where("process", "==", process));
     }
     
-    const statusQuery = query(projectsCollection, ...baseConstraints, where("clientquery_status", "in", ["", "Pending"]));
-    const nullStatusQuery = query(projectsCollection, ...baseConstraints, where("clientquery_status", "==", null));
+    // We need to query for null, "", and "Pending" separately due to Firestore limitations.
+    const q1 = query(projectsCollection, ...baseConstraints, where("clientquery_status", "in", ["", "Pending"]));
+    const q2 = query(projectsCollection, ...baseConstraints, where("clientquery_status", "==", null));
 
-    const [statusSnapshot, nullStatusSnapshot] = await Promise.all([
-        getDocs(statusQuery),
-        getDocs(nullStatusQuery)
+    const [s1, s2] = await Promise.all([
+        getDocs(q1),
+        getDocs(q2)
     ]);
     
     const combinedDocs: { [key: string]: any } = {};
-    statusSnapshot.docs.forEach(doc => {
+    s1.docs.forEach(doc => {
         if (!combinedDocs[doc.id]) {
             combinedDocs[doc.id] = { id: doc.id, ...convertTimestampsToDates(doc.data()) };
         }
     });
-    nullStatusSnapshot.docs.forEach(doc => {
+    s2.docs.forEach(doc => {
         if (!combinedDocs[doc.id]) {
             combinedDocs[doc.id] = { id: doc.id, ...convertTimestampsToDates(doc.data()) };
         }
@@ -441,7 +446,7 @@ export async function getPaginatedProjects(options: {
         });
         
         allProjects.sort((a, b) => {
-            const key = sort.key || 'row_number';
+            const key = sort.key as keyof Project || 'row_number';
             const dir = sort.direction === 'asc' ? 1 : -1;
             const valA = a[key];
             const valB = b[key];
@@ -538,7 +543,7 @@ export async function getProjectsForExport(options: {
     // Manual sort for Case Manager results, already sorted for others
     if (filters.roleFilter?.role === 'Case Manager') {
         allProjects.sort((a, b) => {
-            const key = sort.key || 'row_number';
+            const key = sort.key as keyof Project || 'row_number';
             const dir = sort.direction === 'asc' ? 1 : -1;
             const valA = a[key];
             const valB = b[key];
@@ -580,5 +585,3 @@ export async function getDistinctClientNames(): Promise<Client[]> {
         name: doc.data().name,
     }));
 }
-
-    

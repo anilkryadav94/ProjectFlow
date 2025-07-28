@@ -152,7 +152,7 @@ export function EditProjectDialog({
   const { toast } = useToast();
   
   const isProcessorView = userRole === 'Processor' && project?.workflowStatus === 'With Processor';
-  const isQaView = userRole === 'QA' && project?.workflowStatus === 'With QA';
+  const isQaView = userRole === 'QA' && (project?.workflowStatus === 'With QA' || project?.workflowStatus === 'With Client');
   const isCaseManagerView = userRole === 'Case Manager';
   
   const getValidationSchema = () => {
