@@ -203,7 +203,7 @@ export function UserManagementTable({ sessionUser }: { sessionUser: User }) {
         <>
             <div className="flex-grow flex flex-col">
                 <Card className="border-0 shadow-none flex-grow flex flex-col">
-                    <CardHeader className="px-4 flex-shrink-0">
+                    <CardHeader className="px-0 flex-shrink-0">
                         <div className="flex items-center justify-between gap-4">
                             <div>
                                 <CardTitle>User Management</CardTitle>
@@ -241,7 +241,7 @@ export function UserManagementTable({ sessionUser }: { sessionUser: User }) {
                             </div>
                         </div>
                     </CardHeader>
-                    <CardContent className="px-4 flex-grow overflow-y-auto">
+                    <CardContent className="px-0 flex-grow overflow-y-auto pt-4">
                         <div className="rounded-md border h-full overflow-y-auto">
                             <Table>
                                 <TableHeader className="sticky top-0 bg-primary z-10">

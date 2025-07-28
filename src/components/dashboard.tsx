@@ -7,7 +7,7 @@ import { type Project, type Role, type User, roleHierarchy, ProcessType } from '
 import { DataTable } from '@/components/data-table';
 import { getColumns, allColumns } from '@/components/columns';
 import { Header } from '@/components/header';
-import { UserManagementTable } from './user-management-table';
+import { AdminDashboard } from './admin-dashboard';
 import { Button } from './ui/button';
 import { useToast } from '@/hooks/use-toast';
 import { FileUp, Loader2, Upload, X, FileDown, Rows, Save, FileSpreadsheet, BarChart } from 'lucide-react';
@@ -508,9 +508,7 @@ function Dashboard({ user, error }: DashboardProps) {
 
         <main className="flex flex-col flex-grow overflow-y-auto transition-opacity duration-300">
              {activeRole === 'Admin' ? (
-                <div className="flex-grow flex flex-col p-4">
-                    <UserManagementTable sessionUser={user} />
-                </div>
+                <AdminDashboard sessionUser={user} />
             ) : activeRole === 'Manager' ? (
               <div className="flex flex-col h-full p-4 md:p-6 overflow-y-auto">
                 <Accordion type="single" collapsible className="w-full" defaultValue='advanced-search'>
