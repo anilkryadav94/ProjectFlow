@@ -194,11 +194,10 @@ export function EditProjectDialog({
         return;
     }
     
-    // Determine the correct action for QA submission based on status
     let finalAction = action;
     if (action === 'submit_qa') {
         if (data.qa_status === 'Client Query') {
-             finalAction = 'save'; // Re-route to 'save' to trigger 'With Client' workflow
+             finalAction = 'save';
         }
     }
     
@@ -210,7 +209,7 @@ export function EditProjectDialog({
                 title: "Success",
                 description: `Project ${result.project.row_number || result.project.id} updated.`,
             });
-            onUpdateSuccess(); // This will refresh the project list in the dashboard
+            onUpdateSuccess(); 
 
             const currentIndex = projectQueue.findIndex(p => p.id === result.project!.id);
             const newQueueAfterUpdate = projectQueue.filter(p => p.id !== result.project!.id);
@@ -300,11 +299,14 @@ export function EditProjectDialog({
   );
 
   const renderQaForm = () => (
-    <>
-        <ScrollArea className="h-full">
-            <div className="space-y-4 p-4 border rounded-md bg-muted/30">
-                <h3 className="font-semibold text-lg mb-2">Processor Details</h3>
-                <div className="grid grid-cols-2 gap-4">
+     <>
+        <Card className="bg-muted/30">
+            <CardHeader>
+                <CardTitle>Processor Details</CardTitle>
+                <CardDescription>This is the information submitted by the processor for your review.</CardDescription>
+            </CardHeader>
+            <CardContent className="space-y-4">
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                     <FormItem><FormLabel>Ref Number</FormLabel><Input value={project?.ref_number ?? ''} readOnly /></FormItem>
                     <FormItem><FormLabel>Processor</FormLabel><Input value={project?.processor} readOnly /></FormItem>
                     <FormItem><FormLabel>Processing Status</FormLabel><Input value={project?.processing_status} readOnly /></FormItem>
@@ -316,19 +318,27 @@ export function EditProjectDialog({
                     <FormItem><FormLabel>Sender</FormLabel><Input value={project?.sender ?? ''} readOnly /></FormItem>
                     <FormItem><FormLabel>Email Date</FormLabel><Input value={project?.received_date ?? ''} readOnly /></FormItem>
                     <FormItem><FormLabel>Renewal Agent</FormLabel><Input value={project?.renewal_agent ?? ''} readOnly /></FormItem>
-                    <FormItem className="col-span-2"><FormLabel>Action Taken</FormLabel><Textarea value={project?.action_taken ?? ''} readOnly /></FormItem>
-                    <FormItem className="col-span-2"><FormLabel>Client Query Description</FormLabel><Textarea value={project?.client_query_description ?? ''} readOnly /></FormItem>
                 </div>
-            </div>
-        </ScrollArea>
-        <div className="space-y-4 p-4 border rounded-md">
-            <h3 className="font-semibold text-lg mb-2">QA Assessment</h3>
-            <FormField control={form.control} name="qa_status" render={({ field }) => (<FormItem><FormLabel>QA Status</FormLabel><Select onValueChange={field.onChange} value={field.value}><FormControl><SelectTrigger><SelectValue placeholder="Select QA status..."/></SelectTrigger></FormControl><SelectContent>{qaSubmissionStatuses.map(s => <SelectItem key={s} value={s}>{s}</SelectItem>)}</SelectContent></Select><FormMessage /></FormItem>)} />
-            <FormField control={form.control} name="error" render={({ field }) => (<FormItem><FormLabel>Error Found?</FormLabel><Select onValueChange={field.onChange} value={field.value ?? ""}><FormControl><SelectTrigger><SelectValue placeholder="Select..." /></SelectTrigger></FormControl><SelectContent>{errorOptions.map(o => <SelectItem key={o} value={o}>{o}</SelectItem>)}</SelectContent></Select><FormMessage /></FormItem>)} />
-            <FormField control={form.control} name="qa_remark" render={({ field }) => (<FormItem><FormLabel>QA Remark</FormLabel><FormControl><Textarea {...field} value={field.value ?? ""} /></FormControl><FormMessage /></FormItem>)} />
-            <FormField control={form.control} name="client_comments" render={({ field }) => (<FormItem><FormLabel>Client Comments (Optional)</FormLabel><FormControl><Textarea {...field} value={field.value ?? ""} /></FormControl><FormMessage /></FormItem>)} />
-            <FormField control={form.control} name="rework_reason" render={({ field }) => (<FormItem><FormLabel>Reason for Rework (if sending back)</FormLabel><FormControl><Textarea {...field} value={field.value ?? ""} /></FormControl><FormMessage /></FormItem>)} />
-        </div>
+                 <div className="space-y-2">
+                    <FormItem><FormLabel>Action Taken</FormLabel><Textarea value={project?.action_taken ?? ''} readOnly /></FormItem>
+                    <FormItem><FormLabel>Client Query Description</FormLabel><Textarea value={project?.client_query_description ?? ''} readOnly /></FormItem>
+                </div>
+            </CardContent>
+        </Card>
+
+        <Card>
+            <CardHeader>
+                <CardTitle>QA Assessment</CardTitle>
+                <CardDescription>Please review the details and provide your assessment.</CardDescription>
+            </CardHeader>
+            <CardContent className="space-y-4">
+                <FormField control={form.control} name="qa_status" render={({ field }) => (<FormItem><FormLabel>QA Status</FormLabel><Select onValueChange={field.onChange} value={field.value}><FormControl><SelectTrigger><SelectValue placeholder="Select QA status..."/></SelectTrigger></FormControl><SelectContent>{qaSubmissionStatuses.map(s => <SelectItem key={s} value={s}>{s}</SelectItem>)}</SelectContent></Select><FormMessage /></FormItem>)} />
+                <FormField control={form.control} name="error" render={({ field }) => (<FormItem><FormLabel>Error Found?</FormLabel><Select onValueChange={field.onChange} value={field.value ?? ""}><FormControl><SelectTrigger><SelectValue placeholder="Select..." /></SelectTrigger></FormControl><SelectContent>{errorOptions.map(o => <SelectItem key={o} value={o}>{o}</SelectItem>)}</SelectContent></Select><FormMessage /></FormItem>)} />
+                <FormField control={form.control} name="qa_remark" render={({ field }) => (<FormItem><FormLabel>QA Remark</FormLabel><FormControl><Textarea {...field} value={field.value ?? ""} /></FormControl><FormMessage /></FormItem>)} />
+                <FormField control={form.control} name="client_comments" render={({ field }) => (<FormItem><FormLabel>Client Comments (Optional)</FormLabel><FormControl><Textarea {...field} value={field.value ?? ""} /></FormControl><FormMessage /></FormItem>)} />
+                <FormField control={form.control} name="rework_reason" render={({ field }) => (<FormItem><FormLabel>Reason for Rework (if sending back)</FormLabel><FormControl><Textarea {...field} value={field.value ?? ""} /></FormControl><FormMessage /></FormItem>)} />
+            </CardContent>
+        </Card>
     </>
   );
 
@@ -491,5 +501,3 @@ export function EditProjectDialog({
     </>
   );
 }
-
-    
