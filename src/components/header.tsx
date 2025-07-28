@@ -162,7 +162,7 @@ export function Header({
                             <SelectValue placeholder="Select column" />
                         </SelectTrigger>
                         <SelectContent>
-                            <SelectItem value="any">Any Text/Number</SelectItem>
+                            <SelectItem value="any">General Search</SelectItem>
                             <SelectItem value="row_number">Row Number</SelectItem>
                             <SelectItem value="ref_number">Ref Number</SelectItem>
                             <SelectItem value="application_number">Application No.</SelectItem>

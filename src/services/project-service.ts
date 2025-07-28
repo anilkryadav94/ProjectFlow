@@ -27,9 +27,40 @@ const updatableProjectFields = [
   'manager_name', 'sender', 'subject_line', 'country', 'document_type', 'action_taken', 
   'renewal_agent', 'processing_status', 'qa_status', 'clientquery_status', 'error', 'rework_reason', 'workflowStatus',
   'qa_remark', 'client_query_description', 'client_comments', 'client_error_description', 
-  'email_renaming', 'email_forwarded',
+  'email_renaming', 'email_forwarded', 'searchable_text',
   'received_date', 'allocation_date', 'processing_date', 'qa_date', 'reportout_date', 'client_response_date'
 ] as const;
+
+
+function generateSearchableText(project: Partial<Project>): string[] {
+    const searchableFields = [
+        project.row_number,
+        project.ref_number,
+        project.application_number,
+        project.patent_number,
+        project.client_name,
+        project.process,
+        project.processor,
+        project.qa,
+        project.case_manager,
+        project.sender,
+        project.subject_line,
+        project.country,
+        project.processing_status,
+        project.qa_status,
+    ];
+
+    const tokens = new Set<string>();
+    searchableFields.forEach(field => {
+        if (field && typeof field === 'string') {
+            field.toLowerCase().split(/\s+/).forEach(token => {
+                if (token) tokens.add(token);
+            });
+        }
+    });
+    return Array.from(tokens);
+}
+
 
 function buildFilterConstraints(
     filters: {
@@ -94,22 +125,30 @@ function buildFilterConstraints(
                          }
                         break;
                     case 'startsWith':
-                    case 'contains':
+                        andConstraints.push(where(criterion.field, '>=', value));
+                        andConstraints.push(where(criterion.field, '<=', value + '\uf8ff'));
+                        break;
+                     case 'contains':
+                        // Firestore doesn't support native "contains".
+                        // A common workaround is to use a searchable array of keywords.
+                        // We will use this for the 'any' quick search.
+                        // For specific fields, we'll treat it like 'startsWith' for simplicity.
                         andConstraints.push(where(criterion.field, '>=', value));
                         andConstraints.push(where(criterion.field, '<=', value + '\uf8ff'));
                         break;
                     case 'blank':
-                        andConstraints.push(where(criterion.field, '==', null));
+                        andConstraints.push(where(criterion.field, 'in', [null, ""]));
                         break;
                 }
             });
         }
         
-        if (filters.quickSearch && filters.searchColumn) {
+        if (filters.quickSearch) {
+             const searchTerms = filters.quickSearch.toLowerCase().split(/\s+/).filter(Boolean);
              if (filters.searchColumn === 'any') {
-                // OR queries are complex and require many indexes. Default to searching ref_number.
-                andConstraints.push(where('ref_number', '>=', filters.quickSearch));
-                andConstraints.push(where('ref_number', '<=', filters.quickSearch + '\uf8ff'));
+                if (searchTerms.length > 0) {
+                    andConstraints.push(where('searchable_text', 'array-contains-any', searchTerms));
+                }
             } else {
                  const isDateSearch = dateFields.includes(filters.searchColumn);
                 if (isDateSearch) {
@@ -197,6 +236,10 @@ export async function bulkUpdateProjects(projectIds: string[], updateData: Parti
     if (dataToUpdate.country) await ensureCountryExists(dataToUpdate.country);
     if (dataToUpdate.document_type) await ensureDocumentTypeExists(dataToUpdate.document_type);
     if (dataToUpdate.renewal_agent) await ensureRenewalAgentExists(dataToUpdate.renewal_agent);
+
+    // Regenerate searchable text
+    const tempProjectDataForSearch = { ...updateData };
+    dataToUpdate.searchable_text = generateSearchableText(tempProjectDataForSearch);
     
 
     projectIds.forEach(id => {
@@ -220,6 +263,7 @@ export async function updateProject(
     if (!docSnap.exists()) {
       throw new Error(`No such project found with ID: ${projectId}`);
     }
+    const existingData = docSnap.data();
 
     const dataToUpdate: { [key: string]: any } = {};
     for (const key of updatableProjectFields) {
@@ -274,6 +318,10 @@ export async function updateProject(
     }
     
     if (Object.keys(dataToUpdate).length > 0) {
+      // Regenerate searchable text with combined existing and new data
+      const mergedData = { ...existingData, ...dataToUpdate };
+      dataToUpdate.searchable_text = generateSearchableText(mergedData);
+
       // Ensure metadata collections are updated before writing to project
       if (dataToUpdate.client_name) await ensureClientExists(dataToUpdate.client_name);
       if (dataToUpdate.process) await ensureProcessExists(dataToUpdate.process);
@@ -324,7 +372,7 @@ export async function addRows(projectsToAdd: Partial<Project>[]): Promise<number
   for (const projectData of projectsToAdd) {
       const newProjectRef = doc(projectsCollection);
       
-      const newProject: Omit<Project, 'id'> = {
+      const newProject: Omit<Project, 'id' | 'searchable_text'> = {
           row_number: "TBD",
           ref_number: null, application_number: null, patent_number: null, client_name: '', process: 'Patent', 
           processor: '', processorId: '', qa: '', qaId: '', case_manager: '', caseManagerId: '',
@@ -342,6 +390,9 @@ export async function addRows(projectsToAdd: Partial<Project>[]): Promise<number
       if (finalProjectData.case_manager) {
           finalProjectData.caseManagerId = users.find(u => u.name === finalProjectData.case_manager)?.id || '';
       }
+
+      // Generate searchable text array
+      (finalProjectData as any).searchable_text = generateSearchableText(finalProjectData);
 
        // Ensure metadata collections are updated
       if (finalProjectData.client_name) await ensureClientExists(finalProjectData.client_name);
@@ -385,6 +436,7 @@ async function getCaseManagerProjects(options: {
     let baseConstraints: QueryConstraint[] = [
         where("case_manager", "==", userName),
         where("qa_status", "==", "Client Query"),
+        where("clientquery_status", "in", ["Pending", null, ""])
     ];
 
     if (clientName) {
@@ -394,28 +446,12 @@ async function getCaseManagerProjects(options: {
         baseConstraints.push(where("process", "==", process));
     }
     
-    // We need to query for null, "", and "Pending" separately due to Firestore limitations.
-    const q1 = query(projectsCollection, ...baseConstraints, where("clientquery_status", "in", ["Pending", ""]));
-    const q2 = query(projectsCollection, ...baseConstraints, where("clientquery_status", "==", null));
+    const finalQuery = query(projectsCollection, ...baseConstraints);
+    const snapshot = await getDocs(finalQuery);
 
-    const [s1, s2] = await Promise.all([
-        getDocs(q1),
-        getDocs(q2)
-    ]);
-    
-    const combinedDocs: { [key: string]: any } = {};
-    s1.docs.forEach(doc => {
-        if (!combinedDocs[doc.id]) {
-            combinedDocs[doc.id] = { id: doc.id, ...convertTimestampsToDates(doc.data()) };
-        }
-    });
-    s2.docs.forEach(doc => {
-        if (!combinedDocs[doc.id]) {
-            combinedDocs[doc.id] = { id: doc.id, ...convertTimestampsToDates(doc.data()) };
-        }
-    });
-
-    return Object.values(combinedDocs) as Project[];
+    return snapshot.docs.map(doc => ({
+      id: doc.id, ...convertTimestampsToDates(doc.data())
+    } as Project));
 }
 
 
@@ -562,7 +598,8 @@ export async function getProjectsForExport(options: {
             });
             return filteredProject;
         }
-        return fullProject;
+        const { searchable_text, ...rest } = fullProject;
+        return rest;
     });
 
     return dataToExport;

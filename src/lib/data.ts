@@ -77,6 +77,7 @@ export type Project = {
     client_error_description: string | null;
     email_renaming: string | null;
     email_forwarded: 'Yes' | 'No' | null;
+    searchable_text: string[]; // For full-text search simulation
 };
 
 

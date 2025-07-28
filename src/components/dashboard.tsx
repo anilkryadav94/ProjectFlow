@@ -23,6 +23,7 @@ import { ColumnSelectDialog } from './column-select-dialog';
 import { differenceInBusinessDays } from 'date-fns';
 import { getUsers } from '@/lib/auth';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import { addRows } from "@/app/actions";
 import { getPaginatedProjects } from '@/services/project-service';
 import { getAllClients, type Client } from '@/services/client-service';
 import { getAllProcesses, type Process } from '@/services/process-service';
@@ -266,14 +267,13 @@ function Dashboard({ user, error }: DashboardProps) {
             });
 
             try {
-                // This will use the corrected addRows function in project-service
-                // const result = await addRows(projectsToAdd);
-                // if (result.success) {
-                //     toast({ title: "Bulk Add Complete", description: `${result.addedCount} projects have been added.` });
-                //     if (activeRole) fetchDashboardData(activeRole, 1, sort, clientNameFilter, processFilter);
-                // } else {
-                //     throw new Error(result.error || "An unknown error occurred during upload.");
-                // }
+                const result = await addRows(projectsToAdd);
+                if (result.success) {
+                    toast({ title: "Bulk Add Complete", description: `${result.addedCount} projects have been added.` });
+                    if (activeRole) fetchDashboardData(activeRole, 1, sort, clientNameFilter, processFilter);
+                } else {
+                    throw new Error(result.error || "An unknown error occurred during upload.");
+                }
             } catch(e) {
                  toast({ title: "Upload Error", description: `Failed to add projects to database. ${e instanceof Error ? e.message : ''}`, variant: "destructive" });
             } finally {
@@ -481,7 +481,7 @@ function Dashboard({ user, error }: DashboardProps) {
                                 <>
                                     <span>{caseManagerTatInfo.greeting} </span>
                                     {caseManagerTatInfo.count > 0 && (
-                                        <span>{`${caseManagerTatInfo.count} ${caseManagerTatInfo.plural} Emails Identified Outside TAT Threshold – Your Attention Required.`}</span>
+                                        <span>{`${caseManagerTatInfo.count} ${caseManagerTatInfo.plural} Identified Outside TAT Threshold – Your Attention Required.`}</span>
                                     )}
                                 </>
                             )}
