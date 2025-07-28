@@ -191,9 +191,15 @@ export function EditProjectDialog({
         return;
     }
     
+    // Determine the correct action for QA submission based on status
+    let finalAction = action;
+    if (action === 'submit_qa' && data.qa_status === 'Client Query') {
+        finalAction = 'save'; // Re-route to 'save' to trigger the correct server logic
+    }
+    
     setIsSubmitting(true);
     try {
-        const result = await updateProject(project.id, data, action);
+        const result = await updateProject(project.id, data, finalAction);
         if (result.success && result.project) {
             toast({
                 title: "Success",
@@ -220,7 +226,7 @@ export function EditProjectDialog({
                 onOpenChange(false);
             }
         } else {
-            throw new Error("Failed to update project on the server.");
+            throw new Error(result.error || "Failed to update project on the server.");
         }
     } catch (error) {
         toast({

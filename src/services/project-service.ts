@@ -211,21 +211,21 @@ export async function bulkUpdateProjects(projectIds: string[], updateData: Parti
     });
     
     // Ensure name and ID are updated together
-    if (updateData.processor) {
-        dataToUpdate.processorId = users.find(u => u.name === updateData.processor)?.id || '';
+    if (updateData.processorId) {
+        dataToUpdate.processor = users.find(u => u.id === updateData.processorId)?.name || '';
     }
-    if (updateData.qa) {
-        dataToUpdate.qaId = users.find(u => u.name === updateData.qa)?.id || '';
+    if (updateData.qaId) {
+        dataToUpdate.qa = users.find(u => u.id === updateData.qaId)?.name || '';
     }
-    if (updateData.case_manager) {
-        dataToUpdate.caseManagerId = users.find(u => u.name === updateData.case_manager)?.id || '';
+    if (updateData.caseManagerId) {
+        dataToUpdate.case_manager = users.find(u => u.id === updateData.caseManagerId)?.name || '';
     }
 
-    if (dataToUpdate.processor) {
+    if (dataToUpdate.processorId) {
         dataToUpdate.workflowStatus = 'With Processor';
         dataToUpdate.processing_status = 'Pending';
     }
-    if (dataToUpdate.qa) {
+    if (dataToUpdate.qaId) {
          if (!dataToUpdate.workflowStatus) dataToUpdate.workflowStatus = 'With QA';
          if (!dataToUpdate.qa_status) dataToUpdate.qa_status = 'Pending';
     }
@@ -275,14 +275,14 @@ export async function updateProject(
     }
     
     const users = await getAllUsers();
-    if (dataToUpdate.processor) {
-        dataToUpdate.processorId = users.find(u => u.name === dataToUpdate.processor)?.id || '';
+    if (dataToUpdate.processorId) {
+        dataToUpdate.processor = users.find(u => u.id === dataToUpdate.processorId)?.name || '';
     }
-    if (dataToUpdate.qa) {
-        dataToUpdate.qaId = users.find(u => u.name === dataToUpdate.qa)?.id || '';
+    if (dataToUpdate.qaId) {
+        dataToUpdate.qa = users.find(u => u.id === dataToUpdate.qaId)?.name || '';
     }
-    if (dataToUpdate.case_manager) {
-        dataToUpdate.caseManagerId = users.find(u => u.name === dataToUpdate.case_manager)?.id || '';
+    if (dataToUpdate.caseManagerId) {
+        dataToUpdate.case_manager = users.find(u => u.id === dataToUpdate.caseManagerId)?.name || '';
     }
 
     const dateFields: (keyof Project)[] = ['received_date', 'allocation_date', 'processing_date', 'qa_date', 'reportout_date', 'client_response_date'];
@@ -297,19 +297,21 @@ export async function updateProject(
         }
     }
 
-    if (submitAction === 'client_submit') {
+    if (submitAction === 'save') {
+        if (clientData.qa_status === 'Client Query') {
+            dataToUpdate.workflowStatus = 'With Client';
+            dataToUpdate.clientquery_status = 'Pending';
+        }
+    } else if (submitAction === 'client_submit') {
       dataToUpdate.workflowStatus = 'With QA'; 
-      dataToUpdate.qa_status = 'Pending';
+      dataToUpdate.qa_status = 'Pending'; // Reset for QA
       dataToUpdate.client_response_date = serverTimestamp();
     } else if (submitAction === 'submit_for_qa') {
         dataToUpdate.workflowStatus = 'With QA';
         dataToUpdate.qa_status = 'Pending';
         dataToUpdate.processing_date = serverTimestamp();
     } else if (submitAction === 'submit_qa') {
-        if (clientData.qa_status === 'Client Query') {
-             dataToUpdate.workflowStatus = 'With Client';
-             dataToUpdate.clientquery_status = 'Pending';
-        } else if (clientData.qa_status === 'Complete') {
+        if (clientData.qa_status === 'Complete') {
             dataToUpdate.workflowStatus = 'Completed';
         } else { // For 'NTP', 'Already Processed'
             dataToUpdate.workflowStatus = 'Completed';
@@ -384,14 +386,14 @@ export async function addRows(projectsToAdd: Partial<Project>[]): Promise<number
 
       const finalProjectData = { ...newProject, ...projectData, row_number: currentRowNumber };
       
-      if (finalProjectData.processor) {
-          finalProjectData.processorId = users.find(u => u.name === finalProjectData.processor)?.id || '';
+      if (finalProjectData.processorId) {
+          finalProjectData.processor = users.find(u => u.id === finalProjectData.processorId)?.name || '';
       }
-      if (finalProjectData.qa) {
-          finalProjectData.qaId = users.find(u => u.name === finalProjectData.qa)?.id || '';
+      if (finalProjectData.qaId) {
+          finalProjectData.qa = users.find(u => u.id === finalProjectData.qaId)?.name || '';
       }
-      if (finalProjectData.case_manager) {
-          finalProjectData.caseManagerId = users.find(u => u.name === finalProjectData.case_manager)?.id || '';
+      if (finalProjectData.caseManagerId) {
+          finalProjectData.case_manager = users.find(u => u.id === finalProjectData.caseManagerId)?.name || '';
       }
 
       // Generate searchable text array
