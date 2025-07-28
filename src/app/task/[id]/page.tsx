@@ -1,3 +1,4 @@
+
 "use client";
 
 import * as React from 'react';
@@ -10,6 +11,9 @@ import { getUserDocument } from '@/services/user-service';
 import { EditProjectDialog } from '@/components/edit-project-dialog';
 import { onAuthChanged, getUsers } from '@/lib/auth';
 import { Loader2 } from 'lucide-react';
+import { getAllClients } from '@/services/client-service';
+import { getAllProcesses } from '@/services/process-service';
+
 
 interface TaskPageProps {
     params: { id: string };
@@ -32,10 +36,12 @@ export default function TaskPage({ params }: TaskPageProps) {
   React.useEffect(() => {
     const fetchPageData = async (fbUser: import('firebase/auth').User) => {
         try {
-             const [projectData, userData, allUsers] = await Promise.all([
+             const [projectData, userData, allUsers, clients, processes] = await Promise.all([
                 getProjectById(params.id),
                 getUserDocument(fbUser.uid),
-                getUsers()
+                getUsers(),
+                getAllClients(),
+                getAllProcesses(),
             ]);
             
             if (projectData) setProject(projectData);
@@ -48,11 +54,11 @@ export default function TaskPage({ params }: TaskPageProps) {
             }
             if (allUsers) {
                  setDropdownOptions({
-                    clientNames: [...new Set(allUsers.map(u => u.name).filter(Boolean))].sort(),
+                    clientNames: clients.map(c => c.name),
                     processors: allUsers.filter(u => u.roles.includes('Processor')).map(u => u.name).sort(),
                     qas: allUsers.filter(u => u.roles.includes('QA')).map(u => u.name).sort(),
                     caseManagers: allUsers.filter(u => u.roles.includes('Case Manager')).map(u => u.name).sort(),
-                    processes: ['Patent', 'TM', 'IDS', 'Project'] as ProcessType[],
+                    processes: processes.map(p => p.name) as ProcessType[],
                 });
             }
 

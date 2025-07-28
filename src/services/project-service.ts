@@ -3,6 +3,8 @@ import { db } from "@/lib/firebase";
 import { collection, getDocs, doc, writeBatch, updateDoc, serverTimestamp, addDoc, getDoc, query, orderBy, limit, Timestamp, where, startAfter, getCountFromServer, QueryConstraint, or, and } from "firebase/firestore";
 import type { Project, Role, User } from "@/lib/data";
 import { getAllUsers } from "./user-service";
+import { ensureClientExists } from "./client-service";
+import { ensureProcessExists } from "./process-service";
 
 
 // == HELPERS ==
@@ -31,7 +33,7 @@ function buildFilterConstraints(
         quickSearch?: string;
         searchColumn?: string;
         advanced?: { field: string; operator: string; value: any }[] | null;
-        roleFilter?: { role: Role; userName: string; userId: string; };
+        roleFilter?: { role: Role; userName: string; userId: string };
         clientName?: string;
         process?: string;
     }
@@ -192,6 +194,14 @@ export async function bulkUpdateProjects(projectIds: string[], updateData: Parti
          if (!dataToUpdate.workflowStatus) dataToUpdate.workflowStatus = 'With QA';
          if (!dataToUpdate.qa_status) dataToUpdate.qa_status = 'Pending';
     }
+
+    // Ensure metadata collections are updated
+    if (dataToUpdate.client_name) {
+        await ensureClientExists(dataToUpdate.client_name);
+    }
+    if (dataToUpdate.process) {
+        await ensureProcessExists(dataToUpdate.process);
+    }
     
 
     projectIds.forEach(id => {
@@ -265,6 +275,13 @@ export async function updateProject(
     }
     
     if (Object.keys(dataToUpdate).length > 0) {
+      // Ensure metadata collections are updated before writing to project
+      if (dataToUpdate.client_name) {
+          await ensureClientExists(dataToUpdate.client_name);
+      }
+      if (dataToUpdate.process) {
+          await ensureProcessExists(dataToUpdate.process);
+      }
       await updateDoc(projectRef, dataToUpdate);
     }
     
@@ -326,6 +343,15 @@ export async function addRows(projectsToAdd: Partial<Project>[]): Promise<number
       if (finalProjectData.case_manager) {
           finalProjectData.caseManagerId = users.find(u => u.name === finalProjectData.case_manager)?.id || '';
       }
+
+       // Ensure metadata collections are updated
+      if (finalProjectData.client_name) {
+          await ensureClientExists(finalProjectData.client_name);
+      }
+      if (finalProjectData.process) {
+          await ensureProcessExists(finalProjectData.process);
+      }
+
 
       const yearPrefix = currentRowNumber.slice(0, 4);
       const sequence = parseInt(currentRowNumber.slice(4), 10) + 1;

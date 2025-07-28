@@ -23,7 +23,9 @@ import { ColumnSelectDialog } from './column-select-dialog';
 import { differenceInBusinessDays } from 'date-fns';
 import { getUsers } from '@/lib/auth';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { getPaginatedProjects, getDistinctClientNames } from '@/services/project-service';
+import { getPaginatedProjects } from '@/services/project-service';
+import { getAllClients, type Client } from '@/services/client-service';
+import { getAllProcesses, type Process } from '@/services/process-service';
 
 
 interface DashboardProps {
@@ -53,13 +55,13 @@ function Dashboard({ user, error }: DashboardProps) {
   const [totalPages, setTotalPages] = React.useState(1);
 
   const [dropdownOptions, setDropdownOptions] = React.useState<{
-      clientNames: string[];
+      clients: Client[];
       processors: { id: string, name: string }[];
       qas: { id: string, name: string }[];
       caseManagers: { id: string, name: string }[];
-      processes: ProcessType[];
+      processes: Process[];
   }>({
-      clientNames: [],
+      clients: [],
       processors: [],
       qas: [],
       caseManagers: [],
@@ -151,10 +153,14 @@ function Dashboard({ user, error }: DashboardProps) {
     const fetchInitialData = React.useCallback(async () => {
         setIsLoading(true);
         try {
-            const [allUsers, distinctClientNames] = await Promise.all([getUsers(), getDistinctClientNames()]);
+            const [allUsers, clients, processes] = await Promise.all([
+                getUsers(),
+                getAllClients(),
+                getAllProcesses()
+            ]);
             setDropdownOptions({
-                clientNames: distinctClientNames,
-                processes: ['Patent', 'TM', 'IDS', 'Project'] as ProcessType[],
+                clients,
+                processes,
                 processors: allUsers.filter(u => u.roles.includes('Processor')).map(u => ({ id: u.id, name: u.name })).sort((a,b) => a.name.localeCompare(b.name)),
                 qas: allUsers.filter(u => u.roles.includes('QA')).map(u => ({ id: u.id, name: u.name })).sort((a,b) => a.name.localeCompare(b.name)),
                 caseManagers: allUsers.filter(u => u.roles.includes('Case Manager')).map(u => ({ id: u.id, name: u.name })).sort((a,b) => a.name.localeCompare(b.name)),
@@ -417,11 +423,11 @@ function Dashboard({ user, error }: DashboardProps) {
                 isOpen={isEditDialogOpen} onOpenChange={setIsEditDialogOpen} project={editingProject}
                 onUpdateSuccess={() => fetchDashboardData(activeRole!, page, sort, clientNameFilter, processFilter)}
                 userRole={activeRole} projectQueue={dashboardProjects} onNavigate={setEditingProject}
-                clientNames={dropdownOptions.clientNames.map(c => c)}
+                clientNames={dropdownOptions.clients.map(c => c.name)}
                 processors={dropdownOptions.processors.map(p => p.name)}
                 qas={dropdownOptions.qas.map(q => q.name)}
                 caseManagers={dropdownOptions.caseManagers.map(cm => cm.name)}
-                processes={dropdownOptions.processes}
+                processes={dropdownOptions.processes.map(p => p.name) as ProcessType[]}
             />
         )}
         {sourceProject && ( <AddRowsDialog isOpen={isAddRowsDialogOpen} onOpenChange={setIsAddRowsDialogOpen} sourceProject={sourceProject} onAddRowsSuccess={() => fetchDashboardData(activeRole!, 1, sort, clientNameFilter, processFilter)} /> )}
@@ -433,7 +439,7 @@ function Dashboard({ user, error }: DashboardProps) {
             onQuickSearch={handleQuickSearch} clientNameFilter={clientNameFilter} setClientNameFilter={setClientNameFilter}
             processFilter={processFilter} setProcessFilter={setProcessFilter} isManagerOrAdmin={isManagerOrAdmin}
             showManagerSearch={activeRole === 'Manager'}
-            clientNames={dropdownOptions.clientNames} processes={dropdownOptions.processes}
+            clientNames={dropdownOptions.clients.map(c => c.name)} processes={dropdownOptions.processes.map(p => p.name) as ProcessType[]}
         />
         
         {showSubHeader && (
@@ -539,7 +545,7 @@ function Dashboard({ user, error }: DashboardProps) {
                         <AccordionTrigger className="px-4 py-3 hover:no-underline">Advanced Search</AccordionTrigger>
                         <AccordionContent>
                            <div className="p-1">
-                             <AdvancedSearchForm onSearch={handleAdvancedSearch} initialCriteria={null} processors={dropdownOptions.processors.map(p=>p.name)} qas={dropdownOptions.qas.map(q=>q.name)} clientNames={dropdownOptions.clientNames} processes={dropdownOptions.processes} />
+                             <AdvancedSearchForm onSearch={handleAdvancedSearch} initialCriteria={null} processors={dropdownOptions.processors.map(p=>p.name)} qas={dropdownOptions.qas.map(q=>q.name)} clientNames={dropdownOptions.clients.map(c=>c.name)} processes={dropdownOptions.processes.map(p=>p.name) as ProcessType[]} />
                            </div>
                         </AccordionContent>
                     </AccordionItem>

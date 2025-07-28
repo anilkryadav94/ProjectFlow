@@ -25,7 +25,9 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Bar, BarChart, CartesianGrid, XAxis, YAxis } from "recharts";
 import { ChartContainer, ChartTooltip, ChartTooltipContent, ChartLegend, ChartLegendContent } from "@/components/ui/chart";
 import { workflowStatuses } from '@/lib/data';
-import { getDistinctClientNames } from '@/services/project-service';
+import { getAllClients, type Client } from '@/services/client-service';
+import { getAllProcesses, type Process } from '@/services/process-service';
+
 
 type ViewType = 'table' | 'chart';
 
@@ -57,11 +59,11 @@ export default function SearchResultsPage() {
         sort: { key: 'row_number', direction: 'desc' },
     });
     const [dropdownOptions, setDropdownOptions] = React.useState({
-        clientNames: [] as string[],
+        clients: [] as Client[],
         processors: [] as string[],
         qas: [] as string[],
         caseManagers: [] as string[],
-        processes: [] as ProcessType[],
+        processes: [] as Process[],
     });
 
     // UI state
@@ -155,13 +157,17 @@ export default function SearchResultsPage() {
                 });
             }
 
-            const [allUsers, distinctClientNames] = await Promise.all([getUsers(), getDistinctClientNames()]);
+            const [allUsers, clients, processes] = await Promise.all([
+                getUsers(),
+                getAllClients(),
+                getAllProcesses()
+            ]);
             setDropdownOptions({
-                clientNames: distinctClientNames,
+                clients,
+                processes,
                 processors: allUsers.filter(u => u.roles.includes('Processor')).map(u => u.name).sort(),
                 qas: allUsers.filter(u => u.roles.includes('QA')).map(u => u.name).sort(),
                 caseManagers: allUsers.filter(u => u.roles.includes('Case Manager')).map(u => u.name).sort(),
-                processes: ['Patent', 'TM', 'IDS', 'Project'] as ProcessType[],
             });
 
 
@@ -271,7 +277,7 @@ export default function SearchResultsPage() {
                 setRowSelection({});
                 setBulkUpdateValue('');
             } else {
-                throw new Error(result.error || "An unknown error occurred.");
+                throw new Error("An unknown error occurred.");
             }
         } catch(e) {
             toast({ title: "Error", description: `Failed to update projects. ${e instanceof Error ? e.message : ''}`, variant: "destructive"});
@@ -305,8 +311,8 @@ export default function SearchResultsPage() {
         { value: 'processor', label: 'Processor', options: dropdownOptions.processors, type: 'select' },
         { value: 'qa', label: 'QA', options: dropdownOptions.qas, type: 'select' },
         { value: 'case_manager', label: 'Case Manager', options: dropdownOptions.caseManagers, type: 'select' },
-        { value: 'client_name', label: 'Client Name', options: dropdownOptions.clientNames, type: 'select' },
-        { value: 'process', label: 'Process', options: dropdownOptions.processes, type: 'select' },
+        { value: 'client_name', label: 'Client Name', options: dropdownOptions.clients.map(c => c.name), type: 'select' },
+        { value: 'process', label: 'Process', options: dropdownOptions.processes.map(p => p.name), type: 'select' },
       ];
     const selectedBulkUpdateField = bulkUpdateFields.find(f => f.value === bulkUpdateField);
 
@@ -352,11 +358,11 @@ export default function SearchResultsPage() {
                     project={editingProject}
                     onUpdateSuccess={fetchPageData}
                     userRole={'Manager'}
-                    clientNames={dropdownOptions.clientNames}
+                    clientNames={dropdownOptions.clients.map(c => c.name)}
                     processors={dropdownOptions.processors}
                     qas={dropdownOptions.qas}
                     caseManagers={dropdownOptions.caseManagers}
-                    processes={dropdownOptions.processes}
+                    processes={dropdownOptions.processes.map(p => p.name) as ProcessType[]}
                 />
             )}
             {sourceProject && (
@@ -386,8 +392,8 @@ export default function SearchResultsPage() {
                 onQuickSearch={handleQuickSearch}
                 isManagerOrAdmin={true}
                 showManagerSearch={true}
-                clientNames={dropdownOptions.clientNames}
-                processes={dropdownOptions.processes}
+                clientNames={dropdownOptions.clients.map(c => c.name)}
+                processes={dropdownOptions.processes.map(p => p.name) as ProcessType[]}
             />
             
             {showSubHeader && (

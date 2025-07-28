@@ -214,7 +214,7 @@ export function EditProjectDialog({
                 onOpenChange(false);
             }
         } else {
-            throw new Error(result.error || "Failed to update project on the server.");
+            throw new Error("Failed to update project on the server.");
         }
     } catch (error) {
         toast({
@@ -448,5 +448,3 @@ export function EditProjectDialog({
     </>
   );
 }
-
-    
