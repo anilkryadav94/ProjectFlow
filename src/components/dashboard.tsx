@@ -21,9 +21,9 @@ import { AddRowsDialog } from './add-rows-dialog';
 import { getProjectsForExport, bulkUpdateProjects } from '@/app/actions';
 import { ColumnSelectDialog } from './column-select-dialog';
 import { differenceInBusinessDays } from 'date-fns';
-import { getUsers, getClients } from '@/lib/auth';
+import { getUsers } from '@/lib/auth';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { getPaginatedProjects } from '@/services/project-service';
+import { getPaginatedProjects, getDistinctClientNames } from '@/services/project-service';
 
 
 interface DashboardProps {
@@ -151,9 +151,9 @@ function Dashboard({ user, error }: DashboardProps) {
     const fetchInitialData = React.useCallback(async () => {
         setIsLoading(true);
         try {
-            const [allUsers, clientUsers] = await Promise.all([getUsers(), getClients()]);
+            const [allUsers, distinctClientNames] = await Promise.all([getUsers(), getDistinctClientNames()]);
             setDropdownOptions({
-                clientNames: clientUsers.map(u => u.name).sort(),
+                clientNames: distinctClientNames,
                 processes: ['Patent', 'TM', 'IDS', 'Project'] as ProcessType[],
                 processors: allUsers.filter(u => u.roles.includes('Processor')).map(u => ({ id: u.id, name: u.name })).sort((a,b) => a.name.localeCompare(b.name)),
                 qas: allUsers.filter(u => u.roles.includes('QA')).map(u => ({ id: u.id, name: u.name })).sort((a,b) => a.name.localeCompare(b.name)),

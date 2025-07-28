@@ -350,16 +350,39 @@ export async function addRows(projectsToAdd: Partial<Project>[]): Promise<number
 }
 
 // Special handler for Case Manager to overcome Firestore query limitations
-async function getCaseManagerProjects(userName: string, pageSize: number, sort: any, lastVisibleDoc?: any) {
+async function getCaseManagerProjects(options: {
+    userName: string;
+    pageSize: number;
+    sort: { key: string; direction: 'asc' | 'desc' };
+    lastVisibleDoc?: any;
+    clientName?: string;
+    process?: string;
+}) {
+    const { userName, pageSize, sort, lastVisibleDoc, clientName, process } = options;
     const projectsCollection = collection(db, "projects");
 
-    // Define base queries for each status we care about
-    const baseQueries = [
-        query(projectsCollection, where("case_manager", "==", userName), where("qa_status", "==", "Client Query"), where("clientquery_status", "in", ["Pending", null, ""])),
+    // Define base queries for each status we care about for Case Manager
+    const baseConstraints = [
+        where("case_manager", "==", userName),
+        where("qa_status", "==", "Client Query"),
+    ];
+
+    if (clientName) {
+        baseConstraints.push(where("client_name", "==", clientName));
+    }
+    if (process) {
+        baseConstraints.push(where("process", "==", process));
+    }
+    
+    // Firestore limitation: `in` query with `null` is tricky. We query for each state separately.
+    const queries = [
+        query(projectsCollection, ...baseConstraints, where("clientquery_status", "==", "Pending")),
+        query(projectsCollection, ...baseConstraints, where("clientquery_status", "==", "")),
+        query(projectsCollection, ...baseConstraints, where("clientquery_status", "==", null)),
     ];
     
     // Fetch all documents from all queries
-    const allResults = await Promise.all(baseQueries.map(q => getDocs(q)));
+    const allResults = await Promise.all(queries.map(q => getDocs(q)));
 
     // Combine and deduplicate results
     const combinedDocs: { [key: string]: any } = {};
@@ -378,12 +401,18 @@ async function getCaseManagerProjects(userName: string, pageSize: number, sort: 
     projectList.sort((a, b) => {
         const key = sort.key || 'row_number';
         const dir = sort.direction === 'asc' ? 1 : -1;
-        if (a[key] < b[key]) return -1 * dir;
-        if (a[key] > b[key]) return 1 * dir;
+        const valA = a[key];
+        const valB = b[key];
+        
+        if (valA === null || valA === undefined) return 1;
+        if (valB === null || valB === undefined) return -1;
+        
+        if (valA < valB) return -1 * dir;
+        if (valA > valB) return 1 * dir;
         return 0;
     });
-
-    // Manual pagination
+    
+    // Manual pagination (lastVisibleDoc is complex with manual merging, so we use page number)
     const startIndex = lastVisibleDoc ? projectList.findIndex(p => p.id === lastVisibleDoc.id) + 1 : 0;
     const paginatedList = projectList.slice(startIndex, startIndex + pageSize);
 
@@ -410,12 +439,17 @@ export async function getPaginatedProjects(options: {
 }) {
     const { page, limit: pageSize, filters, sort } = options;
     
-    // Special handling for Case Manager
+    // Special handling for Case Manager due to complex query needs
     if (filters.roleFilter?.role === 'Case Manager') {
         const { userName } = filters.roleFilter;
-        // For simplicity in this complex scenario, we'll fetch all and paginate manually.
-        // A more robust solution would involve more complex cursor management.
-        const result = await getCaseManagerProjects(userName, 1000, sort); // Fetch all
+        // The Case Manager function now handles its own pagination, sorting, and filtering.
+        const result = await getCaseManagerProjects({
+            userName,
+            pageSize: 1000, // Fetch all to manually sort and paginate
+            sort,
+            clientName: filters.clientName,
+            process: filters.process
+        });
         const startIndex = (page - 1) * pageSize;
         const paginatedProjects = result.projects.slice(startIndex, startIndex + pageSize);
 
@@ -480,8 +514,31 @@ export async function getProjectsForExport(options: {
     visibleColumns?: string[];
 }): Promise<Partial<Project>[]> {
     const { filters, sort, visibleColumns = [] } = options;
-    const projectsCollection = collection(db, "projects");
     
+    // Special handling for Case Manager export
+    if (filters.roleFilter?.role === 'Case Manager') {
+        const result = await getCaseManagerProjects({
+             userName: filters.roleFilter.userName,
+             pageSize: 5000, // A large number to get all records for export
+             sort,
+             clientName: filters.clientName,
+             process: filters.process,
+        });
+        return result.projects.map(p => {
+             if (visibleColumns.length > 0) {
+                const filteredProject: Partial<Project> = {};
+                visibleColumns.forEach(key => {
+                    if (key !== 'select' && key !== 'actions') {
+                        filteredProject[key as keyof Project] = p[key as keyof Project];
+                    }
+                });
+                return filteredProject;
+            }
+            return p;
+        });
+    }
+
+    const projectsCollection = collection(db, "projects");
     const queryConstraints = buildFilterConstraints(filters);
     
     if (sort.key && sort.key !== 'id') {
@@ -515,4 +572,21 @@ export async function getProjectsForExport(options: {
     return dataToExport;
 }
 
+export async function getDistinctClientNames(): Promise<string[]> {
+    const projectsCollection = collection(db, "projects");
+    const projectSnapshot = await getDocs(projectsCollection);
     
+    if (projectSnapshot.empty) {
+        return [];
+    }
+
+    const clientNames = new Set<string>();
+    projectSnapshot.docs.forEach(doc => {
+        const data = doc.data();
+        if (data.client_name) {
+            clientNames.add(data.client_name);
+        }
+    });
+
+    return Array.from(clientNames).sort();
+}

@@ -8,7 +8,7 @@ import { useToast } from '@/hooks/use-toast';
 import Papa from "papaparse";
 
 import type { Project, Role, User, ProcessType, WorkflowStatus } from '@/lib/data';
-import { getSession, onAuthChanged, getUsers, getClients } from '@/lib/auth';
+import { getSession, onAuthChanged, getUsers } from '@/lib/auth';
 import { getPaginatedProjects, bulkUpdateProjects, getProjectsForExport } from '@/app/actions';
 import { SearchCriteria } from '@/components/advanced-search-form';
 import { allColumns, getColumns } from '@/components/columns';
@@ -25,6 +25,7 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Bar, BarChart, CartesianGrid, XAxis, YAxis } from "recharts";
 import { ChartContainer, ChartTooltip, ChartTooltipContent, ChartLegend, ChartLegendContent } from "@/components/ui/chart";
 import { workflowStatuses } from '@/lib/data';
+import { getDistinctClientNames } from '@/services/project-service';
 
 type ViewType = 'table' | 'chart';
 
@@ -154,9 +155,9 @@ export default function SearchResultsPage() {
                 });
             }
 
-            const [allUsers, clientUsers] = await Promise.all([getUsers(), getClients()]);
+            const [allUsers, distinctClientNames] = await Promise.all([getUsers(), getDistinctClientNames()]);
             setDropdownOptions({
-                clientNames: clientUsers.map(u => u.name).sort(),
+                clientNames: distinctClientNames,
                 processors: allUsers.filter(u => u.roles.includes('Processor')).map(u => u.name).sort(),
                 qas: allUsers.filter(u => u.roles.includes('QA')).map(u => u.name).sort(),
                 caseManagers: allUsers.filter(u => u.roles.includes('Case Manager')).map(u => u.name).sort(),
@@ -502,5 +503,3 @@ export default function SearchResultsPage() {
         </div>
     );
 }
-
-    
