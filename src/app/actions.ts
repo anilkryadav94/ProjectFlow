@@ -15,7 +15,7 @@ export async function getProjectsForUser(userName: string, roles: import("@/lib/
 
 const bulkUpdateSchema = z.object({
   projectIds: z.array(z.string()),
-  field: z.enum(['processorId', 'qaId', 'caseManagerId', 'client_name', 'process', 'workflowStatus', 'processing_status', 'qa_status']),
+  field: z.enum(['processorId', 'qaId', 'caseManagerId', 'client_name', 'process']),
   value: z.string().min(1, "New value cannot be empty."),
 });
 
@@ -97,4 +97,3 @@ export async function getProjectsForExport(options: {
     return ProjectService.getProjectsForExport(options);
 }
 
-    

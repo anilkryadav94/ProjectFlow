@@ -38,6 +38,7 @@ const fieldsToCopy = [
   { id: 'processor', label: 'Processor' },
   { id: 'qa', label: 'QA' },
   { id: 'case_manager', label: 'Case Manager' },
+  { id: 'manager_name', label: 'Manager Name' },
   { id: 'received_date', label: 'Email Date' },
   { id: 'allocation_date', label: 'Allocation Date' },
 ] as const;

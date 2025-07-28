@@ -13,7 +13,7 @@ import {
 } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
 import { ScrollArea } from "@/components/ui/scroll-area";
-import { ArrowLeft, ArrowRight, ChevronUp, ChevronDown } from "lucide-react";
+import { ArrowLeft, ArrowRight, ChevronUp, ChevronDown, Trash2 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { Checkbox } from "./ui/checkbox";
 import { Separator } from "./ui/separator";
@@ -103,6 +103,12 @@ export function ColumnSelectDialog({
     }
   };
 
+  const handleRemoveAllVisible = () => {
+    const essentialColumns = visibleColumnKeys.filter(key => ['select', 'actions'].includes(key));
+    setVisibleColumnKeys(essentialColumns);
+    setSelectedVisible(null);
+  }
+
   return (
     <Dialog open={isOpen} onOpenChange={onOpenChange}>
       <DialogContent className="max-w-4xl">
@@ -161,7 +167,12 @@ export function ColumnSelectDialog({
 
           {/* Visible Columns */}
           <div className="flex flex-col h-full border rounded-md">
-             <h3 className="p-2 text-sm font-semibold border-b bg-muted">Visible Columns</h3>
+             <div className="flex items-center justify-between p-2 border-b bg-muted">
+                <h3 className="text-sm font-semibold">Visible Columns</h3>
+                <Button variant="ghost" size="sm" onClick={handleRemoveAllVisible} className="h-auto p-1 text-xs">
+                    <Trash2 className="mr-1 h-3 w-3" /> Remove All
+                </Button>
+             </div>
             <div className="flex-grow flex">
                 <ScrollArea className="h-[350px] flex-grow">
                 <div className="p-2 space-y-1">

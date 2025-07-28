@@ -63,9 +63,9 @@ export default function SearchResultsPage() {
     });
     const [dropdownOptions, setDropdownOptions] = React.useState({
         clients: [] as Client[],
-        processors: [] as string[],
-        qas: [] as string[],
-        caseManagers: [] as string[],
+        processors: [] as { id: string, name: string }[],
+        qas: [] as { id: string, name: string }[],
+        caseManagers: [] as { id: string, name: string }[],
         processes: [] as Process[],
         countries: [] as Country[],
         documentTypes: [] as DocumentType[],
@@ -81,7 +81,7 @@ export default function SearchResultsPage() {
     const [editingProject, setEditingProject] = React.useState<Project | null>(null);
     const [isAddRowsDialogOpen, setIsAddRowsDialogOpen] = React.useState(false);
     const [sourceProject, setSourceProject] = React.useState<Project | null>(null);
-    const [bulkUpdateField, setBulkUpdateField] = React.useState<keyof Project>('processor');
+    const [bulkUpdateField, setBulkUpdateField] = React.useState<keyof Project | 'processorId' | 'qaId' | 'caseManagerId'>('processorId');
     const [bulkUpdateValue, setBulkUpdateValue] = React.useState('');
     const [isBulkUpdating, setIsBulkUpdating] = React.useState(false);
     const [search, setSearch] = React.useState(searchParams.get('quickSearch') || '');
@@ -177,9 +177,9 @@ export default function SearchResultsPage() {
                 countries,
                 documentTypes,
                 renewalAgents,
-                processors: allUsers.filter(u => u.roles.includes('Processor')).map(u => u.name).sort(),
-                qas: allUsers.filter(u => u.roles.includes('QA')).map(u => u.name).sort(),
-                caseManagers: allUsers.filter(u => u.roles.includes('Case Manager')).map(u => u.name).sort(),
+                processors: allUsers.filter(u => u.roles.includes('Processor')).map(u => ({ id: u.id, name: u.name })).sort((a, b) => a.name.localeCompare(b.name)),
+                qas: allUsers.filter(u => u.roles.includes('QA')).map(u => ({ id: u.id, name: u.name })).sort((a, b) => a.name.localeCompare(b.name)),
+                caseManagers: allUsers.filter(u => u.roles.includes('Case Manager')).map(u => ({ id: u.id, name: u.name })).sort((a, b) => a.name.localeCompare(b.name)),
             });
 
 
@@ -312,16 +312,16 @@ export default function SearchResultsPage() {
     };
 
     const bulkUpdateFields: {
-        value: keyof Project;
+        value: 'processorId' | 'qaId' | 'caseManagerId' | 'client_name' | 'process';
         label: string;
-        options: readonly string[] | string[];
-        type: 'select';
+        options: { id: string, name: string }[] | { name: string }[];
+        type: 'select-id' | 'select-name';
       }[] = [
-        { value: 'processor', label: 'Processor', options: dropdownOptions.processors, type: 'select' },
-        { value: 'qa', label: 'QA', options: dropdownOptions.qas, type: 'select' },
-        { value: 'case_manager', label: 'Case Manager', options: dropdownOptions.caseManagers, type: 'select' },
-        { value: 'client_name', label: 'Client Name', options: dropdownOptions.clients.map(c => c.name), type: 'select' },
-        { value: 'process', label: 'Process', options: dropdownOptions.processes.map(p => p.name), type: 'select' },
+        { value: 'processorId', label: 'Processor', options: dropdownOptions.processors, type: 'select-id' },
+        { value: 'qaId', label: 'QA', options: dropdownOptions.qas, type: 'select-id' },
+        { value: 'caseManagerId', label: 'Case Manager', options: dropdownOptions.caseManagers, type: 'select-id' },
+        { value: 'client_name', label: 'Client Name', options: dropdownOptions.clients, type: 'select-name' },
+        { value: 'process', label: 'Process', options: dropdownOptions.processes, type: 'select-name' },
       ];
     const selectedBulkUpdateField = bulkUpdateFields.find(f => f.value === bulkUpdateField);
 
@@ -368,9 +368,9 @@ export default function SearchResultsPage() {
                     onUpdateSuccess={fetchPageData}
                     userRole={'Manager'}
                     clientNames={dropdownOptions.clients.map(c => c.name)}
-                    processors={dropdownOptions.processors}
-                    qas={dropdownOptions.qas}
-                    caseManagers={dropdownOptions.caseManagers}
+                    processors={dropdownOptions.processors.map(p => p.name)}
+                    qas={dropdownOptions.qas.map(q => q.name)}
+                    caseManagers={dropdownOptions.caseManagers.map(cm => cm.name)}
                     processes={dropdownOptions.processes.map(p => p.name)}
                     countries={dropdownOptions.countries.map(c => c.name)}
                     documentTypes={dropdownOptions.documentTypes.map(d => d.name)}
@@ -445,7 +445,7 @@ export default function SearchResultsPage() {
                                 <span className="text-sm font-semibold">{Object.keys(rowSelection).length} selected</span>
                                 <div className="flex items-center gap-2">
                                     <Select value={bulkUpdateField} onValueChange={(v) => {
-                                        setBulkUpdateField(v as keyof Project);
+                                        setBulkUpdateField(v as any);
                                         setBulkUpdateValue('');
                                     }}>
                                         <SelectTrigger className="w-[180px] h-9">
@@ -464,7 +464,7 @@ export default function SearchResultsPage() {
                                         </SelectTrigger>
                                         <SelectContent>
                                             {selectedBulkUpdateField?.options.map(opt => (
-                                                <SelectItem key={opt} value={opt}>{opt}</SelectItem>
+                                                <SelectItem key={'id' in opt ? opt.id : opt.name} value={'id' in opt ? opt.id : opt.name}>{opt.name}</SelectItem>
                                             ))}
                                         </SelectContent>
                                     </Select>
@@ -522,4 +522,3 @@ export default function SearchResultsPage() {
     );
 }
 
-    
