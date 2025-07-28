@@ -40,7 +40,7 @@ import { Calendar } from "./ui/calendar";
 import { format, isValid } from "date-fns";
 import { cn } from "@/lib/utils";
 import { ScrollArea } from "./ui/scroll-area";
-import { Card, CardContent, CardHeader, CardTitle } from "./ui/card";
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "./ui/card";
 import { Alert, AlertDescription, AlertTitle } from "./ui/alert";
 
 
@@ -492,3 +492,4 @@ export function EditProjectDialog({
   );
 }
 
+    
