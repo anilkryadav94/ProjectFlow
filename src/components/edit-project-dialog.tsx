@@ -31,7 +31,7 @@ import {
 } from "@/components/ui/select";
 import { Textarea } from "@/components/ui/textarea";
 import { Input } from "@/components/ui/input";
-import { Loader2, CalendarIcon } from "lucide-react";
+import { AlertCircle, Loader2, CalendarIcon } from "lucide-react";
 import { type Project, type Role, processorSubmissionStatuses, qaSubmissionStatuses, processorStatuses, qaStatuses, clientStatuses, type ClientStatus, managerNames, errorOptions, emailForwardedOptions, ProcessType } from "@/lib/data";
 import { useToast } from "@/hooks/use-toast";
 import { updateProject } from "@/app/actions";
@@ -40,6 +40,9 @@ import { Calendar } from "./ui/calendar";
 import { format, isValid } from "date-fns";
 import { cn } from "@/lib/utils";
 import { ScrollArea } from "./ui/scroll-area";
+import { Card, CardContent, CardHeader, CardTitle } from "./ui/card";
+import { Alert, AlertDescription, AlertTitle } from "./ui/alert";
+
 
 // Base schema covering all fields, mostly optional for admin/manager view
 const baseFormSchema = z.object({
@@ -193,8 +196,10 @@ export function EditProjectDialog({
     
     // Determine the correct action for QA submission based on status
     let finalAction = action;
-    if (action === 'submit_qa' && data.qa_status === 'Client Query') {
-        finalAction = 'save'; // Re-route to 'save' to trigger the correct server logic
+    if (action === 'submit_qa') {
+        if (data.qa_status === 'Client Query') {
+             finalAction = 'save'; // Re-route to 'save' to trigger 'With Client' workflow
+        }
     }
     
     setIsSubmitting(true);
@@ -244,25 +249,53 @@ export function EditProjectDialog({
 
   const renderProcessorForm = () => (
     <>
-      <div className="space-y-4">
-        <FormField control={form.control} name="ref_number" render={({ field }) => (<FormItem><FormLabel>Ref Number (Manual)</FormLabel><FormControl><Input {...field} value={field.value ?? ""} /></FormControl><FormMessage /></FormItem>)} />
-        <FormField control={form.control} name="application_number" render={({ field }) => (<FormItem><FormLabel>Application No.</FormLabel><FormControl><Input {...field} value={field.value ?? ""} /></FormControl><FormMessage /></FormItem>)} />
-        <FormField control={form.control} name="patent_number" render={({ field }) => (<FormItem><FormLabel>Patent No.</FormLabel><FormControl><Input {...field} value={field.value ?? ""} /></FormControl><FormMessage /></FormItem>)} />
-        <FormField control={form.control} name="email_renaming" render={({ field }) => (<FormItem><FormLabel>Email Renaming</FormLabel><FormControl><Input {...field} value={field.value ?? ""} /></FormControl><FormMessage /></FormItem>)} />
-        <FormField control={form.control} name="processing_status" render={({ field }) => (<FormItem><FormLabel>Processor Status</FormLabel><Select onValueChange={field.onChange} value={field.value}><FormControl><SelectTrigger><SelectValue /></SelectTrigger></FormControl><SelectContent>{processorSubmissionStatuses.map(s => <SelectItem key={s} value={s}>{s}</SelectItem>)}</SelectContent></Select><FormMessage /></FormItem>)} />
-        <FormField control={form.control} name="subject_line" render={({ field }) => (<FormItem><FormLabel>Subject</FormLabel><FormControl><Textarea {...field} value={field.value ?? ""} /></FormControl><FormMessage /></FormItem>)} />
-        {project?.rework_reason && (<FormItem><FormLabel>Reason for Rework</FormLabel><Textarea value={project.rework_reason} readOnly className="h-24 bg-destructive/10 border-destructive" /></FormItem>)}
-      </div>
-      <div className="space-y-4">
-        <FormField control={form.control} name="sender" render={({ field }) => (<FormItem><FormLabel>Sender</FormLabel><FormControl><Input {...field} value={field.value ?? ""} /></FormControl><FormMessage /></FormItem>)} />
-        <FormField control={form.control} name="received_date" render={({ field }) => (<FormItem className="flex flex-col"><FormLabel>Email Date</FormLabel><Popover><PopoverTrigger asChild><FormControl><Button variant="outline" className={cn("font-normal w-full justify-start", !field.value && "text-muted-foreground")}><CalendarIcon className="mr-2 h-4 w-4" />{(field.value && isValid(new Date(field.value))) ? format(new Date(field.value), "PPP") : <span>Pick a date</span>}</Button></FormControl></PopoverTrigger><PopoverContent className="w-auto p-0"><Calendar mode="single" selected={(field.value && isValid(new Date(field.value))) ? new Date(field.value) : undefined} onSelect={(date) => field.onChange(date ? format(date, 'yyyy-MM-dd') : '')} /></PopoverContent></Popover><FormMessage /></FormItem>)} />
-        <FormField control={form.control} name="case_manager" render={({ field }) => (<FormItem><FormLabel>Case Manager</FormLabel><Select onValueChange={field.onChange} defaultValue={field.value}><FormControl><SelectTrigger><SelectValue /></SelectTrigger></FormControl><SelectContent>{caseManagers.map(c => <SelectItem key={c} value={c}>{c}</SelectItem>)}</SelectContent></Select><FormMessage /></FormItem>)} />
-        <FormField control={form.control} name="country" render={({ field }) => (<FormItem><FormLabel>Country</FormLabel><Select onValueChange={field.onChange} value={field.value ?? ""}><FormControl><SelectTrigger><SelectValue /></SelectTrigger></FormControl><SelectContent>{countries.map(c => <SelectItem key={c} value={c}>{c}</SelectItem>)}</SelectContent></Select><FormMessage /></FormItem>)} />
-        <FormField control={form.control} name="document_type" render={({ field }) => (<FormItem><FormLabel>Document Type</FormLabel><Select onValueChange={field.onChange} value={field.value ?? ""}><FormControl><SelectTrigger><SelectValue /></SelectTrigger></FormControl><SelectContent>{documentTypes.map(d => <SelectItem key={d} value={d}>{d}</SelectItem>)}</SelectContent></Select><FormMessage /></FormItem>)} />
-        <FormField control={form.control} name="action_taken" render={({ field }) => (<FormItem><FormLabel>Action Taken</FormLabel><FormControl><Textarea {...field} value={field.value ?? ""} /></FormControl><FormMessage /></FormItem>)} />
-        <FormField control={form.control} name="renewal_agent" render={({ field }) => (<FormItem><FormLabel>Renewal Agent</FormLabel><Select onValueChange={field.onChange} value={field.value ?? ""}><FormControl><SelectTrigger><SelectValue /></SelectTrigger></FormControl><SelectContent>{renewalAgents.map(r => <SelectItem key={r} value={r}>{r}</SelectItem>)}</SelectContent></Select><FormMessage /></FormItem>)} />
-        <FormField control={form.control} name="client_query_description" render={({ field }) => (<FormItem><FormLabel>Client Query Description</FormLabel><FormControl><Textarea {...field} value={field.value ?? ""} /></FormControl><FormMessage /></FormItem>)} />
-      </div>
+      <Card className="bg-muted/30">
+        <CardHeader>
+          <CardTitle>Project Information</CardTitle>
+          <CardDescription>Review these details before starting your task.</CardDescription>
+        </CardHeader>
+        <CardContent className="space-y-4">
+          <div className="grid grid-cols-2 gap-4">
+            <FormItem><FormLabel>Client Name</FormLabel><Input value={project?.client_name ?? ''} readOnly /></FormItem>
+            <FormItem><FormLabel>Process</FormLabel><Input value={project?.process ?? ''} readOnly /></FormItem>
+          </div>
+          <FormItem><FormLabel>Subject</FormLabel><Textarea value={project?.subject_line ?? ''} readOnly /></FormItem>
+        </CardContent>
+      </Card>
+      
+      {project?.rework_reason && (
+        <Alert variant="destructive">
+          <AlertCircle className="h-4 w-4" />
+          <AlertTitle>Rework Required</AlertTitle>
+          <AlertDescription>
+            {project.rework_reason}
+          </AlertDescription>
+        </Alert>
+      )}
+
+      <Card>
+        <CardHeader>
+          <CardTitle>Processor's Task</CardTitle>
+          <CardDescription>Fill in the required details and update the status.</CardDescription>
+        </CardHeader>
+        <CardContent className="space-y-4">
+          <FormField control={form.control} name="processing_status" render={({ field }) => (<FormItem><FormLabel>Processing Status</FormLabel><Select onValueChange={field.onChange} value={field.value}><FormControl><SelectTrigger><SelectValue /></SelectTrigger></FormControl><SelectContent>{processorSubmissionStatuses.map(s => <SelectItem key={s} value={s}>{s}</SelectItem>)}</SelectContent></Select><FormMessage /></FormItem>)} />
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            <FormField control={form.control} name="ref_number" render={({ field }) => (<FormItem><FormLabel>Ref Number (Manual)</FormLabel><FormControl><Input {...field} value={field.value ?? ""} /></FormControl><FormMessage /></FormItem>)} />
+            <FormField control={form.control} name="application_number" render={({ field }) => (<FormItem><FormLabel>Application No.</FormLabel><FormControl><Input {...field} value={field.value ?? ""} /></FormControl><FormMessage /></FormItem>)} />
+            <FormField control={form.control} name="patent_number" render={({ field }) => (<FormItem><FormLabel>Patent No.</FormLabel><FormControl><Input {...field} value={field.value ?? ""} /></FormControl><FormMessage /></FormItem>)} />
+            <FormField control={form.control} name="email_renaming" render={({ field }) => (<FormItem><FormLabel>Email Renaming</FormLabel><FormControl><Input {...field} value={field.value ?? ""} /></FormControl><FormMessage /></FormItem>)} />
+            <FormField control={form.control} name="sender" render={({ field }) => (<FormItem><FormLabel>Sender</FormLabel><FormControl><Input {...field} value={field.value ?? ""} /></FormControl><FormMessage /></FormItem>)} />
+            <FormField control={form.control} name="received_date" render={({ field }) => (<FormItem className="flex flex-col"><FormLabel>Email Date</FormLabel><Popover><PopoverTrigger asChild><FormControl><Button variant="outline" className={cn("font-normal w-full justify-start", !field.value && "text-muted-foreground")}><CalendarIcon className="mr-2 h-4 w-4" />{(field.value && isValid(new Date(field.value))) ? format(new Date(field.value), "PPP") : <span>Pick a date</span>}</Button></FormControl></PopoverTrigger><PopoverContent className="w-auto p-0"><Calendar mode="single" selected={(field.value && isValid(new Date(field.value))) ? new Date(field.value) : undefined} onSelect={(date) => field.onChange(date ? format(date, 'yyyy-MM-dd') : '')} /></PopoverContent></Popover><FormMessage /></FormItem>)} />
+            <FormField control={form.control} name="case_manager" render={({ field }) => (<FormItem><FormLabel>Case Manager</FormLabel><Select onValueChange={field.onChange} defaultValue={field.value}><FormControl><SelectTrigger><SelectValue /></SelectTrigger></FormControl><SelectContent>{caseManagers.map(c => <SelectItem key={c} value={c}>{c}</SelectItem>)}</SelectContent></Select><FormMessage /></FormItem>)} />
+            <FormField control={form.control} name="country" render={({ field }) => (<FormItem><FormLabel>Country</FormLabel><Select onValueChange={field.onChange} value={field.value ?? ""}><FormControl><SelectTrigger><SelectValue /></SelectTrigger></FormControl><SelectContent>{countries.map(c => <SelectItem key={c} value={c}>{c}</SelectItem>)}</SelectContent></Select><FormMessage /></FormItem>)} />
+            <FormField control={form.control} name="document_type" render={({ field }) => (<FormItem><FormLabel>Document Type</FormLabel><Select onValueChange={field.onChange} value={field.value ?? ""}><FormControl><SelectTrigger><SelectValue /></SelectTrigger></FormControl><SelectContent>{documentTypes.map(d => <SelectItem key={d} value={d}>{d}</SelectItem>)}</SelectContent></Select><FormMessage /></FormItem>)} />
+            <FormField control={form.control} name="renewal_agent" render={({ field }) => (<FormItem><FormLabel>Renewal Agent</FormLabel><Select onValueChange={field.onChange} value={field.value ?? ""}><FormControl><SelectTrigger><SelectValue /></SelectTrigger></FormControl><SelectContent>{renewalAgents.map(r => <SelectItem key={r} value={r}>{r}</SelectItem>)}</SelectContent></Select><FormMessage /></FormItem>)} />
+            <FormField control={form.control} name="action_taken" render={({ field }) => (<FormItem className="md:col-span-2"><FormLabel>Action Taken</FormLabel><FormControl><Textarea {...field} value={field.value ?? ""} /></FormControl><FormMessage /></FormItem>)} />
+            <FormField control={form.control} name="client_query_description" render={({ field }) => (<FormItem className="md:col-span-2"><FormLabel>Client Query Description</FormLabel><FormControl><Textarea {...field} value={field.value ?? ""} /></FormControl><FormMessage /></FormItem>)} />
+          </div>
+        </CardContent>
+      </Card>
     </>
   );
 
@@ -300,42 +333,44 @@ export function EditProjectDialog({
   );
 
   const renderCaseManagerForm = () => (
-    <>
-      <div className="space-y-4">
-        <FormItem>
-          <FormLabel>Client Query Description</FormLabel>
-          <Textarea value={project?.client_query_description ?? ''} readOnly className="h-24 bg-muted/50" />
-        </FormItem>
-        <FormField control={form.control} name="clientquery_status" render={({ field }) => (
-          <FormItem>
-            <FormLabel>Client Status</FormLabel>
-            <Select onValueChange={v => field.onChange(v as ClientStatus)} value={field.value ?? ""}>
-              <FormControl><SelectTrigger><SelectValue placeholder="Select a status" /></SelectTrigger></FormControl>
-              <SelectContent>{clientStatuses.map(s => <SelectItem key={s} value={s}>{s}</SelectItem>)}</SelectContent>
-            </Select>
-            <FormMessage />
-          </FormItem>
-        )} />
-      </div>
-      <div className="space-y-4">
-         <FormField control={form.control} name="client_comments" render={({ field }) => (
-            <FormItem>
-                <FormLabel>Client Comments</FormLabel>
-                <FormControl><Textarea {...field} value={field.value ?? ""} className="h-24" /></FormControl>
-                <FormMessage />
-            </FormItem>
-        )} />
-        <FormItem>
-          <FormLabel>Client Feedback / Error Description</FormLabel>
-          <Textarea value={project?.client_error_description ?? ''} readOnly className="h-24 bg-muted/50" />
-        </FormItem>
-      </div>
-    </>
+    <div className="space-y-6">
+        <Card>
+            <CardHeader><CardTitle>Client Query Details</CardTitle></CardHeader>
+            <CardContent>
+                <FormItem>
+                    <FormLabel>Query from QA/Processor</FormLabel>
+                    <Textarea value={project?.client_query_description ?? ''} readOnly className="h-24 bg-muted/50" />
+                </FormItem>
+            </CardContent>
+        </Card>
+        <Card>
+            <CardHeader><CardTitle>Update Response</CardTitle></CardHeader>
+            <CardContent className="space-y-4">
+                <FormField control={form.control} name="clientquery_status" render={({ field }) => (
+                <FormItem>
+                    <FormLabel>Client Status</FormLabel>
+                    <Select onValueChange={v => field.onChange(v as ClientStatus)} value={field.value ?? ""}>
+                    <FormControl><SelectTrigger><SelectValue placeholder="Select a status" /></SelectTrigger></FormControl>
+                    <SelectContent>{clientStatuses.map(s => <SelectItem key={s} value={s}>{s}</SelectItem>)}</SelectContent>
+                    </Select>
+                    <FormMessage />
+                </FormItem>
+                )} />
+                <FormField control={form.control} name="client_comments" render={({ field }) => (
+                    <FormItem>
+                        <FormLabel>Client Comments</FormLabel>
+                        <FormControl><Textarea {...field} value={field.value ?? ""} className="h-24" /></FormControl>
+                        <FormMessage />
+                    </FormItem>
+                )} />
+            </CardContent>
+        </Card>
+    </div>
   );
 
 
   const renderFullForm = () => (
-     <>
+     <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
         <div className="space-y-4">
             <FormField control={form.control} name="row_number" render={({ field }) => (<FormItem><FormLabel>Row Number</FormLabel><FormControl><Input {...field} value={field.value ?? ""} disabled /></FormControl><FormMessage /></FormItem>)} />
             <FormField control={form.control} name="ref_number" render={({ field }) => (<FormItem><FormLabel>Ref Number</FormLabel><FormControl><Input {...field} value={field.value ?? ""} disabled={!canEditMainFields} /></FormControl><FormMessage /></FormItem>)} />
@@ -357,7 +392,7 @@ export function EditProjectDialog({
             <FormField control={form.control} name="qa_status" render={({ field }) => (<FormItem><FormLabel>QA Status</FormLabel><Select onValueChange={field.onChange} value={field.value} disabled={!isManagerOrAdmin}><FormControl><SelectTrigger><SelectValue /></SelectTrigger></FormControl><SelectContent>{qaStatuses.map(s => <SelectItem key={s} value={s}>{s}</SelectItem>)}</SelectContent></Select><FormMessage /></FormItem>)} />
             <FormField control={form.control} name="rework_reason" render={({ field }) => (<FormItem><FormLabel>Rework Reason</FormLabel><FormControl><Textarea {...field} value={field.value ?? ""} disabled={!isManagerOrAdmin} /></FormControl><FormMessage /></FormItem>)} />
         </div>
-     </>
+     </div>
   );
 
   const renderContent = () => {
@@ -385,15 +420,11 @@ export function EditProjectDialog({
                   </div>
               </DialogHeader>
               
-              {project ? (
-                <div className="flex-grow overflow-y-auto py-4 pr-2 grid grid-cols-1 md:grid-cols-2 gap-4">
-                  {renderContent()}
+              <ScrollArea className="flex-grow py-4 pr-2">
+                <div className="space-y-6">
+                    {project ? renderContent() : children}
                 </div>
-              ) : (
-                <div className="flex-grow overflow-y-auto py-4 pr-2">
-                   {children}
-                </div>
-              )}
+              </ScrollArea>
               
               {project && (
                 <DialogFooter className="pt-4 border-t mt-auto">
@@ -460,3 +491,4 @@ export function EditProjectDialog({
     </>
   );
 }
+
