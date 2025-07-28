@@ -26,6 +26,7 @@ import { Input } from "./ui/input";
 import type { SearchableColumn } from "./dashboard"
 import Link from "next/link"
 import type { Process } from "@/services/process-service"
+import type { Client } from "@/services/client-service"
 
 
 interface TaskPagination {
@@ -56,7 +57,7 @@ interface HeaderProps {
     isManagerOrAdmin: boolean;
     showManagerSearch?: boolean;
     
-    clientNames: string[];
+    clients: Client[];
     processes: Process[];
     children?: React.ReactNode;
     taskPagination?: TaskPagination;
@@ -77,7 +78,7 @@ export function Header({
   setProcessFilter,
   isManagerOrAdmin,
   showManagerSearch,
-  clientNames,
+  clients,
   processes,
   children,
   taskPagination,
@@ -199,8 +200,8 @@ export function Header({
                       </SelectTrigger>
                       <SelectContent>
                         <SelectItem value="all">All Clients</SelectItem>
-                        {clientNames.map(name => (
-                            <SelectItem key={name} value={name}>{name}</SelectItem>
+                        {clients.map(c => (
+                            <SelectItem key={c.id} value={c.name}>{c.name}</SelectItem>
                         ))}
                       </SelectContent>
                     </Select>

@@ -32,7 +32,7 @@ import {
 import { Textarea } from "@/components/ui/textarea";
 import { Input } from "@/components/ui/input";
 import { Loader2, CalendarIcon } from "lucide-react";
-import { type Project, type Role, processorSubmissionStatuses, qaSubmissionStatuses, processorStatuses, qaStatuses, clientStatuses, type ClientStatus, managerNames, renewalAgents, documentTypes, errorOptions, emailForwardedOptions, countries, ProcessType } from "@/lib/data";
+import { type Project, type Role, processorSubmissionStatuses, qaSubmissionStatuses, processorStatuses, qaStatuses, clientStatuses, type ClientStatus, managerNames, errorOptions, emailForwardedOptions, ProcessType } from "@/lib/data";
 import { useToast } from "@/hooks/use-toast";
 import { updateProject } from "@/app/actions";
 import { Popover, PopoverTrigger, PopoverContent } from "./ui/popover";
@@ -129,6 +129,9 @@ interface EditProjectDialogProps {
   qas: string[];
   caseManagers: string[];
   processes: ProcessType[];
+  countries: string[];
+  documentTypes: string[];
+  renewalAgents: string[];
 }
 
 export function EditProjectDialog({
@@ -147,6 +150,9 @@ export function EditProjectDialog({
   qas,
   caseManagers,
   processes,
+  countries,
+  documentTypes,
+  renewalAgents,
 }: EditProjectDialogProps) {
   const [isSubmitting, setIsSubmitting] = React.useState(false);
   const { toast } = useToast();
@@ -245,10 +251,10 @@ export function EditProjectDialog({
         <FormField control={form.control} name="sender" render={({ field }) => (<FormItem><FormLabel>Sender</FormLabel><FormControl><Input {...field} value={field.value ?? ""} /></FormControl><FormMessage /></FormItem>)} />
         <FormField control={form.control} name="received_date" render={({ field }) => (<FormItem className="flex flex-col"><FormLabel>Email Date</FormLabel><Popover><PopoverTrigger asChild><FormControl><Button variant="outline" className={cn("font-normal w-full justify-start", !field.value && "text-muted-foreground")}><CalendarIcon className="mr-2 h-4 w-4" />{(field.value && isValid(new Date(field.value))) ? format(new Date(field.value), "PPP") : <span>Pick a date</span>}</Button></FormControl></PopoverTrigger><PopoverContent className="w-auto p-0"><Calendar mode="single" selected={(field.value && isValid(new Date(field.value))) ? new Date(field.value) : undefined} onSelect={(date) => field.onChange(date ? format(date, 'yyyy-MM-dd') : '')} /></PopoverContent></Popover><FormMessage /></FormItem>)} />
         <FormField control={form.control} name="case_manager" render={({ field }) => (<FormItem><FormLabel>Case Manager</FormLabel><Select onValueChange={field.onChange} defaultValue={field.value}><FormControl><SelectTrigger><SelectValue /></SelectTrigger></FormControl><SelectContent>{caseManagers.map(c => <SelectItem key={c} value={c}>{c}</SelectItem>)}</SelectContent></Select><FormMessage /></FormItem>)} />
-        <FormField control={form.control} name="country" render={({ field }) => (<FormItem><FormLabel>Country</FormLabel><FormControl><Input {...field} value={field.value ?? ""} /></FormControl><FormMessage /></FormItem>)} />
-        <FormField control={form.control} name="document_type" render={({ field }) => (<FormItem><FormLabel>Document Type</FormLabel><FormControl><Input {...field} value={field.value ?? ""} /></FormControl><FormMessage /></FormItem>)} />
+        <FormField control={form.control} name="country" render={({ field }) => (<FormItem><FormLabel>Country</FormLabel><Select onValueChange={field.onChange} value={field.value ?? ""}><FormControl><SelectTrigger><SelectValue /></SelectTrigger></FormControl><SelectContent>{countries.map(c => <SelectItem key={c} value={c}>{c}</SelectItem>)}</SelectContent></Select><FormMessage /></FormItem>)} />
+        <FormField control={form.control} name="document_type" render={({ field }) => (<FormItem><FormLabel>Document Type</FormLabel><Select onValueChange={field.onChange} value={field.value ?? ""}><FormControl><SelectTrigger><SelectValue /></SelectTrigger></FormControl><SelectContent>{documentTypes.map(d => <SelectItem key={d} value={d}>{d}</SelectItem>)}</SelectContent></Select><FormMessage /></FormItem>)} />
         <FormField control={form.control} name="action_taken" render={({ field }) => (<FormItem><FormLabel>Action Taken</FormLabel><FormControl><Textarea {...field} value={field.value ?? ""} /></FormControl><FormMessage /></FormItem>)} />
-        <FormField control={form.control} name="renewal_agent" render={({ field }) => (<FormItem><FormLabel>Renewal Agent</FormLabel><FormControl><Input {...field} value={field.value ?? ""} /></FormControl><FormMessage /></FormItem>)} />
+        <FormField control={form.control} name="renewal_agent" render={({ field }) => (<FormItem><FormLabel>Renewal Agent</FormLabel><Select onValueChange={field.onChange} value={field.value ?? ""}><FormControl><SelectTrigger><SelectValue /></SelectTrigger></FormControl><SelectContent>{renewalAgents.map(r => <SelectItem key={r} value={r}>{r}</SelectItem>)}</SelectContent></Select><FormMessage /></FormItem>)} />
         <FormField control={form.control} name="client_query_description" render={({ field }) => (<FormItem><FormLabel>Client Query Description</FormLabel><FormControl><Textarea {...field} value={field.value ?? ""} /></FormControl><FormMessage /></FormItem>)} />
       </div>
     </>

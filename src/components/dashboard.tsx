@@ -26,6 +26,9 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { getPaginatedProjects } from '@/services/project-service';
 import { getAllClients, type Client } from '@/services/client-service';
 import { getAllProcesses, type Process } from '@/services/process-service';
+import { getAllCountries, type Country } from '@/services/country-service';
+import { getAllDocumentTypes, type DocumentType } from '@/services/document-type-service';
+import { getAllRenewalAgents, type RenewalAgent } from '@/services/renewal-agent-service';
 
 
 interface DashboardProps {
@@ -60,12 +63,18 @@ function Dashboard({ user, error }: DashboardProps) {
       qas: { id: string, name: string }[];
       caseManagers: { id: string, name: string }[];
       processes: Process[];
+      countries: Country[];
+      documentTypes: DocumentType[];
+      renewalAgents: RenewalAgent[];
   }>({
       clients: [],
       processors: [],
       qas: [],
       caseManagers: [],
       processes: [],
+      countries: [],
+      documentTypes: [],
+      renewalAgents: [],
   });
 
   const [page, setPage] = React.useState(1);
@@ -154,14 +163,20 @@ function Dashboard({ user, error }: DashboardProps) {
     const fetchInitialData = React.useCallback(async () => {
         setIsLoading(true);
         try {
-            const [allUsers, clients, processes] = await Promise.all([
+            const [allUsers, clients, processes, countries, documentTypes, renewalAgents] = await Promise.all([
                 getUsers(),
                 getAllClients(),
-                getAllProcesses()
+                getAllProcesses(),
+                getAllCountries(),
+                getAllDocumentTypes(),
+                getAllRenewalAgents()
             ]);
             setDropdownOptions({
                 clients,
                 processes,
+                countries,
+                documentTypes,
+                renewalAgents,
                 processors: allUsers.filter(u => u.roles.includes('Processor')).map(u => ({ id: u.id, name: u.name })).sort((a,b) => a.name.localeCompare(b.name)),
                 qas: allUsers.filter(u => u.roles.includes('QA')).map(u => ({ id: u.id, name: u.name })).sort((a,b) => a.name.localeCompare(b.name)),
                 caseManagers: allUsers.filter(u => u.roles.includes('Case Manager')).map(u => ({ id: u.id, name: u.name })).sort((a,b) => a.name.localeCompare(b.name)),
@@ -341,6 +356,7 @@ function Dashboard({ user, error }: DashboardProps) {
 
         if (projectsToExport.length === 0) {
             toast({ title: "No data to export", variant: "destructive" });
+            setIsDownloading(false);
             return;
         }
 
@@ -439,6 +455,9 @@ function Dashboard({ user, error }: DashboardProps) {
                 qas={dropdownOptions.qas.map(q => q.name)}
                 caseManagers={dropdownOptions.caseManagers.map(cm => cm.name)}
                 processes={dropdownOptions.processes.map(p => p.name) as ProcessType[]}
+                countries={dropdownOptions.countries.map(c => c.name)}
+                documentTypes={dropdownOptions.documentTypes.map(d => d.name)}
+                renewalAgents={dropdownOptions.renewalAgents.map(r => r.name)}
             />
         )}
         {sourceProject && ( <AddRowsDialog isOpen={isAddRowsDialogOpen} onOpenChange={setIsAddRowsDialogOpen} sourceProject={sourceProject} onAddRowsSuccess={() => fetchDashboardData(activeRole!, 1, sort, clientNameFilter, processFilter)} /> )}
@@ -450,7 +469,7 @@ function Dashboard({ user, error }: DashboardProps) {
             onQuickSearch={handleQuickSearch} clientNameFilter={clientNameFilter} setClientNameFilter={setClientNameFilter}
             processFilter={processFilter} setProcessFilter={setProcessFilter} isManagerOrAdmin={isManagerOrAdmin}
             showManagerSearch={activeRole === 'Manager'}
-            clientNames={dropdownOptions.clients.map(c => c.name)} processes={dropdownOptions.processes}
+            clients={dropdownOptions.clients} processes={dropdownOptions.processes}
         />
         
         {showSubHeader && (
@@ -556,7 +575,15 @@ function Dashboard({ user, error }: DashboardProps) {
                         <AccordionTrigger className="px-4 py-3 hover:no-underline">Advanced Search</AccordionTrigger>
                         <AccordionContent>
                            <div className="p-1">
-                             <AdvancedSearchForm onSearch={handleAdvancedSearch} initialCriteria={null} processors={dropdownOptions.processors.map(p=>p.name)} qas={dropdownOptions.qas.map(q=>q.name)} clientNames={dropdownOptions.clients.map(c=>c.name)} processes={dropdownOptions.processes.map(p=>p.name) as ProcessType[]} />
+                             <AdvancedSearchForm 
+                                onSearch={handleAdvancedSearch} 
+                                initialCriteria={null} 
+                                processors={dropdownOptions.processors.map(p=>p.name)} 
+                                qas={dropdownOptions.qas.map(q=>q.name)} 
+                                clients={dropdownOptions.clients} 
+                                processes={dropdownOptions.processes}
+                                countries={dropdownOptions.countries}
+                             />
                            </div>
                         </AccordionContent>
                     </AccordionItem>
@@ -620,4 +647,3 @@ function Dashboard({ user, error }: DashboardProps) {
     </div>
   );
 }
-

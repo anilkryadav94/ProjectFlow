@@ -10,10 +10,13 @@ import { Card, CardContent } from '@/components/ui/card';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import { Calendar } from '@/components/ui/calendar';
 import { PlusCircle, Trash2, CalendarIcon, Search } from 'lucide-react';
-import { projectStatuses, countries, type ProcessType } from '@/lib/data';
+import { projectStatuses, type ProcessType } from '@/lib/data';
 import { format } from 'date-fns';
 import type { Project } from '@/lib/data';
 import { cn } from '@/lib/utils';
+import type { Client } from '@/services/client-service';
+import type { Process } from '@/services/process-service';
+import type { Country } from '@/services/country-service';
 
 type TextField = keyof Pick<Project, 'ref_number' | 'application_number' | 'patent_number' | 'processor' | 'qa' | 'country' | 'client_name' | 'process' | 'processing_status'>;
 type DateField = keyof Pick<Project, 'received_date' | 'allocation_date' | 'processing_date' | 'qa_date'>;
@@ -49,20 +52,21 @@ interface AdvancedSearchFormProps {
   initialCriteria: SearchCriteria | null;
   processors: string[];
   qas: string[];
-  clientNames: string[];
-  processes: ProcessType[];
+  clients: Client[];
+  processes: Process[];
+  countries: Country[];
 }
 
-export function AdvancedSearchForm({ onSearch, initialCriteria, processors, qas, clientNames, processes }: AdvancedSearchFormProps) {
-    const searchFields: { value: SearchField, label: string, type: 'text' | 'date' | 'select', options?: string[] }[] = [
+export function AdvancedSearchForm({ onSearch, initialCriteria, processors, qas, clients, processes, countries }: AdvancedSearchFormProps) {
+    const searchFields: { value: SearchField, label: string, type: 'text' | 'date' | 'select', options?: {id: string, name: string}[] | string[] }[] = [
         { value: 'ref_number', label: 'Ref Number', type: 'text' },
         { value: 'processor', label: 'Processor', type: 'select', options: processors },
         { value: 'qa', label: 'QA', type: 'select', options: qas },
         { value: 'application_number', label: 'Application No.', type: 'text' },
         { value: 'patent_number', label: 'Patent No.', type: 'text' },
-        { value: 'country', label: 'Country', type: 'select', options: countries },
-        { value: 'client_name', label: 'Client Name', type: 'select', options: clientNames },
-        { value: 'process', label: 'Process', type: 'select', options: processes },
+        { value: 'country', label: 'Country', type: 'select', options: countries.map(c => c.name) },
+        { value: 'client_name', label: 'Client Name', type: 'select', options: clients.map(c => c.name) },
+        { value: 'process', label: 'Process', type: 'select', options: processes.map(p => p.name) },
         { value: 'processing_status', label: 'Status', type: 'select', options: projectStatuses },
         { value: 'received_date', label: 'Email Date', type: 'date' },
         { value: 'allocation_date', label: 'Allocation Date', type: 'date' },
@@ -171,7 +175,11 @@ export function AdvancedSearchForm({ onSearch, initialCriteria, processors, qas,
                                     <SelectValue placeholder={`Select ${fieldConfig?.label}`} />
                                 </SelectTrigger>
                                 <SelectContent>
-                                    {fieldConfig?.options?.map(opt => <SelectItem key={opt} value={opt}>{opt}</SelectItem>)}
+                                    {Array.isArray(fieldConfig?.options) && fieldConfig.options.map(opt => (
+                                        typeof opt === 'string' 
+                                            ? <SelectItem key={opt} value={opt}>{opt}</SelectItem>
+                                            : <SelectItem key={opt.id} value={opt.name}>{opt.name}</SelectItem>
+                                    ))}
                                 </SelectContent>
                             </Select>
                         ) : (

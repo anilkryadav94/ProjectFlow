@@ -5,6 +5,9 @@ import type { Project, Role, User } from "@/lib/data";
 import { getAllUsers } from "./user-service";
 import { ensureClientExists } from "./client-service";
 import { ensureProcessExists } from "./process-service";
+import { ensureCountryExists } from "./country-service";
+import { ensureDocumentTypeExists } from "./document-type-service";
+import { ensureRenewalAgentExists } from "./renewal-agent-service";
 
 
 // == HELPERS ==
@@ -194,12 +197,11 @@ export async function bulkUpdateProjects(projectIds: string[], updateData: Parti
     }
 
     // Ensure metadata collections are updated
-    if (dataToUpdate.client_name) {
-        await ensureClientExists(dataToUpdate.client_name);
-    }
-    if (dataToUpdate.process) {
-        await ensureProcessExists(dataToUpdate.process);
-    }
+    if (dataToUpdate.client_name) await ensureClientExists(dataToUpdate.client_name);
+    if (dataToUpdate.process) await ensureProcessExists(dataToUpdate.process);
+    if (dataToUpdate.country) await ensureCountryExists(dataToUpdate.country);
+    if (dataToUpdate.document_type) await ensureDocumentTypeExists(dataToUpdate.document_type);
+    if (dataToUpdate.renewal_agent) await ensureRenewalAgentExists(dataToUpdate.renewal_agent);
     
 
     projectIds.forEach(id => {
@@ -278,12 +280,12 @@ export async function updateProject(
     
     if (Object.keys(dataToUpdate).length > 0) {
       // Ensure metadata collections are updated before writing to project
-      if (dataToUpdate.client_name) {
-          await ensureClientExists(dataToUpdate.client_name);
-      }
-      if (dataToUpdate.process) {
-          await ensureProcessExists(dataToUpdate.process);
-      }
+      if (dataToUpdate.client_name) await ensureClientExists(dataToUpdate.client_name);
+      if (dataToUpdate.process) await ensureProcessExists(dataToUpdate.process);
+      if (dataToUpdate.country) await ensureCountryExists(dataToUpdate.country);
+      if (dataToUpdate.document_type) await ensureDocumentTypeExists(dataToUpdate.document_type);
+      if (dataToUpdate.renewal_agent) await ensureRenewalAgentExists(dataToUpdate.renewal_agent);
+
       await updateDoc(projectRef, dataToUpdate);
     }
     
@@ -347,12 +349,11 @@ export async function addRows(projectsToAdd: Partial<Project>[]): Promise<number
       }
 
        // Ensure metadata collections are updated
-      if (finalProjectData.client_name) {
-          await ensureClientExists(finalProjectData.client_name);
-      }
-      if (finalProjectData.process) {
-          await ensureProcessExists(finalProjectData.process);
-      }
+      if (finalProjectData.client_name) await ensureClientExists(finalProjectData.client_name);
+      if (finalProjectData.process) await ensureProcessExists(finalProjectData.process);
+      if (finalProjectData.country) await ensureCountryExists(finalProjectData.country);
+      if (finalProjectData.document_type) await ensureDocumentTypeExists(finalProjectData.document_type);
+      if (finalProjectData.renewal_agent) await ensureRenewalAgentExists(finalProjectData.renewal_agent);
 
 
       const yearPrefix = currentRowNumber.slice(0, 4);
@@ -569,19 +570,4 @@ export async function getProjectsForExport(options: {
     });
 
     return dataToExport;
-}
-
-export async function getDistinctClientNames(): Promise<Client[]> {
-    const clientsCollection = collection(db, "clients");
-    const q = query(clientsCollection, orderBy("name", "asc"));
-    const clientSnapshot = await getDocs(q);
-    
-    if (clientSnapshot.empty) {
-        return [];
-    }
-    
-    return clientSnapshot.docs.map(doc => ({
-        id: doc.id,
-        name: doc.data().name,
-    }));
 }

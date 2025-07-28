@@ -81,9 +81,6 @@ export type Project = {
 
 
 export const projectStatuses: any[] = ["Pending", "Completed", "On Hold"];
-export const countries = ['USA', 'India', 'Canada', 'UK', 'Germany'];
-export const renewalAgents = ['Agent X', 'Agent Y'];
-export const documentTypes = ['Disclosure', 'Application', 'Office Action Response', 'Correspondence'];
 export const errorOptions: ('Yes' | 'No')[] = ['Yes', 'No'];
 export const emailForwardedOptions: ('Yes' | 'No')[] = ['Yes', 'No'];
 export const managerNames = ['Manager User']; 
