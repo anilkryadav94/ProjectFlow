@@ -71,11 +71,7 @@ export const allColumns: { key: keyof Project | 'actions' | 'select', header: st
         let statusText: string = project.workflowStatus;
         let statusColorClass = statusColors[project.workflowStatus];
 
-        // Derived "With Client" status
-        if (project.qa_status === 'Client Query' && (!project.clientquery_status || project.clientquery_status === 'Pending')) {
-            statusText = 'With Client';
-            statusColorClass = statusColors['With Client'];
-        } else if (project.workflowStatus === 'With Processor') {
+        if (project.workflowStatus === 'With Processor') {
             statusText = project.processing_status;
             statusColorClass = statusColors[project.processing_status];
         } else if (project.workflowStatus === 'With QA') {

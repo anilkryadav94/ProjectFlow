@@ -298,8 +298,7 @@ export async function updateProject(
     }
 
     if (submitAction === 'client_submit') {
-      dataToUpdate.workflowStatus = 'With Client';
-      dataToUpdate.qa_status = 'Pending';
+      dataToUpdate.workflowStatus = 'With QA'; // Return to QA after client responds
       dataToUpdate.client_response_date = serverTimestamp();
     } else if (submitAction === 'submit_for_qa') {
         dataToUpdate.workflowStatus = 'With QA';
@@ -308,8 +307,11 @@ export async function updateProject(
     } else if (submitAction === 'submit_qa') {
         if (dataToUpdate.qa_status === 'Client Query') {
              dataToUpdate.workflowStatus = 'With Client';
-        } else {
-             dataToUpdate.workflowStatus = 'Completed';
+             dataToUpdate.clientquery_status = 'Pending'; // Explicitly set to pending
+        } else if (dataToUpdate.qa_status === 'Complete') {
+            dataToUpdate.workflowStatus = 'Completed';
+        } else { // For 'NTP', 'Already Processed'
+            dataToUpdate.workflowStatus = 'Completed';
         }
         dataToUpdate.qa_date = serverTimestamp();
     } else if (submitAction === 'send_rework') {
@@ -435,8 +437,7 @@ async function getCaseManagerProjects(options: {
 
     let baseConstraints: QueryConstraint[] = [
         where("case_manager", "==", userName),
-        where("qa_status", "==", "Client Query"),
-        where("clientquery_status", "in", ["Pending", null, ""])
+        where("workflowStatus", "==", "With Client"),
     ];
 
     if (clientName) {

@@ -22,7 +22,7 @@ import { getProjectsForExport, bulkUpdateProjects } from '@/app/actions';
 import { ColumnSelectDialog } from './column-select-dialog';
 import { differenceInBusinessDays } from 'date-fns';
 import { getUsers } from '@/lib/auth';
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from './ui/select';
 import { addRows } from "@/app/actions";
 import { getPaginatedProjects } from '@/services/project-service';
 import { getAllClients, type Client } from '@/services/client-service';
